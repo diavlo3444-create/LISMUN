@@ -8,6 +8,7 @@ import {
   observeAmbientVisibility,
 } from '../utils/atlasAnimations';
 import { BritusEmblem } from './BritusEmblem';
+import { navigate } from '../client/router';
 
 interface FooterSectionProps {
   onNavigate: (sectionId: AtlasSectionId) => void;
@@ -186,7 +187,48 @@ export const FooterSection: React.FC<FooterSectionProps> = ({
 
         <div className="flex flex-col items-center justify-between gap-4 border-t border-[#263D59]/45 pt-8 font-mono text-[11px] tracking-[0.14em] text-[#E8E1D2]/45 sm:flex-row">
           <p>© {new Date().getFullYear()} Leadership International School MUN.</p>
-          <p>THE LIVING ATLAS ARCHIVE · SESSION I</p>
+          <div className="flex flex-wrap items-center justify-center gap-5">
+            <a
+              href="/apply"
+              onClick={(e) => {
+                e.preventDefault();
+                navigate('/apply');
+              }}
+              className="hover:text-[#D5BD8B]"
+            >
+              Staff &amp; Chair Intake
+            </a>
+            <a
+              href="/portal"
+              onClick={(e) => {
+                e.preventDefault();
+                navigate('/portal');
+              }}
+              className="hover:text-[#D5BD8B]"
+            >
+              Management Portal
+            </a>
+            <a
+              href="/privacy"
+              onClick={(e) => {
+                e.preventDefault();
+                navigate('/privacy');
+              }}
+              className="hover:text-[#D5BD8B]"
+            >
+              Privacy
+            </a>
+            <a
+              href="/terms"
+              onClick={(e) => {
+                e.preventDefault();
+                navigate('/terms');
+              }}
+              className="hover:text-[#D5BD8B]"
+            >
+              Terms
+            </a>
+          </div>
         </div>
       </div>
     </footer>

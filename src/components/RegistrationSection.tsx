@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { ArrowRight, Check, X } from 'lucide-react';
 import { TBA_COMMITTEE_OPTION } from '../data/conferenceData';
 import type {
@@ -16,6 +17,8 @@ import {
   generateDossierCode,
   validateRegistration,
 } from '../utils/cartography';
+import { apiRequest } from '../client/api';
+import { navigate } from '../client/router';
 
 interface RegistrationSectionProps {
   isModalOpen: boolean;
@@ -50,6 +53,11 @@ export const RegistrationSection: React.FC<RegistrationSectionProps> = ({
   const [experienceLevel, setExperienceLevel] =
     useState<RegistrationPayload['experienceLevel']>('Experienced Delegate');
   const [motivationNote, setMotivationNote] = useState('');
+  const [tier, setTier] = useState<'early_bird' | 'regular'>('early_bird');
+  const [privacyAccepted, setPrivacyAccepted] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [serverError, setServerError] = useState('');
   const [errors, setErrors] = useState<
     Partial<Record<keyof RegistrationPayload, string>>
   >({});
@@ -123,8 +131,9 @@ export const RegistrationSection: React.FC<RegistrationSectionProps> = ({
     };
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setServerError('');
     const payload: RegistrationPayload = {
       track,
       fullName: fullName.trim(),
@@ -142,13 +151,58 @@ export const RegistrationSection: React.FC<RegistrationSectionProps> = ({
       setErrors(result.errors);
       return;
     }
+    if (!privacyAccepted || !termsAccepted) {
+      setServerError('Please accept the Privacy Policy and Terms & Conditions.');
+      return;
+    }
 
     setErrors({});
+    setSubmitting(true);
+    let dossierCode = generateDossierCode(
+      payload.fullName,
+      payload.preferredCommitteeId
+    );
+    try {
+      const apiResp = await apiRequest<{ dossierCode?: string }>(
+        '/api/public/applications/delegate',
+        {
+          method: 'POST',
+          skipAuth: true,
+          body: {
+            full_name: payload.fullName,
+            email: payload.email,
+            institution: payload.institution,
+            country_or_city: payload.countryOrCity,
+            delegation_type:
+              payload.track === 'delegation'
+                ? 'school_delegation'
+                : 'single_delegate',
+            delegation_size: payload.delegationSize,
+            tier,
+            experience: payload.experienceLevel,
+            motivation_note: payload.motivationNote,
+            preferred_committee_id: payload.preferredCommitteeId,
+            privacy_policy_accepted: true,
+            terms_accepted: true,
+          },
+        }
+      );
+      if (apiResp.dossierCode) {
+        dossierCode = apiResp.dossierCode;
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '';
+      if (!/not configured/i.test(msg)) {
+        setServerError(msg || 'Unable to submit registration.');
+        setSubmitting(false);
+        return;
+      }
+    } finally {
+      setSubmitting(false);
+    }
+
     const newReceipt: RegistrationReceipt = {
-      dossierCode: generateDossierCode(
-        payload.fullName,
-        payload.preferredCommitteeId
-      ),
+      dossierCode,
       submittedAtIso: new Date().toISOString(),
       payload,
     };
@@ -297,6 +351,14 @@ export const RegistrationSection: React.FC<RegistrationSectionProps> = ({
               <ArrowRight className="atlas-btn-arrow h-4 w-4 text-[#D5BD8B]" />
             </button>
 
+            <button
+              type="button"
+              onClick={() => navigate('/apply')}
+              className="font-mono text-[11px] tracking-[0.2em] text-[#B89A62] uppercase underline-offset-4 hover:text-[#D5BD8B] hover:underline"
+            >
+              Apply as Chair, Security, Media/Press, or Volunteers →
+            </button>
+
             {receipt && (
               <p className="font-mono text-[11px] tracking-[0.18em] text-[#D5BD8B]">
                 ACTIVE DOSSIER ON FILE · {receipt.dossierCode}
@@ -307,19 +369,21 @@ export const RegistrationSection: React.FC<RegistrationSectionProps> = ({
       </div>
 
       {/* Interactive Registration Flow Modal */}
-      {isModalOpen && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="registration-dialog-title"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-[#030914]/92 p-4 md:p-8"
-          onClick={onCloseModal}
-        >
+      {isModalOpen &&
+        typeof document !== 'undefined' &&
+        createPortal(
           <div
-            className="max-h-[90vh] w-full max-w-2xl overflow-y-auto border border-[#B89A62]/45 bg-[#071426] p-6 md:p-10"
-            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="registration-dialog-title"
+            className="fixed inset-0 z-[95] flex items-center justify-center bg-[#030914]/92 p-4 md:p-6"
+            onClick={onCloseModal}
           >
-            <div className="flex items-start justify-between gap-4 border-b border-[#263D59]/70 pb-5">
+            <div
+              className="max-h-[90vh] w-full max-w-2xl overflow-y-auto border border-[#B89A62]/45 bg-[#071426] p-5 md:p-6"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-start justify-between gap-4 border-b border-[#263D59]/70 pb-4">
               <div>
                 <p className="font-mono text-[11px] tracking-[0.22em] text-[#B89A62] uppercase">
                   Leadership International School MUN · Session I
@@ -414,7 +478,7 @@ export const RegistrationSection: React.FC<RegistrationSectionProps> = ({
                 </div>
               </div>
             ) : (
-              <form onSubmit={handleSubmit} noValidate className="mt-6 space-y-5">
+              <form onSubmit={handleSubmit} noValidate className="mt-4 space-y-3.5">
                 {/* Track Switcher */}
                 <div className="grid grid-cols-2 border border-[#263D59]">
                   <button
@@ -606,6 +670,24 @@ export const RegistrationSection: React.FC<RegistrationSectionProps> = ({
 
                 <div>
                   <label
+                    htmlFor="reg-tier"
+                    className="block font-mono text-[10px] tracking-[0.2em] text-[#B89A62] uppercase"
+                  >
+                    Registration Tier
+                  </label>
+                  <select
+                    id="reg-tier"
+                    value={tier}
+                    onChange={(e) => setTier(e.target.value as 'early_bird' | 'regular')}
+                    className="mt-2 w-full border border-[#263D59] bg-[#030914] px-3.5 py-2.5 font-sans text-sm text-[#E8E1D2] focus:border-[#D5BD8B] focus:outline-none"
+                  >
+                    <option value="early_bird">Early Bird Delegate Window</option>
+                    <option value="regular">Regular Delegate Window</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label
                     htmlFor="reg-note"
                     className="block font-mono text-[10px] tracking-[0.2em] text-[#B89A62] uppercase"
                   >
@@ -613,13 +695,66 @@ export const RegistrationSection: React.FC<RegistrationSectionProps> = ({
                   </label>
                   <textarea
                     id="reg-note"
-                    rows={3}
+                    rows={2}
                     value={motivationNote}
                     onChange={(e) => setMotivationNote(e.target.value)}
                     placeholder="Indicate preferred member states or committee notes..."
-                    className="mt-2 w-full border border-[#263D59] bg-[#030914] px-3.5 py-2.5 font-sans text-sm text-[#E8E1D2] placeholder-[#E8E1D2]/30 focus:border-[#D5BD8B] focus:outline-none"
+                    className="mt-1.5 w-full border border-[#263D59] bg-[#030914] px-3.5 py-2 font-sans text-sm text-[#E8E1D2] placeholder-[#E8E1D2]/30 focus:border-[#D5BD8B] focus:outline-none"
                   />
                 </div>
+
+                <div className="space-y-2 border border-[#263D59]/70 bg-[#030914] p-3 text-xs">
+                  <label className="flex items-start gap-2.5">
+                    <input
+                      type="checkbox"
+                      checked={privacyAccepted}
+                      onChange={(e) => setPrivacyAccepted(e.target.checked)}
+                      className="mt-0.5"
+                    />
+                    <span className="text-[#E8E1D2]/80">
+                      I accept the LIS MUN{' '}
+                      <a
+                        href="/privacy"
+                        onClick={(ev) => {
+                          ev.preventDefault();
+                          navigate('/privacy');
+                        }}
+                        className="text-[#D5BD8B] underline"
+                      >
+                        Privacy Policy
+                      </a>
+                      .
+                    </span>
+                  </label>
+                  <label className="flex items-start gap-2.5">
+                    <input
+                      type="checkbox"
+                      checked={termsAccepted}
+                      onChange={(e) => setTermsAccepted(e.target.checked)}
+                      className="mt-0.5"
+                    />
+                    <span className="text-[#E8E1D2]/80">
+                      I accept the{' '}
+                      <a
+                        href="/terms"
+                        onClick={(ev) => {
+                          ev.preventDefault();
+                          navigate('/terms');
+                        }}
+                        className="text-[#D5BD8B] underline"
+                      >
+                        Conference Terms &amp; Code of Conduct
+                      </a>
+                      .
+                    </span>
+                  </label>
+                </div>
+
+                {serverError && (
+                  <p className="border border-[#DC2626]/60 bg-[#1B0B10] p-3 text-xs text-[#FCA5A5]">
+                    {serverError}
+                  </p>
+                )}
 
                 <div className="flex items-center justify-end gap-4 border-t border-[#263D59]/70 pt-5">
                   <button
@@ -631,17 +766,19 @@ export const RegistrationSection: React.FC<RegistrationSectionProps> = ({
                   </button>
                   <button
                     type="submit"
-                    className="atlas-btn-gold inline-flex items-center gap-3 bg-[#030914] px-6 py-3 font-sans text-xs font-medium tracking-[0.18em] text-[#E8E1D2] uppercase"
+                    disabled={submitting}
+                    className="atlas-btn-gold inline-flex items-center gap-3 bg-[#030914] px-6 py-3 font-sans text-xs font-medium tracking-[0.18em] text-[#E8E1D2] uppercase disabled:opacity-50"
                   >
-                    <span>Submit Dossier</span>
+                    <span>{submitting ? 'Submitting...' : 'Submit Dossier'}</span>
                     <ArrowRight className="atlas-btn-arrow h-4 w-4 text-[#D5BD8B]" />
                   </button>
                 </div>
               </form>
             )}
           </div>
-        </div>
-      )}
+        </div>,
+          document.body
+        )}
     </section>
   );
 };
