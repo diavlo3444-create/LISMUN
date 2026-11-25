@@ -98,51 +98,66 @@ const PortalGuard: React.FC<{
 
   if (!ready || consuming) {
     return (
-      <div className="min-h-screen bg-[#030914] p-8">
-        <LoadingSkeleton rows={5} />
+      <div className="portal-app-shell min-h-screen p-8">
+        <div className="mx-auto max-w-4xl">
+          <LoadingSkeleton rows={5} />
+        </div>
       </div>
     );
   }
 
   if (!effectiveActor) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-[#030914] p-6 text-center text-[#E8E1D2]">
-        <p className="font-mono text-xs tracking-[0.2em] text-[#B89A62] uppercase">
-          Authentication Required
-        </p>
-        <h1 className="mt-3 font-display text-3xl text-[#E8E1D2]">
-          Portal Session Not Active
-        </h1>
-        <p className="mt-2 max-w-md font-sans text-xs text-[#E8E1D2]/70">
-          Sign in through the dedicated portal gateway to access conference operations.
-        </p>
-        <button
-          type="button"
-          onClick={() => navigate(loginPath)}
-          className="mt-6 border border-[#B89A62] bg-[#071426] px-6 py-2.5 font-mono text-xs text-[#D5BD8B] uppercase"
-        >
-          Go to Portal Login
-        </button>
+      <div className="portal-app-shell portal-gateway flex min-h-screen items-center justify-center p-6 text-[#E8E1D2]">
+        <div className="portal-modal-enter w-full max-w-md border border-[#263D59]/75 bg-[#050E1C]/92 p-8 text-center shadow-2xl shadow-black/50">
+          <p className="font-mono text-[10px] tracking-[0.22em] text-[#B89A62] uppercase">
+            Authentication Required
+          </p>
+          <h1 className="mt-2 font-display text-3xl text-[#F3EDE0]">
+            Portal Session Not Active
+          </h1>
+          <p className="mt-2.5 font-sans text-xs leading-relaxed text-[#E8E1D2]/65">
+            Sign in through the dedicated portal gateway to access conference operations.
+          </p>
+          <div className="mt-6 flex justify-center gap-3">
+            <button
+              type="button"
+              onClick={() => navigate(loginPath)}
+              className="portal-btn-primary"
+            >
+              Go to Portal Login
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/portal')}
+              className="portal-btn-secondary"
+            >
+              Portal Directory
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
 
   if (!allowedRoles.includes(effectiveActor.role)) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-[#030914] p-6 text-center text-[#E8E1D2]">
-        <p className="font-mono text-xs tracking-[0.2em] text-[#FCA5A5] uppercase">
-          Access Restricted
-        </p>
-        <h1 className="mt-3 font-display text-3xl text-[#E8E1D2]">
-          Role Outside Portal Scope
-        </h1>
-        <button
-          type="button"
-          onClick={() => navigate('/portal')}
-          className="mt-6 border border-[#B89A62] bg-[#071426] px-6 py-2.5 font-mono text-xs text-[#D5BD8B] uppercase"
-        >
-          Return to Portal Directory
-        </button>
+      <div className="portal-app-shell portal-gateway flex min-h-screen items-center justify-center p-6 text-[#E8E1D2]">
+        <div className="portal-modal-enter w-full max-w-md border border-[#DC2626]/45 bg-[#050E1C]/92 p-8 text-center shadow-2xl shadow-black/50">
+          <p className="font-mono text-[10px] tracking-[0.22em] text-[#FCA5A5] uppercase">
+            Access Restricted
+          </p>
+          <h1 className="mt-2 font-display text-3xl text-[#F3EDE0]">
+            Role Outside Portal Scope
+          </h1>
+          <button
+            type="button"
+            onClick={() => navigate('/portal')}
+            className="portal-btn-primary mt-6"
+          >
+            Return to Portal Directory
+          </button>
+        </div>
       </div>
     );
   }

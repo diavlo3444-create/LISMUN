@@ -21,6 +21,9 @@ import {
 import {
   EmptyState,
   LoadingSkeleton,
+  MetricLedger,
+  PortalPageHeader,
+  ProportionalDistributionBar,
   StatusLabel,
   useToast,
 } from '../client/components/UiPrimitives';
@@ -283,27 +286,24 @@ export const EmailsDashboardView: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#263D59]/70 pb-4">
-        <div>
-          <h2 className="font-display text-3xl text-[#E8E1D2]">
-            Email Dispatch &amp; Communications Hub
-          </h2>
-          <p className="mt-1 font-sans text-xs text-[#E8E1D2]/65">
-            Resend transactional/bulk messaging, Shared Gmail OAuth2, Templates, and Failed-to-Send recovery.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => void loadDashboard()}
-          className="inline-flex items-center gap-1.5 border border-[#263D59] bg-[#071426] px-3 py-2 font-mono text-xs text-[#D5BD8B] uppercase"
-        >
-          <RefreshCw className="h-3.5 w-3.5" />
-          <span>Refresh</span>
-        </button>
-      </div>
+      <PortalPageHeader
+        kicker="Communications & Dispatch"
+        title="Email Dispatch & Communications Hub"
+        subtitle="Resend transactional/bulk messaging, Shared Gmail OAuth2, editable templates, and Failed-to-Send recovery."
+        actions={
+          <button
+            type="button"
+            onClick={() => void loadDashboard()}
+            className="portal-btn-secondary"
+          >
+            <RefreshCw className="h-3.5 w-3.5 shrink-0" />
+            <span>Refresh</span>
+          </button>
+        }
+      />
 
-      {/* Sub-tabs */}
-      <div className="flex flex-wrap gap-1 border-b border-[#263D59]/60 pb-2">
+      {/* Underline Tab Rail */}
+      <nav aria-label="Email Hub Sections" className="flex flex-wrap gap-1 border-b border-[#263D59]/60">
         {(
           [
             ['overview', 'Overview & Providers'],
@@ -312,77 +312,67 @@ export const EmailsDashboardView: React.FC = () => {
             ['failed', `Failed-to-Send (${failedItems.length})`],
             ['history', `History (${deliveries.length + manualConfirmations.length})`],
           ] as Array<[SubTab, string]>
-        ).map(([id, label]) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => setSubTab(id)}
-            className={`px-3.5 py-2 font-mono text-[11px] tracking-[0.14em] uppercase transition-colors ${
-              subTab === id
-                ? 'border border-[#B89A62] bg-[#071426] text-[#D5BD8B]'
-                : 'text-[#E8E1D2]/65 hover:text-[#E8E1D2]'
-            }`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+        ).map(([id, label]) => {
+          const active = subTab === id;
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setSubTab(id)}
+              className={`border-b-2 px-4 py-2.5 font-mono text-[11px] tracking-[0.14em] uppercase whitespace-nowrap transition-colors ${
+                active
+                  ? 'border-[#D5BD8B] text-[#D5BD8B]'
+                  : 'border-transparent text-[#E8E1D2]/55 hover:text-[#E8E1D2]'
+              }`}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </nav>
 
       {subTab === 'overview' && (
-        <div className="space-y-6">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="border border-[#263D59]/80 bg-[#071426] p-5">
-              <p className="font-mono text-[10px] tracking-[0.18em] text-[#B89A62] uppercase">
-                Delivered Emails
-              </p>
-              <p className="mt-2 font-display text-3xl tabular-nums text-[#E8E1D2]">
-                {sentCount}
-              </p>
-            </div>
-            <div className="border border-[#263D59]/80 bg-[#071426] p-5">
-              <p className="font-mono text-[10px] tracking-[0.18em] text-[#B89A62] uppercase">
-                Manual Gmail Confirmations
-              </p>
-              <p className="mt-2 font-display text-3xl tabular-nums text-[#E8E1D2]">
-                {manualConfirmations.length}
-              </p>
-            </div>
-            <div className="border border-[#263D59]/80 bg-[#071426] p-5">
-              <p className="font-mono text-[10px] tracking-[0.18em] text-[#B89A62] uppercase">
-                Failed Queue
-              </p>
-              <p className="mt-2 font-display text-3xl tabular-nums text-[#FCA5A5]">
-                {failedItems.length}
-              </p>
-            </div>
-            <div className="border border-[#263D59]/80 bg-[#071426] p-5">
-              <p className="font-mono text-[10px] tracking-[0.18em] text-[#B89A62] uppercase">
-                HR Ready To Send
-              </p>
-              <p className="mt-2 font-display text-3xl tabular-nums text-[#D5BD8B]">
-                {(bulkPreview?.accepted.ready ?? 0) + (bulkPreview?.rejected.ready ?? 0)}
-              </p>
-            </div>
-          </div>
+        <div className="portal-panel-enter space-y-6">
+          <MetricLedger
+            items={[
+              { label: 'Delivered Emails', value: sentCount, accent: 'green' },
+              { label: 'Manual Gmail Confirmations', value: manualConfirmations.length, accent: 'default' },
+              { label: 'Failed Recovery Queue', value: failedItems.length, accent: failedItems.length > 0 ? 'red' : 'default' },
+              {
+                label: 'HR Ready To Send',
+                value: (bulkPreview?.accepted.ready ?? 0) + (bulkPreview?.rejected.ready ?? 0),
+                accent: 'gold',
+              },
+            ]}
+          />
 
-          <div className="grid gap-5 md:grid-cols-2">
-            <div className="border border-[#263D59]/80 bg-[#071426] p-6">
-              <div className="flex items-center justify-between">
-                <h3 className="font-display text-2xl text-[#E8E1D2]">Resend Bulk Provider</h3>
+          <ProportionalDistributionBar
+            title="Dispatch Channel Composition"
+            segments={[
+              { label: 'API Delivered', value: sentCount, color: '#86EFAC' },
+              { label: 'Manual Gmail Confirmed', value: manualConfirmations.length, color: '#D5BD8B' },
+              { label: 'Failed / Pending Recovery', value: failedItems.length, color: '#FCA5A5' },
+            ]}
+          />
+
+          <div className="grid divide-y divide-[#263D59]/60 border border-[#263D59]/65 bg-[#050E1C]/80 md:grid-cols-2 md:divide-x md:divide-y-0">
+            <div className="p-6">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="font-display text-2xl text-[#F3EDE0]">Resend Bulk Provider</h3>
                 <StatusLabel
                   status={resendConfigured ? 'Configured' : 'Secret Missing'}
                   tone={resendConfigured ? 'green' : 'amber'}
                 />
               </div>
-              <p className="mt-2 font-sans text-xs leading-relaxed text-[#E8E1D2]/70">
+              <p className="mt-2.5 font-sans text-xs leading-relaxed text-[#E8E1D2]/65">
                 Requires <code className="font-mono">RESEND_API_KEY</code> and{' '}
                 <code className="font-mono">EMAIL_FROM</code> in project Secrets for automatic API dispatch.
               </p>
             </div>
 
-            <div className="border border-[#263D59]/80 bg-[#071426] p-6">
-              <div className="flex items-center justify-between">
-                <h3 className="font-display text-2xl text-[#E8E1D2]">Shared Gmail OAuth2</h3>
+            <div className="p-6">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="font-display text-2xl text-[#F3EDE0]">Shared Gmail OAuth2</h3>
                 <StatusLabel
                   status={
                     gmailConnected
@@ -394,7 +384,7 @@ export const EmailsDashboardView: React.FC = () => {
                   tone={gmailConnected ? 'green' : 'gold'}
                 />
               </div>
-              <p className="mt-2 font-sans text-xs leading-relaxed text-[#E8E1D2]/70">
+              <p className="mt-2.5 font-sans text-xs leading-relaxed text-[#E8E1D2]/65">
                 Server-stored encrypted offline refresh token for Admin &amp; HR individual dispatch.
               </p>
               {isAdmin && (
@@ -404,7 +394,7 @@ export const EmailsDashboardView: React.FC = () => {
                       type="button"
                       disabled={!gmailOAuthConfigured}
                       onClick={() => void handleConnectGmail()}
-                      className="border border-[#B89A62] bg-[#030914] px-4 py-2 font-mono text-xs text-[#D5BD8B] uppercase disabled:opacity-45"
+                      className="portal-btn-primary disabled:opacity-45"
                     >
                       Connect Shared Gmail
                     </button>
@@ -412,7 +402,7 @@ export const EmailsDashboardView: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => void handleDisconnectGmail()}
-                      className="border border-[#DC2626]/60 bg-[#1B0B10] px-4 py-2 font-mono text-xs text-[#FCA5A5] uppercase"
+                      className="portal-btn-danger"
                     >
                       Disconnect Gmail
                     </button>
@@ -425,34 +415,39 @@ export const EmailsDashboardView: React.FC = () => {
       )}
 
       {subTab === 'templates' && (
-        <div className="grid gap-6 lg:grid-cols-12">
-          <div className="space-y-2 lg:col-span-4">
-            {templates.map((t) => (
-              <button
-                key={t.template_key}
-                type="button"
-                onClick={() => selectTemplate(t.template_key)}
-                className={`w-full border p-4 text-left ${
-                  editingTplKey === t.template_key
-                    ? 'border-[#B89A62] bg-[#071426]'
-                    : 'border-[#263D59]/70 bg-[#040B18]'
-                }`}
-              >
-                <p className="font-mono text-[10px] tracking-[0.16em] text-[#B89A62] uppercase">
-                  {t.template_key}
-                </p>
-                <p className="mt-1 font-sans text-sm font-medium text-[#E8E1D2]">{t.name}</p>
-              </button>
-            ))}
+        <div className="portal-panel-enter grid gap-6 lg:grid-cols-12">
+          <div className="divide-y divide-[#263D59]/50 border border-[#263D59]/65 bg-[#050E1C]/80 self-start lg:col-span-4">
+            {templates.map((t) => {
+              const selected = editingTplKey === t.template_key;
+              return (
+                <button
+                  key={t.template_key}
+                  type="button"
+                  onClick={() => selectTemplate(t.template_key)}
+                  className={`block w-full border-l-2 px-5 py-4 text-left transition-colors ${
+                    selected
+                      ? 'border-l-[#D5BD8B] bg-[#071426]'
+                      : 'border-l-transparent hover:bg-[#071426]/45'
+                  }`}
+                >
+                  <p className="font-mono text-[10px] tracking-[0.16em] text-[#B89A62] uppercase">
+                    {t.template_key}
+                  </p>
+                  <p className="mt-1 font-sans text-sm font-medium text-[#F3EDE0]">{t.name}</p>
+                </button>
+              );
+            })}
           </div>
 
           <form
             onSubmit={handleSaveTemplate}
-            className="space-y-4 border border-[#263D59]/80 bg-[#071426] p-6 lg:col-span-8"
+            className="space-y-4 border border-[#263D59]/65 bg-[#050E1C]/80 p-6 lg:col-span-8"
           >
-            <p className="font-mono text-[10px] tracking-[0.16em] text-[#B89A62] uppercase">
-              Supported placeholders: {'{name}'} {'{department}'} {'{institution}'} {'{signup_link}'}
-            </p>
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#263D59]/50 pb-3">
+              <p className="font-mono text-[10px] tracking-[0.16em] text-[#B89A62] uppercase">
+                Supported placeholders: {'{name}'} {'{department}'} {'{institution}'} {'{signup_link}'}
+              </p>
+            </div>
             <div>
               <label className="block font-mono text-[10px] tracking-[0.16em] text-[#B89A62] uppercase">
                 Subject Line
@@ -461,7 +456,7 @@ export const EmailsDashboardView: React.FC = () => {
                 required
                 value={tplSubject}
                 onChange={(e) => setTplSubject(e.target.value)}
-                className="mt-1.5 w-full border border-[#263D59] bg-[#030914] px-3 py-2 text-sm text-[#E8E1D2]"
+                className="portal-input mt-1.5"
               />
             </div>
             <div>
@@ -470,17 +465,13 @@ export const EmailsDashboardView: React.FC = () => {
               </label>
               <textarea
                 required
-                rows={9}
+                rows={10}
                 value={tplBody}
                 onChange={(e) => setTplBody(e.target.value)}
-                className="mt-1.5 w-full border border-[#263D59] bg-[#030914] px-3 py-2 font-mono text-xs text-[#E8E1D2]"
+                className="portal-textarea mt-1.5 font-mono text-xs leading-relaxed"
               />
             </div>
-            <button
-              type="submit"
-              disabled={savingTpl}
-              className="border border-[#B89A62] bg-[#030914] px-5 py-2.5 font-mono text-xs text-[#D5BD8B] uppercase"
-            >
+            <button type="submit" disabled={savingTpl} className="portal-btn-primary">
               {savingTpl ? 'Saving...' : 'Save Email Template'}
             </button>
           </form>
@@ -488,10 +479,11 @@ export const EmailsDashboardView: React.FC = () => {
       )}
 
       {subTab === 'bulk' && (
-        <div className="space-y-5 border border-[#263D59]/80 bg-[#071426] p-6">
-          <div className="flex flex-wrap gap-3">
+        <div className="portal-panel-enter space-y-5 border border-[#263D59]/65 bg-[#050E1C]/80 p-6">
+          <div className="grid divide-y divide-[#263D59]/50 border border-[#263D59]/65 bg-[#030914] sm:grid-cols-2 sm:divide-x sm:divide-y-0">
             {(['acceptance', 'rejection'] as const).map((k) => {
               const b = bulkPreview?.[k === 'acceptance' ? 'accepted' : 'rejected'];
+              const active = bulkKey === k;
               return (
                 <button
                   key={k}
@@ -504,15 +496,17 @@ export const EmailsDashboardView: React.FC = () => {
                       setBulkBody(tpl.body_text);
                     }
                   }}
-                  className={`border px-4 py-3 text-left ${
-                    bulkKey === k ? 'border-[#D5BD8B] bg-[#030914]' : 'border-[#263D59]'
+                  className={`border-b-2 px-5 py-4 text-left transition-colors ${
+                    active
+                      ? 'border-b-[#D5BD8B] bg-[#071426]/90'
+                      : 'border-b-transparent hover:bg-[#071426]/40'
                   }`}
                 >
-                  <p className="font-mono text-xs text-[#D5BD8B] uppercase">
+                  <p className="font-mono text-xs tracking-[0.14em] text-[#D5BD8B] uppercase">
                     {k === 'acceptance' ? 'Accepted Cohort' : 'Rejected Cohort'}
                   </p>
                   {b && (
-                    <p className="mt-1 font-mono text-[11px] tabular-nums text-[#E8E1D2]/70">
+                    <p className="mt-1.5 font-mono text-[11px] tabular-nums text-[#E8E1D2]/70">
                       Ready: {b.ready} · Sent/Queued: {b.alreadyHandled} · Invalid Email: {b.missingEmail}
                     </p>
                   )}
@@ -526,25 +520,25 @@ export const EmailsDashboardView: React.FC = () => {
               value={bulkSubject}
               onChange={(e) => setBulkSubject(e.target.value)}
               placeholder="Bulk Email Subject"
-              className="w-full border border-[#263D59] bg-[#030914] px-3 py-2 text-sm text-[#E8E1D2]"
+              className="portal-input"
             />
             <textarea
               rows={8}
               value={bulkBody}
               onChange={(e) => setBulkBody(e.target.value)}
-              className="w-full border border-[#263D59] bg-[#030914] px-3 py-2 font-mono text-xs text-[#E8E1D2]"
+              className="portal-textarea font-mono text-xs leading-relaxed"
             />
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="font-sans text-xs text-[#E8E1D2]/65">
-                Deduplication guard skips applicants who already received this template. Failed recipients appear in Failed-to-Send for Gmail fallback.
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#263D59]/50 pt-4">
+              <p className="font-sans text-xs text-[#E8E1D2]/60">
+                Deduplication guard skips applicants who already received this template. Failed recipients move to Failed-to-Send for Gmail fallback.
               </p>
               <button
                 type="button"
                 disabled={bulkSending}
                 onClick={() => void handleBulkSend()}
-                className="inline-flex items-center gap-2 border border-[#B89A62] bg-[#030914] px-5 py-2.5 font-mono text-xs text-[#D5BD8B] uppercase"
+                className="portal-btn-primary"
               >
-                <Send className="h-3.5 w-3.5" />
+                <Send className="h-3.5 w-3.5 shrink-0" />
                 <span>{bulkSending ? 'Dispatching...' : 'Run Bulk Dispatch'}</span>
               </button>
             </div>
@@ -553,25 +547,22 @@ export const EmailsDashboardView: React.FC = () => {
       )}
 
       {subTab === 'failed' && (
-        <div className="space-y-4">
+        <div className="portal-panel-enter space-y-4">
           {failedItems.length === 0 ? (
             <EmptyState
               title="No Pending Failed Emails"
               description="All failed dispatches have been retried or manually confirmed via Gmail."
             />
           ) : (
-            failedItems.map((item) => {
-              const preparedUrl = preparedGmailLinks[item.key];
-              return (
-                <div
-                  key={item.key}
-                  className="border border-[#DC2626]/45 bg-[#071426] p-5"
-                >
-                  <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="divide-y divide-[#263D59]/55 border border-[#DC2626]/40 bg-[#050E1C]/85">
+              {failedItems.map((item) => {
+                const preparedUrl = preparedGmailLinks[item.key];
+                return (
+                  <div key={item.key} className="flex flex-wrap items-start justify-between gap-4 p-5">
                     <div>
-                      <div className="flex flex-wrap items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-3">
                         <AlertTriangle className="h-4 w-4 text-[#FCA5A5]" />
-                        <p className="font-sans text-sm font-medium text-[#E8E1D2]">
+                        <p className="font-sans text-sm font-medium text-[#F3EDE0]">
                           {item.recipientName} &lt;{item.recipientEmail}&gt;
                         </p>
                         <StatusLabel status={item.emailType} tone="amber" />
@@ -579,20 +570,20 @@ export const EmailsDashboardView: React.FC = () => {
                           <StatusLabel status={item.departmentSlug} tone="gold" />
                         )}
                       </div>
-                      <p className="mt-1 font-mono text-xs text-[#FCA5A5]">{item.errorMessage}</p>
+                      <p className="mt-1.5 font-mono text-xs text-[#FCA5A5]">{item.errorMessage}</p>
                       {item.gmailOpenedAt && (
-                        <p className="mt-1 font-mono text-[10px] text-[#86EFAC]">
+                        <p className="mt-1 font-mono text-[10px] tabular-nums text-[#86EFAC]">
                           Gmail Draft Prepared: {new Date(item.gmailOpenedAt).toLocaleString()}
                         </p>
                       )}
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2 shrink-0">
                       {item.deliveryId && (
                         <button
                           type="button"
                           onClick={() => void handleRetryDelivery(item)}
-                          className="border border-[#263D59] bg-[#030914] px-3 py-1.5 font-mono text-[11px] text-[#E8E1D2] uppercase"
+                          className="portal-btn-secondary py-1.5 text-[10px]"
                         >
                           Retry API
                         </button>
@@ -601,9 +592,9 @@ export const EmailsDashboardView: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => void handlePrepareGmail(item)}
-                          className="inline-flex items-center gap-1.5 border border-[#B89A62] bg-[#030914] px-3 py-1.5 font-mono text-[11px] text-[#D5BD8B] uppercase"
+                          className="portal-btn-primary py-1.5 text-[10px]"
                         >
-                          <Mail className="h-3.5 w-3.5" />
+                          <Mail className="h-3.5 w-3.5 shrink-0" />
                           <span>Prepare Gmail Link</span>
                         </button>
                       ) : (
@@ -611,75 +602,77 @@ export const EmailsDashboardView: React.FC = () => {
                           href={preparedUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 border border-[#D5BD8B] bg-[#030914] px-3 py-1.5 font-mono text-[11px] text-[#D5BD8B] uppercase"
+                          className="portal-btn-primary py-1.5 text-[10px]"
                         >
-                          <ExternalLink className="h-3.5 w-3.5" />
+                          <ExternalLink className="h-3.5 w-3.5 shrink-0" />
                           <span>Open in Gmail</span>
                         </a>
                       )}
                       <button
                         type="button"
                         onClick={() => setMarkSentTarget(item)}
-                        className="inline-flex items-center gap-1.5 border border-[#16A34A]/70 bg-[#081A12] px-3 py-1.5 font-mono text-[11px] text-[#86EFAC] uppercase"
+                        className="inline-flex items-center gap-1.5 border border-[#16A34A]/65 bg-[#05140E] px-3 py-1.5 font-mono text-[10px] tracking-[0.13em] text-[#86EFAC] uppercase whitespace-nowrap shrink-0 hover:border-[#22C55E]"
                       >
-                        <Check className="h-3.5 w-3.5" />
+                        <Check className="h-3.5 w-3.5 shrink-0" />
                         <span>Mark as Sent</span>
                       </button>
                     </div>
                   </div>
-                </div>
-              );
-            })
+                );
+              })}
+            </div>
           )}
         </div>
       )}
 
       {subTab === 'history' && (
-        <div className="overflow-x-auto border border-[#263D59]/80 bg-[#071426]">
+        <div className="portal-panel-enter overflow-x-auto border border-[#263D59]/65 bg-[#050E1C]/85">
           <table className="w-full text-left font-sans text-xs">
             <thead className="border-b border-[#263D59] bg-[#040B18] font-mono text-[10px] tracking-[0.16em] text-[#B89A62] uppercase">
               <tr>
-                <th className="p-3">Recipient</th>
-                <th className="p-3">Template</th>
-                <th className="p-3">Method</th>
-                <th className="p-3">Status</th>
-                <th className="p-3">Sent By</th>
-                <th className="p-3">Timestamp</th>
+                <th className="px-4 py-3">Recipient</th>
+                <th className="px-4 py-3">Template</th>
+                <th className="px-4 py-3">Method</th>
+                <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3">Sent By</th>
+                <th className="px-4 py-3 text-right">Timestamp</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#263D59]/50">
+            <tbody className="divide-y divide-[#263D59]/45">
               {manualConfirmations.map((m) => (
-                <tr key={`man-${m.id}`}>
-                  <td className="p-3">
-                    <p className="font-medium text-[#E8E1D2]">{m.recipient_name}</p>
-                    <p className="font-mono text-[11px] text-[#E8E1D2]/60">{m.recipient_email}</p>
+                <tr key={`man-${m.id}`} className="transition-colors hover:bg-[#071426]/65">
+                  <td className="px-4 py-3">
+                    <p className="font-medium text-[#F3EDE0]">{m.recipient_name}</p>
+                    <p className="font-mono text-[11px] text-[#E8E1D2]/55">{m.recipient_email}</p>
                   </td>
-                  <td className="p-3 font-mono text-[11px] uppercase">{m.decision_status}</td>
-                  <td className="p-3">
+                  <td className="px-4 py-3 font-mono text-[11px] uppercase">{m.decision_status}</td>
+                  <td className="px-4 py-3">
                     <StatusLabel status="Manual via Gmail" tone="gold" />
                   </td>
-                  <td className="p-3">
+                  <td className="px-4 py-3">
                     <StatusLabel status="sent" tone="green" />
                   </td>
-                  <td className="p-3 text-[#E8E1D2]/75">{m.confirmed_by_name || m.confirmed_by_email}</td>
-                  <td className="p-3 font-mono text-[11px] tabular-nums text-[#E8E1D2]/65">
+                  <td className="px-4 py-3 text-[#E8E1D2]/75">
+                    {m.confirmed_by_name || m.confirmed_by_email}
+                  </td>
+                  <td className="px-4 py-3 text-right font-mono text-[11px] tabular-nums text-[#E8E1D2]/60">
                     {new Date(m.sent_at).toLocaleString()}
                   </td>
                 </tr>
               ))}
               {deliveries.map((d) => (
-                <tr key={d.id}>
-                  <td className="p-3">
-                    <p className="font-medium text-[#E8E1D2]">{d.recipient_name}</p>
-                    <p className="font-mono text-[11px] text-[#E8E1D2]/60">{d.recipient_email}</p>
+                <tr key={d.id} className="transition-colors hover:bg-[#071426]/65">
+                  <td className="px-4 py-3">
+                    <p className="font-medium text-[#F3EDE0]">{d.recipient_name}</p>
+                    <p className="font-mono text-[11px] text-[#E8E1D2]/55">{d.recipient_email}</p>
                   </td>
-                  <td className="p-3 font-mono text-[11px] uppercase">{d.template_key}</td>
-                  <td className="p-3 font-mono text-[11px] uppercase">{d.delivery_method}</td>
-                  <td className="p-3">
+                  <td className="px-4 py-3 font-mono text-[11px] uppercase">{d.template_key}</td>
+                  <td className="px-4 py-3 font-mono text-[11px] uppercase">{d.delivery_method}</td>
+                  <td className="px-4 py-3">
                     <StatusLabel status={d.status} />
                   </td>
-                  <td className="p-3 text-[#E8E1D2]/75">{d.sent_by_name || 'System'}</td>
-                  <td className="p-3 font-mono text-[11px] tabular-nums text-[#E8E1D2]/65">
+                  <td className="px-4 py-3 text-[#E8E1D2]/75">{d.sent_by_name || 'System'}</td>
+                  <td className="px-4 py-3 text-right font-mono text-[11px] tabular-nums text-[#E8E1D2]/60">
                     {new Date(d.sent_at || d.created_at).toLocaleString()}
                   </td>
                 </tr>
@@ -693,19 +686,24 @@ export const EmailsDashboardView: React.FC = () => {
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-[75] flex items-center justify-center bg-[#030914]/90 p-4"
+          className="fixed inset-0 z-[75] flex items-center justify-center bg-[#02060E]/88 p-4 backdrop-blur-sm"
         >
-          <div className="w-full max-w-md border border-[#B89A62]/60 bg-[#071426] p-6">
-            <h3 className="font-display text-2xl text-[#E8E1D2]">Confirm Manual Gmail Dispatch</h3>
-            <p className="mt-2 font-sans text-xs text-[#E8E1D2]/80">
+          <div className="portal-modal-enter w-full max-w-md border border-[#B89A62]/45 bg-[#061020] p-6 shadow-2xl shadow-black/60">
+            <p className="font-mono text-[10px] tracking-[0.2em] text-[#B89A62] uppercase">
+              Manual Dispatch Verification
+            </p>
+            <h3 className="mt-1.5 font-display text-2xl text-[#F3EDE0]">
+              Confirm Manual Gmail Dispatch
+            </h3>
+            <p className="mt-2 font-sans text-xs leading-relaxed text-[#E8E1D2]/80">
               Confirm that you manually sent the email via Gmail to{' '}
               <strong>{markSentTarget.recipientName}</strong> ({markSentTarget.recipientEmail}).
             </p>
-            <div className="mt-5 flex justify-end gap-3">
+            <div className="mt-6 flex justify-end gap-3 border-t border-[#263D59]/60 pt-4">
               <button
                 type="button"
                 onClick={() => setMarkSentTarget(null)}
-                className="border border-[#263D59] px-4 py-2 font-mono text-xs text-[#E8E1D2]/75 uppercase"
+                className="portal-btn-secondary"
               >
                 Cancel
               </button>
@@ -713,7 +711,7 @@ export const EmailsDashboardView: React.FC = () => {
                 type="button"
                 disabled={markingSent}
                 onClick={() => void confirmMarkAsSent()}
-                className="border border-[#16A34A] bg-[#081A12] px-4 py-2 font-mono text-xs text-[#86EFAC] uppercase"
+                className="inline-flex items-center gap-1.5 border border-[#16A34A] bg-[#05140E] px-4 py-2 font-mono text-xs text-[#86EFAC] uppercase whitespace-nowrap hover:border-[#22C55E]"
               >
                 {markingSent ? 'Confirming...' : 'Confirm Sent'}
               </button>

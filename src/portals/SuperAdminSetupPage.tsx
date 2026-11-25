@@ -24,9 +24,15 @@ export const SuperAdminSetupPage: React.FC = () => {
   useEffect(() => {
     let active = true;
     apiRequest<SetupStatus>('/api/system/status', { skipAuth: true })
-      .then((result) => { if (active) setStatus(result); })
-      .catch((err) => { if (active) setStatusError(err instanceof Error ? err.message : 'Could not verify setup status.'); });
-    return () => { active = false; };
+      .then((result) => {
+        if (active) setStatus(result);
+      })
+      .catch((err) => {
+        if (active) setStatusError(err instanceof Error ? err.message : 'Could not verify setup status.');
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
   const submit = async (event: React.FormEvent) => {
@@ -58,71 +64,150 @@ export const SuperAdminSetupPage: React.FC = () => {
   };
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#030914] px-4 py-12 text-[#E8E1D2]">
-      <div className="pointer-events-none absolute inset-0 atlas-engraving-grid opacity-40" />
-      <div className="relative w-full max-w-lg border border-[#B89A62]/40 bg-[#071426]/95 p-7 shadow-2xl shadow-black/40 sm:p-10">
-        <button type="button" onClick={() => navigate('/')} className="inline-flex items-center gap-2 font-mono text-[10px] tracking-[0.18em] text-[#B89A62] uppercase">
-          <ArrowLeft className="h-3.5 w-3.5" /> Return to Atlas
+    <main className="portal-app-shell portal-gateway relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-12 text-[#E8E1D2]">
+      <div className="pointer-events-none absolute inset-0 atlas-engraving-grid opacity-30" />
+      <div className="portal-modal-enter relative w-full max-w-lg border border-[#263D59]/75 bg-[#050E1C]/95 p-7 shadow-2xl shadow-black/50 sm:p-10">
+        <button
+          type="button"
+          onClick={() => navigate('/')}
+          className="inline-flex items-center gap-2 font-mono text-[10px] tracking-[0.18em] text-[#B89A62] uppercase hover:text-[#D5BD8B] whitespace-nowrap"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          <span>Return to Atlas</span>
         </button>
-        <div className="mt-8 flex h-12 w-12 items-center justify-center border border-[#B89A62]/45 bg-[#030914] text-[#D5BD8B]">
-          {created ? <CheckCircle2 className="h-5 w-5" /> : <ShieldCheck className="h-5 w-5" />}
+
+        <div className="mt-7 flex items-center gap-3.5">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center border border-[#B89A62]/45 bg-[#030914] text-[#D5BD8B]">
+            {created ? <CheckCircle2 className="h-5 w-5" /> : <ShieldCheck className="h-5 w-5" />}
+          </div>
+          <div>
+            <p className="font-mono text-[10px] tracking-[0.22em] text-[#B89A62] uppercase">
+              LIS MUN · Initialization
+            </p>
+            <h1 className="font-display text-3xl font-medium text-[#F3EDE0] sm:text-4xl">
+              Super Admin Setup
+            </h1>
+          </div>
         </div>
-        <p className="mt-6 font-mono text-[10px] tracking-[0.24em] text-[#B89A62] uppercase">LIS MUN · Initialisation</p>
-        <h1 className="mt-2 font-display text-4xl">Super Admin Setup</h1>
-        <p className="mt-3 text-sm leading-6 text-[#E8E1D2]/65">
+
+        <p className="mt-3 font-sans text-xs leading-6 text-[#E8E1D2]/65 md:text-sm">
           Create the first system owner account. This page works only while no active Super Admin exists.
         </p>
 
         {created ? (
-          <section className="mt-8 border border-emerald-700/50 bg-emerald-950/30 p-5">
-            <p className="font-mono text-xs tracking-wider text-emerald-300 uppercase">Account created</p>
-            <p className="mt-2 text-sm text-[#E8E1D2]/80">Your Super Admin account is ready. Sign in using the email and password you just entered.</p>
-            <button type="button" onClick={() => navigate('/super-admin-login')} className="mt-5 w-full border border-[#B89A62] bg-[#030914] px-4 py-3 font-mono text-xs tracking-widest text-[#D5BD8B] uppercase">
+          <section className="mt-7 border border-[#16A34A]/50 bg-[#05140E] p-5">
+            <p className="font-mono text-xs tracking-wider text-[#86EFAC] uppercase">
+              Account created
+            </p>
+            <p className="mt-2 font-sans text-sm text-[#E8E1D2]/80">
+              Your Super Admin account is ready. Sign in using the email and password you just entered.
+            </p>
+            <button
+              type="button"
+              onClick={() => navigate('/super-admin-login')}
+              className="portal-btn-primary mt-5 w-full py-3"
+            >
               Go to Super Admin Login
             </button>
           </section>
         ) : (
           <>
-            {statusError && <p className="mt-6 border border-red-800/60 bg-red-950/30 p-3 text-xs text-red-200">{statusError}</p>}
+            {statusError && (
+              <p className="mt-6 border border-[#DC2626]/55 bg-[#16080D] p-3 text-xs text-[#FCA5A5]">
+                {statusError}
+              </p>
+            )}
             {status && (!status.dbConfigured || !status.dbConnected) && (
-              <p className="mt-6 border border-amber-700/60 bg-amber-950/30 p-3 text-xs text-amber-200">The database is not ready. Check the deployment and try again.</p>
+              <p className="mt-6 border border-[#D97706]/55 bg-[#140F06] p-3 text-xs text-[#FCD34D]">
+                The database is not ready. Check the deployment and try again.
+              </p>
             )}
             {status && status.dbConnected && !status.firstRunSetupNeeded && (
-              <p className="mt-6 border border-amber-700/60 bg-amber-950/30 p-3 text-xs text-amber-200">Initial setup has already been claimed. Use the Super Admin login page instead.</p>
+              <p className="mt-6 border border-[#D97706]/55 bg-[#140F06] p-3 text-xs text-[#FCD34D]">
+                Initial setup has already been claimed. Use the Super Admin login page instead.
+              </p>
             )}
             {status && status.dbConnected && status.firstRunSetupNeeded && (
-              <p className="mt-6 border border-[#B89A62]/30 bg-[#030914] p-3 text-xs text-[#D5BD8B]">
+              <p className="mt-6 border border-[#B89A62]/35 bg-[#030914] p-3 text-xs text-[#D5BD8B]">
                 {status.primarySuperAdminEmailConfigured
                   ? 'The server has a designated initial Super Admin email.'
                   : 'Warning: PRIMARY_SUPER_ADMIN_EMAIL is not configured. The first successful claim will become the system owner.'}
               </p>
             )}
-            <form onSubmit={submit} className="mt-7 space-y-4">
-              {error && <p role="alert" className="border border-red-800/60 bg-red-950/30 p-3 text-xs text-red-200">{error}</p>}
+            <form onSubmit={submit} className="mt-6 space-y-4 border-t border-[#263D59]/55 pt-6">
+              {error && (
+                <p role="alert" className="border border-[#DC2626]/55 bg-[#16080D] p-3 text-xs text-[#FCA5A5]">
+                  {error}
+                </p>
+              )}
               <label className="block">
-                <span className="font-mono text-[10px] tracking-[0.16em] text-[#B89A62] uppercase">Full name</span>
-                <input required minLength={2} maxLength={120} value={fullName} onChange={(e) => setFullName(e.target.value)} className="mt-2 w-full border border-[#263D59] bg-[#030914] px-3 py-3 text-sm outline-none focus:border-[#B89A62]" />
+                <span className="font-mono text-[10px] tracking-[0.16em] text-[#B89A62] uppercase">
+                  Full name
+                </span>
+                <input
+                  required
+                  minLength={2}
+                  maxLength={120}
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className="portal-input mt-1.5"
+                />
               </label>
               <label className="block">
-                <span className="font-mono text-[10px] tracking-[0.16em] text-[#B89A62] uppercase">Account email</span>
-                <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="mt-2 w-full border border-[#263D59] bg-[#030914] px-3 py-3 text-sm outline-none focus:border-[#B89A62]" />
+                <span className="font-mono text-[10px] tracking-[0.16em] text-[#B89A62] uppercase">
+                  Account email
+                </span>
+                <input
+                  required
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="portal-input mt-1.5"
+                />
               </label>
               <label className="block">
-                <span className="font-mono text-[10px] tracking-[0.16em] text-[#B89A62] uppercase">Password · 10–128 characters</span>
-                <input required type="password" minLength={10} maxLength={128} autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} className="mt-2 w-full border border-[#263D59] bg-[#030914] px-3 py-3 text-sm outline-none focus:border-[#B89A62]" />
+                <span className="font-mono text-[10px] tracking-[0.16em] text-[#B89A62] uppercase">
+                  Password · 10–128 characters
+                </span>
+                <input
+                  required
+                  type="password"
+                  minLength={10}
+                  maxLength={128}
+                  autoComplete="new-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="portal-input mt-1.5"
+                />
               </label>
               <label className="block">
-                <span className="font-mono text-[10px] tracking-[0.16em] text-[#B89A62] uppercase">Confirm password</span>
-                <input required type="password" minLength={10} maxLength={128} autoComplete="new-password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="mt-2 w-full border border-[#263D59] bg-[#030914] px-3 py-3 text-sm outline-none focus:border-[#B89A62]" />
+                <span className="font-mono text-[10px] tracking-[0.16em] text-[#B89A62] uppercase">
+                  Confirm password
+                </span>
+                <input
+                  required
+                  type="password"
+                  minLength={10}
+                  maxLength={128}
+                  autoComplete="new-password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="portal-input mt-1.5"
+                />
               </label>
-              <button type="submit" disabled={busy || !status?.dbConnected || !status.firstRunSetupNeeded} className="atlas-btn-gold w-full bg-[#030914] px-4 py-3.5 font-mono text-xs tracking-[0.18em] text-[#D5BD8B] uppercase disabled:cursor-not-allowed disabled:opacity-40">
+              <button
+                type="submit"
+                disabled={busy || !status?.dbConnected || !status.firstRunSetupNeeded}
+                className="portal-btn-primary w-full py-3 disabled:cursor-not-allowed disabled:opacity-40"
+              >
                 {busy ? 'Creating Super Admin…' : 'Create Initial Super Admin'}
               </button>
             </form>
           </>
         )}
-        <p className="mt-7 border-t border-[#263D59]/70 pt-4 text-[11px] leading-5 text-[#E8E1D2]/45">
-          Setup is one-time only. Choose a unique password that you have not shared in chat or used on another account.
+
+        <p className="mt-7 border-t border-[#263D59]/55 pt-4 text-[11px] leading-5 text-[#E8E1D2]/45">
+          Setup is one-time only. Choose a unique password that you have not shared or used on another account.
         </p>
       </div>
     </main>

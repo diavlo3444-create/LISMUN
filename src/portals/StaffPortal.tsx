@@ -65,6 +65,7 @@ export const StaffPortal: React.FC<{ routeDepartment?: string }> = ({
     <DashboardShell
       portalLabel={isSecurity ? 'Security Entrance Terminal' : `${deptSlug.toUpperCase()} Staff Portal`}
       breadcrumbSection={navItems.find((n) => n.id === activeTab)?.label || 'Credential'}
+      departmentTheme={isSecurity ? 'security' : deptSlug}
       navItems={navItems}
       activeTab={activeTab}
       onSelectTab={setActiveTab}

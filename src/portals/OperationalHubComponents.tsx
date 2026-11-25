@@ -13,6 +13,7 @@ import { useAuth } from '../client/AuthContext';
 import {
   EmptyState,
   LoadingSkeleton,
+  PortalPageHeader,
   StatusLabel,
   useToast,
 } from '../client/components/UiPrimitives';
@@ -61,7 +62,9 @@ export const OrgChartAndRolesView: React.FC<{
   const [loading, setLoading] = useState(true);
   const [positions, setPositions] = useState<DeptPosition[]>([]);
   const [tasks, setTasks] = useState<DeptTask[]>([]);
-  const [logs, setLogs] = useState<Array<{ id: string; actor_name: string; action: string; created_at: string }>>([]);
+  const [logs, setLogs] = useState<
+    Array<{ id: string; actor_name: string; action: string; created_at: string }>
+  >([]);
   const [roster, setRoster] = useState<RosterMember[]>([]);
 
   const [posTitle, setPosTitle] = useState('');
@@ -179,13 +182,13 @@ export const OrgChartAndRolesView: React.FC<{
     const children = positions.filter((p) => (p.parent_position_id || null) === parent);
     if (children.length === 0) return null;
     return (
-      <div className={depth > 0 ? 'ml-6 border-l border-[#B89A62]/35 pl-4 space-y-2' : 'space-y-3'}>
+      <div className={depth > 0 ? 'ml-6 border-l border-[#263D59]/75 pl-5 space-y-2.5' : 'space-y-3'}>
         {children.map((node) => (
-          <div key={node.id} className="space-y-2">
-            <div className="flex flex-wrap items-center justify-between gap-2 border border-[#263D59]/80 bg-[#040B18] p-3">
+          <div key={node.id} className="space-y-2.5">
+            <div className="flex flex-wrap items-center justify-between gap-3 border border-[#263D59]/65 bg-[#040B18] px-4 py-3 transition-colors hover:border-[#B89A62]/45">
               <div>
-                <p className="font-sans text-sm font-medium text-[#D5BD8B]">{node.title}</p>
-                <p className="font-mono text-[11px] text-[#E8E1D2]/70">
+                <p className="font-sans text-sm font-medium text-[#E6D2A8]">{node.title}</p>
+                <p className="mt-0.5 font-mono text-[11px] text-[#E8E1D2]/65">
                   {node.member_name || node.member_email || 'Vacant seat'}
                 </p>
               </div>
@@ -193,7 +196,7 @@ export const OrgChartAndRolesView: React.FC<{
                 <button
                   type="button"
                   onClick={() => void deletePosition(node.id)}
-                  className="text-[#FCA5A5]/70 hover:text-[#FCA5A5]"
+                  className="text-[#FCA5A5]/70 transition-colors hover:text-[#FCA5A5]"
                   aria-label="Delete position"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
@@ -211,36 +214,38 @@ export const OrgChartAndRolesView: React.FC<{
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="font-display text-2xl text-[#E8E1D2]">
-          {readOnly ? 'My Department Role & Tasks' : 'Visual Org Chart, Roles & Tasks'}
-        </h2>
-        <div className="flex border border-[#263D59]">
-          <button
-            type="button"
-            onClick={() => setViewMode('tree')}
-            className={`px-3 py-1.5 font-mono text-[11px] uppercase ${
-              viewMode === 'tree' ? 'bg-[#071426] text-[#D5BD8B]' : 'text-[#E8E1D2]/65'
-            }`}
-          >
-            Org Chart
-          </button>
-          <button
-            type="button"
-            onClick={() => setViewMode('list')}
-            className={`border-l border-[#263D59] px-3 py-1.5 font-mono text-[11px] uppercase ${
-              viewMode === 'list' ? 'bg-[#071426] text-[#D5BD8B]' : 'text-[#E8E1D2]/65'
-            }`}
-          >
-            List View
-          </button>
-        </div>
-      </div>
+      <PortalPageHeader
+        kicker="Command Structure & Assignments"
+        title={readOnly ? 'My Department Role & Tasks' : 'Visual Org Chart, Roles & Tasks'}
+        subtitle="Define reporting seats across the directorate and coordinate operational deliverables."
+        actions={
+          <div className="flex border border-[#263D59] bg-[#040B18]">
+            <button
+              type="button"
+              onClick={() => setViewMode('tree')}
+              className={`px-3.5 py-2 font-mono text-[11px] uppercase whitespace-nowrap transition-colors ${
+                viewMode === 'tree' ? 'bg-[#071426] text-[#D5BD8B]' : 'text-[#E8E1D2]/60 hover:text-[#E8E1D2]'
+              }`}
+            >
+              Org Chart
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('list')}
+              className={`border-l border-[#263D59] px-3.5 py-2 font-mono text-[11px] uppercase whitespace-nowrap transition-colors ${
+                viewMode === 'list' ? 'bg-[#071426] text-[#D5BD8B]' : 'text-[#E8E1D2]/60 hover:text-[#E8E1D2]'
+              }`}
+            >
+              List View
+            </button>
+          </div>
+        }
+      />
 
       {!readOnly && (
-        <div className="grid gap-4 lg:grid-cols-2">
-          <form onSubmit={createPosition} className="space-y-3 border border-[#263D59]/80 bg-[#071426] p-4">
-            <p className="font-mono text-[10px] tracking-[0.16em] text-[#B89A62] uppercase">
+        <div className="grid divide-y divide-[#263D59]/60 border border-[#263D59]/65 bg-[#050E1C]/80 lg:grid-cols-2 lg:divide-x lg:divide-y-0">
+          <form onSubmit={createPosition} className="space-y-3.5 p-5">
+            <p className="font-mono text-[10px] tracking-[0.18em] text-[#B89A62] uppercase">
               Add Role Seat
             </p>
             <input
@@ -248,13 +253,13 @@ export const OrgChartAndRolesView: React.FC<{
               placeholder="Role Title (e.g. Gate Lead)"
               value={posTitle}
               onChange={(e) => setPosTitle(e.target.value)}
-              className="w-full border border-[#263D59] bg-[#030914] px-3 py-2 text-xs text-[#E8E1D2]"
+              className="portal-input"
             />
-            <div className="grid gap-2 sm:grid-cols-2">
+            <div className="grid gap-2.5 sm:grid-cols-2">
               <select
                 value={parentId}
                 onChange={(e) => setParentId(e.target.value)}
-                className="border border-[#263D59] bg-[#030914] px-3 py-2 text-xs text-[#E8E1D2]"
+                className="portal-select"
               >
                 <option value="">Top-Level Seat</option>
                 {positions.map((p) => (
@@ -266,7 +271,7 @@ export const OrgChartAndRolesView: React.FC<{
               <select
                 value={memberEmail}
                 onChange={(e) => setMemberEmail(e.target.value)}
-                className="border border-[#263D59] bg-[#030914] px-3 py-2 text-xs text-[#E8E1D2]"
+                className="portal-select"
               >
                 <option value="">Assign Member (Optional)</option>
                 {roster.map((m) => (
@@ -276,16 +281,13 @@ export const OrgChartAndRolesView: React.FC<{
                 ))}
               </select>
             </div>
-            <button
-              type="submit"
-              className="border border-[#B89A62] bg-[#030914] px-4 py-2 font-mono text-[11px] text-[#D5BD8B] uppercase"
-            >
+            <button type="submit" className="portal-btn-primary">
               Add Position
             </button>
           </form>
 
-          <form onSubmit={createTask} className="space-y-3 border border-[#263D59]/80 bg-[#071426] p-4">
-            <p className="font-mono text-[10px] tracking-[0.16em] text-[#B89A62] uppercase">
+          <form onSubmit={createTask} className="space-y-3.5 p-5">
+            <p className="font-mono text-[10px] tracking-[0.18em] text-[#B89A62] uppercase">
               Assign Department Task
             </p>
             <input
@@ -293,13 +295,13 @@ export const OrgChartAndRolesView: React.FC<{
               placeholder="Task Title *"
               value={taskTitle}
               onChange={(e) => setTaskTitle(e.target.value)}
-              className="w-full border border-[#263D59] bg-[#030914] px-3 py-2 text-xs text-[#E8E1D2]"
+              className="portal-input"
             />
-            <div className="grid gap-2 sm:grid-cols-2">
+            <div className="grid gap-2.5 sm:grid-cols-2">
               <select
                 value={taskAssigneeEmail}
                 onChange={(e) => setTaskAssigneeEmail(e.target.value)}
-                className="border border-[#263D59] bg-[#030914] px-3 py-2 text-xs text-[#E8E1D2]"
+                className="portal-select"
               >
                 <option value="">Select Assignee</option>
                 {roster.map((m) => (
@@ -311,7 +313,7 @@ export const OrgChartAndRolesView: React.FC<{
               <select
                 value={taskPriority}
                 onChange={(e) => setTaskPriority(e.target.value)}
-                className="border border-[#263D59] bg-[#030914] px-3 py-2 text-xs text-[#E8E1D2]"
+                className="portal-select"
               >
                 <option value="low">Low Priority</option>
                 <option value="medium">Medium Priority</option>
@@ -319,39 +321,43 @@ export const OrgChartAndRolesView: React.FC<{
                 <option value="urgent">Urgent</option>
               </select>
             </div>
-            <button
-              type="submit"
-              className="border border-[#B89A62] bg-[#030914] px-4 py-2 font-mono text-[11px] text-[#D5BD8B] uppercase"
-            >
+            <button type="submit" className="portal-btn-primary">
               Assign Task
             </button>
           </form>
         </div>
       )}
 
-      <div className="border border-[#263D59]/80 bg-[#071426] p-5">
-        <p className="mb-3 font-mono text-[10px] tracking-[0.18em] text-[#B89A62] uppercase">
+      <div className="border border-[#263D59]/65 bg-[#050E1C]/80 p-5">
+        <p className="mb-4 font-mono text-[10px] tracking-[0.18em] text-[#B89A62] uppercase">
           Hierarchy ({positions.length})
         </p>
         {positions.length === 0 ? (
-          <EmptyState title="No Roles Defined" description="Add top-level or nested positions above." />
+          <EmptyState
+            title="No Roles Defined"
+            description="Add top-level or nested positions above."
+          />
         ) : viewMode === 'tree' ? (
           renderTreeNodes(null)
         ) : (
-          <div className="space-y-2">
+          <div className="divide-y divide-[#263D59]/45 border border-[#263D59]/55 bg-[#030914]">
             {positions.map((p) => (
               <div
                 key={p.id}
-                className="flex items-center justify-between border border-[#263D59]/60 bg-[#030914] px-3 py-2 text-xs"
+                className="flex items-center justify-between px-4 py-3 text-xs transition-colors hover:bg-[#071426]/65"
               >
                 <span>
-                  <strong className="text-[#D5BD8B]">{p.title}</strong> — {p.member_name || p.member_email || 'Vacant'}
+                  <strong className="text-[#D5BD8B]">{p.title}</strong>
+                  <span className="mx-2 text-[#263D59]">·</span>
+                  <span className="text-[#E8E1D2]/75">
+                    {p.member_name || p.member_email || 'Vacant'}
+                  </span>
                 </span>
                 {!readOnly && (
                   <button
                     type="button"
                     onClick={() => void deletePosition(p.id)}
-                    className="text-[#FCA5A5]/70"
+                    className="font-mono text-[10px] text-[#FCA5A5]/75 uppercase hover:text-[#FCA5A5]"
                   >
                     Remove
                   </button>
@@ -362,29 +368,31 @@ export const OrgChartAndRolesView: React.FC<{
         )}
       </div>
 
-      <div className="border border-[#263D59]/80 bg-[#071426] p-5">
-        <p className="mb-3 font-mono text-[10px] tracking-[0.18em] text-[#B89A62] uppercase">
-          Department Tasks ({tasks.length})
-        </p>
+      <div className="border border-[#263D59]/65 bg-[#050E1C]/80">
+        <div className="border-b border-[#263D59]/55 px-5 py-3.5">
+          <p className="font-mono text-[10px] tracking-[0.18em] text-[#B89A62] uppercase">
+            Department Tasks ({tasks.length})
+          </p>
+        </div>
         {tasks.length === 0 ? (
-          <p className="font-sans text-xs text-[#E8E1D2]/60">No tasks assigned yet.</p>
+          <p className="px-5 py-6 font-sans text-xs text-[#E8E1D2]/55">No tasks assigned yet.</p>
         ) : (
-          <div className="space-y-2">
+          <div className="divide-y divide-[#263D59]/45">
             {tasks.map((t) => (
               <div
                 key={t.id}
-                className="flex flex-wrap items-center justify-between gap-3 border border-[#263D59]/60 bg-[#030914] p-3 text-xs"
+                className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5 text-xs transition-colors hover:bg-[#071426]/55"
               >
                 <div>
-                  <p className="font-medium text-[#E8E1D2]">{t.title}</p>
-                  <p className="font-mono text-[11px] text-[#E8E1D2]/60">
+                  <p className="font-medium text-[#F3EDE0]">{t.title}</p>
+                  <p className="mt-0.5 font-mono text-[11px] text-[#E8E1D2]/55">
                     {t.assignee_name || t.assignee_email || 'Unassigned'} · {t.priority}
                   </p>
                 </div>
                 <select
                   value={t.status}
                   onChange={(e) => void updateTaskStatus(t.id, e.target.value)}
-                  className="border border-[#263D59] bg-[#071426] px-2.5 py-1 font-mono text-[11px] text-[#D5BD8B]"
+                  className="portal-select w-40 py-1.5 font-mono text-[11px] text-[#D5BD8B]"
                 >
                   <option value="not_started">Not Started</option>
                   <option value="in_progress">In Progress</option>
@@ -397,11 +405,11 @@ export const OrgChartAndRolesView: React.FC<{
       </div>
 
       {logs.length > 0 && (
-        <div className="border border-[#263D59]/80 bg-[#071426] p-4">
-          <p className="mb-2 font-mono text-[10px] tracking-[0.16em] text-[#B89A62] uppercase">
+        <div className="border border-[#263D59]/60 bg-[#050E1C]/75 p-5">
+          <p className="mb-2.5 font-mono text-[10px] tracking-[0.16em] text-[#B89A62] uppercase">
             Task Activity Logs
           </p>
-          <div className="max-h-36 space-y-1 overflow-y-auto font-mono text-[11px] text-[#E8E1D2]/70">
+          <div className="max-h-36 space-y-1.5 overflow-y-auto font-mono text-[11px] tabular-nums text-[#E8E1D2]/65">
             {logs.map((l) => (
               <div key={l.id}>
                 {new Date(l.created_at).toLocaleTimeString()} · {l.actor_name} · {l.action}
@@ -511,14 +519,16 @@ export const GroupManagementView: React.FC<{
 
   return (
     <div className="space-y-6">
-      <h2 className="font-display text-2xl text-[#E8E1D2]">
-        {readOnly ? 'My Custom Groups' : 'Custom Team Groups'}
-      </h2>
+      <PortalPageHeader
+        kicker="Squads & Rapid Rosters"
+        title={readOnly ? 'My Custom Groups' : 'Custom Team Groups'}
+        subtitle="Assemble specialized operational units for single-click shift deployment."
+      />
 
       {!readOnly && (
         <form
           onSubmit={handleCreateGroup}
-          className="space-y-3 border border-[#263D59]/80 bg-[#071426] p-5"
+          className="space-y-4 border border-[#263D59]/65 bg-[#050E1C]/80 p-5"
         >
           <div className="grid gap-3 sm:grid-cols-2">
             <input
@@ -526,21 +536,21 @@ export const GroupManagementView: React.FC<{
               placeholder="Group Name (e.g. Gate A Squad)"
               value={groupName}
               onChange={(e) => setGroupName(e.target.value)}
-              className="border border-[#263D59] bg-[#030914] px-3 py-2 text-xs text-[#E8E1D2]"
+              className="portal-input"
             />
             <input
               placeholder="Description"
               value={groupDesc}
               onChange={(e) => setGroupDesc(e.target.value)}
-              className="border border-[#263D59] bg-[#030914] px-3 py-2 text-xs text-[#E8E1D2]"
+              className="portal-input"
             />
           </div>
           {roster.length > 0 && (
             <div>
-              <p className="mb-1.5 font-mono text-[10px] tracking-[0.16em] text-[#B89A62] uppercase">
+              <p className="mb-2 font-mono text-[10px] tracking-[0.16em] text-[#B89A62] uppercase">
                 Select Members ({selectedEmails.length} selected)
               </p>
-              <div className="grid max-h-36 gap-1.5 overflow-y-auto border border-[#263D59]/60 bg-[#030914] p-2.5 sm:grid-cols-2">
+              <div className="grid max-h-36 gap-1.5 overflow-y-auto border border-[#263D59]/55 bg-[#030914] p-3 sm:grid-cols-2">
                 {roster.map((m) => {
                   const checked = selectedEmails.includes(m.email);
                   return (
@@ -563,50 +573,52 @@ export const GroupManagementView: React.FC<{
               </div>
             </div>
           )}
-          <button
-            type="submit"
-            className="inline-flex items-center gap-1.5 border border-[#B89A62] bg-[#030914] px-4 py-2 font-mono text-xs text-[#D5BD8B] uppercase"
-          >
-            <Plus className="h-3.5 w-3.5" />
+          <button type="submit" className="portal-btn-primary">
+            <Plus className="h-3.5 w-3.5 shrink-0" />
             <span>Create Group</span>
           </button>
         </form>
       )}
 
       {groups.length === 0 ? (
-        <EmptyState title="No Groups Found" description="Create custom team squads for rapid shift assignment." />
+        <EmptyState
+          title="No Groups Found"
+          description="Create custom team squads for rapid shift assignment."
+        />
       ) : (
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid divide-y divide-[#263D59]/55 border border-[#263D59]/65 bg-[#050E1C]/80 md:grid-cols-2 md:divide-x">
           {groups.map((g) => (
-            <div key={g.id} className="border border-[#263D59]/80 bg-[#071426] p-5">
-              <div className="flex items-start justify-between">
+            <div key={g.id} className="p-6">
+              <div className="flex items-start justify-between gap-3">
                 <div>
-                  <h3 className="flex items-center gap-2 font-display text-xl text-[#E8E1D2]">
+                  <h3 className="flex items-center gap-2 font-display text-2xl text-[#F3EDE0]">
                     <Users className="h-4 w-4 text-[#B89A62]" />
                     <span>{g.name}</span>
                   </h3>
-                  <p className="mt-1 font-sans text-xs text-[#E8E1D2]/65">{g.description}</p>
+                  <p className="mt-1 font-sans text-xs text-[#E8E1D2]/60">{g.description}</p>
                 </div>
                 {!readOnly && (
                   <button
                     type="button"
                     onClick={() => void deleteGroup(g.id)}
-                    className="text-[#FCA5A5]/70 hover:text-[#FCA5A5]"
+                    className="text-[#FCA5A5]/70 transition-colors hover:text-[#FCA5A5]"
                     aria-label="Delete group"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
                 )}
               </div>
-              <div className="mt-3 flex flex-wrap gap-1.5">
-                {(g.members || []).map((m) => (
-                  <span
-                    key={m.id}
-                    className="border border-[#263D59] bg-[#030914] px-2 py-0.5 font-mono text-[10px] text-[#D5BD8B]"
-                  >
-                    {m.member_name}
-                  </span>
-                ))}
+              <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-[#263D59]/45 pt-3 font-mono text-[11px] text-[#D5BD8B]">
+                {(g.members || []).length === 0 ? (
+                  <span className="text-[#E8E1D2]/45">No members assigned</span>
+                ) : (
+                  g.members.map((m, i) => (
+                    <React.Fragment key={m.id}>
+                      {i > 0 && <span className="text-[#263D59]">·</span>}
+                      <span>{m.member_name}</span>
+                    </React.Fragment>
+                  ))
+                )}
               </div>
             </div>
           ))}
@@ -741,7 +753,6 @@ export const ShiftManagementView: React.FC<{
 
   if (loading) return <LoadingSkeleton rows={4} />;
 
-  // Distinct Calendar grouping by date vs chronological list
   const shiftsByDay = shifts.reduce<Record<string, ShiftRow[]>>((acc, s) => {
     const key = new Date(s.starts_at).toLocaleDateString();
     if (!acc[key]) acc[key] = [];
@@ -751,93 +762,99 @@ export const ShiftManagementView: React.FC<{
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="font-display text-2xl text-[#E8E1D2]">
-          {readOnly ? 'My Shift Schedule' : 'Shift & Roster Management'}
-        </h2>
-        <div className="flex border border-[#263D59]">
-          <button
-            type="button"
-            onClick={() => setViewMode('calendar')}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 font-mono text-[11px] uppercase ${
-              viewMode === 'calendar' ? 'bg-[#071426] text-[#D5BD8B]' : 'text-[#E8E1D2]/65'
-            }`}
-          >
-            <Calendar className="h-3.5 w-3.5" />
-            <span>Calendar</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setViewMode('list')}
-            className={`inline-flex items-center gap-1.5 border-l border-[#263D59] px-3 py-1.5 font-mono text-[11px] uppercase ${
-              viewMode === 'list' ? 'bg-[#071426] text-[#D5BD8B]' : 'text-[#E8E1D2]/65'
-            }`}
-          >
-            <List className="h-3.5 w-3.5" />
-            <span>List</span>
-          </button>
-        </div>
-      </div>
+      <PortalPageHeader
+        kicker="Operational Deployment"
+        title={readOnly ? 'My Shift Schedule' : 'Shift & Roster Management'}
+        subtitle="Coordinate daily conference schedules with automated conflict detection and attendance states."
+        actions={
+          <div className="flex border border-[#263D59] bg-[#040B18]">
+            <button
+              type="button"
+              onClick={() => setViewMode('calendar')}
+              className={`inline-flex items-center gap-1.5 px-3.5 py-2 font-mono text-[11px] uppercase whitespace-nowrap transition-colors ${
+                viewMode === 'calendar' ? 'bg-[#071426] text-[#D5BD8B]' : 'text-[#E8E1D2]/60 hover:text-[#E8E1D2]'
+              }`}
+            >
+              <Calendar className="h-3.5 w-3.5 shrink-0" />
+              <span>Calendar</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('list')}
+              className={`inline-flex items-center gap-1.5 border-l border-[#263D59] px-3.5 py-2 font-mono text-[11px] uppercase whitespace-nowrap transition-colors ${
+                viewMode === 'list' ? 'bg-[#071426] text-[#D5BD8B]' : 'text-[#E8E1D2]/60 hover:text-[#E8E1D2]'
+              }`}
+            >
+              <List className="h-3.5 w-3.5 shrink-0" />
+              <span>List</span>
+            </button>
+          </div>
+        }
+      />
 
       {!readOnly && (
-        <form onSubmit={createShift} className="grid gap-3 border border-[#263D59]/80 bg-[#071426] p-5 sm:grid-cols-2 lg:grid-cols-5">
+        <form
+          onSubmit={createShift}
+          className="grid gap-3 border border-[#263D59]/65 bg-[#050E1C]/80 p-5 sm:grid-cols-2 lg:grid-cols-5"
+        >
           <input
             required
             placeholder="Shift Title *"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="border border-[#263D59] bg-[#030914] px-3 py-2 text-xs text-[#E8E1D2]"
+            className="portal-input"
           />
           <input
             placeholder="Station / Gate"
             value={location}
             onChange={(e) => setLocation(e.target.value)}
-            className="border border-[#263D59] bg-[#030914] px-3 py-2 text-xs text-[#E8E1D2]"
+            className="portal-input"
           />
           <input
             required
             type="datetime-local"
             value={startsAt}
             onChange={(e) => setStartsAt(e.target.value)}
-            className="border border-[#263D59] bg-[#030914] px-3 py-2 font-mono text-xs text-[#E8E1D2]"
+            className="portal-input font-mono text-xs"
           />
           <input
             required
             type="datetime-local"
             value={endsAt}
             onChange={(e) => setEndsAt(e.target.value)}
-            className="border border-[#263D59] bg-[#030914] px-3 py-2 font-mono text-xs text-[#E8E1D2]"
+            className="portal-input font-mono text-xs"
           />
-          <button
-            type="submit"
-            className="border border-[#B89A62] bg-[#030914] px-4 py-2 font-mono text-xs text-[#D5BD8B] uppercase"
-          >
+          <button type="submit" className="portal-btn-primary">
             Create Shift
           </button>
         </form>
       )}
 
       {shifts.length === 0 ? (
-        <EmptyState title="No Shifts Scheduled" description="Create operational shifts and assign groups with overlap detection." />
+        <EmptyState
+          title="No Shifts Scheduled"
+          description="Create operational shifts and assign groups with overlap detection."
+        />
       ) : viewMode === 'calendar' ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {Object.entries(shiftsByDay).map(([day, dayShifts]) => (
-            <div key={day} className="border border-[#263D59]/80 bg-[#071426] p-4">
-              <p className="border-b border-[#263D59]/60 pb-2 font-mono text-xs text-[#B89A62] uppercase">
+            <div key={day} className="border border-[#263D59]/65 bg-[#050E1C]/80 p-5">
+              <p className="border-b border-[#263D59]/55 pb-2.5 font-mono text-[11px] tracking-[0.14em] text-[#B89A62] uppercase tabular-nums">
                 {day}
               </p>
-              <div className="mt-3 space-y-2.5">
+              <div className="mt-3 divide-y divide-[#263D59]/45">
                 {dayShifts.map((s) => (
-                  <div key={s.id} className="border border-[#263D59]/60 bg-[#030914] p-3 text-xs">
+                  <div key={s.id} className="py-3 text-xs first:pt-0 last:pb-0">
                     <div className="flex items-start justify-between gap-2">
-                      <p className="font-medium text-[#E8E1D2]">{s.title}</p>
+                      <p className="font-medium text-[#F3EDE0]">{s.title}</p>
                       <StatusLabel status={s.status} />
                     </div>
                     <p className="mt-1 font-mono text-[10px] tabular-nums text-[#D5BD8B]">
                       {new Date(s.starts_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} –{' '}
-                      {new Date(s.ends_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · {s.location || 'TBD'}
+                      {new Date(s.ends_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} ·{' '}
+                      {s.location || 'TBD'}
                     </p>
-                    <p className="mt-1 font-mono text-[10px] text-[#E8E1D2]/60">
+                    <p className="mt-1 font-mono text-[10px] tabular-nums text-[#E8E1D2]/55">
                       Assigned: {(s.assignments || []).length}
                     </p>
                   </div>
@@ -847,28 +864,31 @@ export const ShiftManagementView: React.FC<{
           ))}
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="divide-y divide-[#263D59]/55 border border-[#263D59]/65 bg-[#050E1C]/80">
           {shifts.map((s) => (
-            <div key={s.id} className="border border-[#263D59]/80 bg-[#071426] p-5">
+            <div key={s.id} className="p-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-display text-xl text-[#E8E1D2]">{s.title}</h3>
+                  <div className="flex items-center gap-3">
+                    <h3 className="font-display text-xl text-[#F3EDE0]">{s.title}</h3>
                     <StatusLabel status={s.status} />
                   </div>
                   <p className="mt-1 font-mono text-xs tabular-nums text-[#D5BD8B]">
-                    {new Date(s.starts_at).toLocaleString()} → {new Date(s.ends_at).toLocaleTimeString()} · {s.location || 'General'}
+                    {new Date(s.starts_at).toLocaleString()} → {new Date(s.ends_at).toLocaleTimeString()} ·{' '}
+                    {s.location || 'General'}
                   </p>
                 </div>
 
                 {!readOnly && (
                   <div className="flex flex-wrap items-center gap-2">
                     {groups.length > 0 && (
-                      <div className="flex gap-1">
+                      <div className="flex gap-1.5">
                         <select
                           value={assignGroupId[s.id] || ''}
-                          onChange={(e) => setAssignGroupId((p) => ({ ...p, [s.id]: e.target.value }))}
-                          className="border border-[#263D59] bg-[#030914] px-2 py-1 text-xs text-[#E8E1D2]"
+                          onChange={(e) =>
+                            setAssignGroupId((p) => ({ ...p, [s.id]: e.target.value }))
+                          }
+                          className="portal-select w-44 py-1.5 text-xs"
                         >
                           <option value="">Assign Group...</option>
                           {groups.map((g) => (
@@ -880,7 +900,7 @@ export const ShiftManagementView: React.FC<{
                         <button
                           type="button"
                           onClick={() => void assignGroup(s.id)}
-                          className="border border-[#B89A62] bg-[#030914] px-2.5 py-1 font-mono text-[10px] text-[#D5BD8B] uppercase"
+                          className="portal-btn-primary py-1.5 text-[10px]"
                         >
                           Add
                         </button>
@@ -889,9 +909,9 @@ export const ShiftManagementView: React.FC<{
                     <button
                       type="button"
                       onClick={() => void duplicateShift(s)}
-                      className="inline-flex items-center gap-1 border border-[#263D59] bg-[#030914] px-2.5 py-1 font-mono text-[10px] text-[#E8E1D2] uppercase"
+                      className="portal-btn-secondary py-1.5 text-[10px]"
                     >
-                      <Copy className="h-3 w-3" />
+                      <Copy className="h-3 w-3 shrink-0" />
                       <span>Duplicate</span>
                     </button>
                   </div>
@@ -899,20 +919,20 @@ export const ShiftManagementView: React.FC<{
               </div>
 
               {(s.assignments || []).length > 0 && (
-                <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                <div className="mt-4 grid gap-2 border-t border-[#263D59]/45 pt-3.5 sm:grid-cols-2">
                   {s.assignments.map((a) => (
                     <div
                       key={a.id}
-                      className="flex items-center justify-between border border-[#263D59]/60 bg-[#030914] px-3 py-2 text-xs"
+                      className="flex items-center justify-between border border-[#263D59]/50 bg-[#030914] px-3.5 py-2 text-xs"
                     >
-                      <span>{a.assignee_name}</span>
+                      <span className="text-[#E8E1D2]">{a.assignee_name}</span>
                       {readOnly ? (
                         <StatusLabel status={a.attendance_status} />
                       ) : (
                         <select
                           value={a.attendance_status}
                           onChange={(e) => void updateAttendance(a.id, e.target.value)}
-                          className="border border-[#263D59] bg-[#071426] px-2 py-0.5 font-mono text-[10px] text-[#D5BD8B]"
+                          className="portal-select w-32 py-1 font-mono text-[10px] text-[#D5BD8B]"
                         >
                           <option value="assigned">Assigned</option>
                           <option value="checked_in">Checked In</option>
@@ -1007,20 +1027,28 @@ export const DepartmentWorkspaceView: React.FC<{
   if (loading) return <LoadingSkeleton rows={4} />;
 
   return (
-    <div className="space-y-5">
-      <h2 className="font-display text-2xl text-[#E8E1D2]">Department Operational Workspace</h2>
-      <form onSubmit={handleCreate} className="grid gap-3 border border-[#263D59]/80 bg-[#071426] p-4 sm:grid-cols-4">
+    <div className="space-y-6">
+      <PortalPageHeader
+        kicker="Directorate Operations Ledger"
+        title="Department Operational Workspace"
+        subtitle="Maintain equipment manifests, venue readiness, run-of-show items, and internal deliverables."
+      />
+
+      <form
+        onSubmit={handleCreate}
+        className="grid gap-3 border border-[#263D59]/65 bg-[#050E1C]/80 p-5 sm:grid-cols-4"
+      >
         <input
           required
           placeholder="Record Title / Item *"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          className="border border-[#263D59] bg-[#030914] px-3 py-2 text-xs text-[#E8E1D2] sm:col-span-2"
+          className="portal-input sm:col-span-2"
         />
         <select
           value={category}
           onChange={(e) => setCategory(e.target.value)}
-          className="border border-[#263D59] bg-[#030914] px-3 py-2 text-xs text-[#E8E1D2]"
+          className="portal-select"
         >
           {categories.map((c) => (
             <option key={c} value={c}>
@@ -1032,51 +1060,51 @@ export const DepartmentWorkspaceView: React.FC<{
           <select
             value={priority}
             onChange={(e) => setPriority(e.target.value)}
-            className="border border-[#263D59] bg-[#030914] px-2 py-2 text-xs text-[#E8E1D2]"
+            className="portal-select flex-1"
           >
             <option value="low">Low</option>
             <option value="medium">Medium</option>
             <option value="high">High</option>
           </select>
-          <button
-            type="submit"
-            className="flex-1 border border-[#B89A62] bg-[#030914] px-3 py-2 font-mono text-xs text-[#D5BD8B] uppercase"
-          >
+          <button type="submit" className="portal-btn-primary">
             Add
           </button>
         </div>
       </form>
 
       {records.length === 0 ? (
-        <EmptyState title="Workspace Empty" description="Add departmental items, venues, equipment, or run-of-show milestones." />
+        <EmptyState
+          title="Workspace Empty"
+          description="Add departmental items, venues, equipment, or run-of-show milestones."
+        />
       ) : (
-        <div className="space-y-2">
+        <div className="divide-y divide-[#263D59]/50 border border-[#263D59]/65 bg-[#050E1C]/85">
           {records.map((r) => (
             <div
               key={r.id}
-              className="flex flex-wrap items-center justify-between gap-3 border border-[#263D59]/80 bg-[#071426] p-4 text-xs"
+              className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5 text-xs transition-colors hover:bg-[#071426]/65"
             >
               <div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
                   <StatusLabel status={r.category} tone="gold" />
-                  <p className="font-medium text-[#E8E1D2]">{r.title}</p>
+                  <p className="font-medium text-[#F3EDE0]">{r.title}</p>
                 </div>
-                <p className="mt-1 font-mono text-[10px] text-[#E8E1D2]/55">
+                <p className="mt-1 font-mono text-[10px] text-[#E8E1D2]/50">
                   Dept: {r.department} · Priority: {r.priority}
                 </p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                 <button
                   type="button"
                   onClick={() => void toggleStatus(r)}
-                  className="border border-[#263D59] bg-[#030914] px-3 py-1 font-mono text-[10px] uppercase"
+                  className="portal-btn-secondary py-1 text-[10px]"
                 >
                   <StatusLabel status={r.status} />
                 </button>
                 <button
                   type="button"
                   onClick={() => void deleteRec(r.id)}
-                  className="text-[#FCA5A5]/70 hover:text-[#FCA5A5]"
+                  className="text-[#FCA5A5]/70 transition-colors hover:text-[#FCA5A5]"
                   aria-label="Delete record"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
@@ -1143,47 +1171,56 @@ export const InquiriesManagerView: React.FC = () => {
   if (loading) return <LoadingSkeleton rows={3} />;
 
   return (
-    <div className="space-y-4">
-      <h2 className="font-display text-2xl text-[#E8E1D2]">Public Inquiries Inbox</h2>
+    <div className="space-y-6">
+      <PortalPageHeader
+        kicker="Public Correspondence"
+        title="Public Inquiries Inbox"
+        subtitle="Track and resolve incoming questions submitted through the public registration portal."
+      />
       {inquiries.length === 0 ? (
-        <EmptyState title="Inbox Empty" description="Public questions submitted on /apply will appear here." />
+        <EmptyState
+          title="Inbox Empty"
+          description="Public questions submitted on /apply will appear here."
+        />
       ) : (
-        inquiries.map((inq) => (
-          <div key={inq.id} className="border border-[#263D59]/80 bg-[#071426] p-5">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <p className="font-display text-xl text-[#E8E1D2]">{inq.subject}</p>
-                <p className="font-mono text-[11px] text-[#D5BD8B]">
-                  {inq.full_name} &lt;{inq.email}&gt;
-                </p>
-                <p className="mt-2 font-sans text-xs leading-relaxed text-[#E8E1D2]/80">
-                  {inq.message}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <select
-                  value={inq.status}
-                  onChange={(e) => void updateStatus(inq.id, e.target.value)}
-                  className="border border-[#263D59] bg-[#030914] px-2.5 py-1.5 font-mono text-xs text-[#D5BD8B]"
-                >
-                  <option value="new">New</option>
-                  <option value="in_progress">In Progress</option>
-                  <option value="resolved">Resolved</option>
-                  <option value="archived">Archived</option>
-                </select>
-                {isAdmin && (
-                  <button
-                    type="button"
-                    onClick={() => void deleteInquiry(inq.id)}
-                    className="border border-[#DC2626]/50 px-2.5 py-1.5 font-mono text-[11px] text-[#FCA5A5] uppercase"
+        <div className="divide-y divide-[#263D59]/55 border border-[#263D59]/65 bg-[#050E1C]/85">
+          {inquiries.map((inq) => (
+            <div key={inq.id} className="p-5">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="max-w-2xl">
+                  <p className="font-display text-xl text-[#F3EDE0]">{inq.subject}</p>
+                  <p className="mt-0.5 font-mono text-[11px] text-[#D5BD8B]">
+                    {inq.full_name} &lt;{inq.email}&gt;
+                  </p>
+                  <p className="mt-2.5 font-sans text-xs leading-relaxed text-[#E8E1D2]/75">
+                    {inq.message}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <select
+                    value={inq.status}
+                    onChange={(e) => void updateStatus(inq.id, e.target.value)}
+                    className="portal-select w-36 py-1.5 font-mono text-xs text-[#D5BD8B]"
                   >
-                    Delete
-                  </button>
-                )}
+                    <option value="new">New</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="resolved">Resolved</option>
+                    <option value="archived">Archived</option>
+                  </select>
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      onClick={() => void deleteInquiry(inq.id)}
+                      className="portal-btn-danger py-1.5 text-[10px]"
+                    >
+                      Delete
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        ))
+          ))}
+        </div>
       )}
     </div>
   );
@@ -1222,41 +1259,45 @@ export const SponsorsManagerView: React.FC = () => {
   };
 
   return (
-    <div className="space-y-5">
-      <h2 className="font-display text-2xl text-[#E8E1D2]">PR Sponsors &amp; Partners</h2>
-      <form onSubmit={addSponsor} className="grid gap-3 border border-[#263D59]/80 bg-[#071426] p-4 sm:grid-cols-4">
+    <div className="space-y-6">
+      <PortalPageHeader
+        kicker="External Partnerships"
+        title="PR Sponsors & Partners"
+        subtitle="Manage institutional sponsors and patron tiers synced with the public conference catalog."
+      />
+      <form
+        onSubmit={addSponsor}
+        className="grid gap-3 border border-[#263D59]/65 bg-[#050E1C]/80 p-5 sm:grid-cols-4"
+      >
         <input
           required
           placeholder="Sponsor Name *"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="border border-[#263D59] bg-[#030914] px-3 py-2 text-xs text-[#E8E1D2]"
+          className="portal-input"
         />
         <input
           placeholder="Tier (e.g. Patron)"
           value={tier}
           onChange={(e) => setTier(e.target.value)}
-          className="border border-[#263D59] bg-[#030914] px-3 py-2 text-xs text-[#E8E1D2]"
+          className="portal-input"
         />
         <input
           type="url"
           placeholder="https://sponsor-site.org"
           value={websiteUrl}
           onChange={(e) => setWebsiteUrl(e.target.value)}
-          className="border border-[#263D59] bg-[#030914] px-3 py-2 text-xs text-[#E8E1D2]"
+          className="portal-input"
         />
-        <button
-          type="submit"
-          className="border border-[#B89A62] bg-[#030914] px-4 py-2 font-mono text-xs text-[#D5BD8B] uppercase"
-        >
+        <button type="submit" className="portal-btn-primary">
           Save Sponsor
         </button>
       </form>
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid divide-y divide-[#263D59]/50 border border-[#263D59]/65 bg-[#050E1C]/85 sm:grid-cols-2 sm:divide-x">
         {sponsors.map((s) => (
-          <div key={s.id} className="flex items-center justify-between border border-[#263D59]/80 bg-[#071426] p-4">
+          <div key={s.id} className="flex items-center justify-between px-5 py-4">
             <div>
-              <p className="font-display text-xl text-[#E8E1D2]">{s.name}</p>
+              <p className="font-display text-xl text-[#F3EDE0]">{s.name}</p>
               <p className="font-mono text-[11px] text-[#D5BD8B]">{s.tier}</p>
             </div>
             <button
@@ -1265,7 +1306,8 @@ export const SponsorsManagerView: React.FC = () => {
                 await apiRequest(`/api/cms/sponsors/${s.id}`, { method: 'DELETE' });
                 await load();
               }}
-              className="text-[#FCA5A5]/70"
+              className="text-[#FCA5A5]/70 transition-colors hover:text-[#FCA5A5]"
+              aria-label="Delete sponsor"
             >
               <Trash2 className="h-4 w-4" />
             </button>
@@ -1346,10 +1388,16 @@ export const CommitteesManagerView: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="border border-[#263D59]/80 bg-[#071426] p-5">
-        <h3 className="font-display text-2xl text-[#E8E1D2]">Delegate Registration Windows</h3>
+      <PortalPageHeader
+        kicker="Delegate Council Management"
+        title="Committees & Registration Windows"
+        subtitle="Publish councils to the Living Atlas and govern early-bird admission schedule windows."
+      />
+
+      <div className="border border-[#263D59]/65 bg-[#050E1C]/80 p-5">
+        <h3 className="font-display text-2xl text-[#F3EDE0]">Delegate Registration Windows</h3>
         <div className="mt-4 grid gap-3 sm:grid-cols-4">
-          <label className="flex items-center gap-2 text-xs">
+          <label className="flex items-center gap-2 text-xs text-[#E8E1D2]">
             <input
               type="checkbox"
               checked={regOpen}
@@ -1362,44 +1410,47 @@ export const CommitteesManagerView: React.FC = () => {
             value={earlyOpen}
             onChange={(e) => setEarlyOpen(e.target.value)}
             aria-label="Early bird opens"
-            className="border border-[#263D59] bg-[#030914] px-2.5 py-2 font-mono text-xs text-[#E8E1D2]"
+            className="portal-input font-mono text-xs"
           />
           <input
             type="datetime-local"
             value={earlyClose}
             onChange={(e) => setEarlyClose(e.target.value)}
             aria-label="Early bird closes"
-            className="border border-[#263D59] bg-[#030914] px-2.5 py-2 font-mono text-xs text-[#E8E1D2]"
+            className="portal-input font-mono text-xs"
           />
           <button
             type="button"
             onClick={() => void saveDelegateWindows()}
-            className="border border-[#B89A62] bg-[#030914] px-4 py-2 font-mono text-xs text-[#D5BD8B] uppercase"
+            className="portal-btn-primary"
           >
             Save Schedule
           </button>
         </div>
       </div>
 
-      <form onSubmit={saveCommittee} className="grid gap-3 border border-[#263D59]/80 bg-[#071426] p-5 sm:grid-cols-6">
+      <form
+        onSubmit={saveCommittee}
+        className="grid gap-3 border border-[#263D59]/65 bg-[#050E1C]/80 p-5 sm:grid-cols-6"
+      >
         <input
           required
           placeholder="Committee Name *"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="border border-[#263D59] bg-[#030914] px-3 py-2 text-xs text-[#E8E1D2] sm:col-span-2"
+          className="portal-input sm:col-span-2"
         />
         <input
           required
           placeholder="Abbr (e.g. UNSC)"
           value={abbr}
           onChange={(e) => setAbbr(e.target.value)}
-          className="border border-[#263D59] bg-[#030914] px-3 py-2 text-xs text-[#E8E1D2]"
+          className="portal-input"
         />
         <select
           value={chamber}
           onChange={(e) => setChamber(e.target.value)}
-          className="border border-[#263D59] bg-[#030914] px-3 py-2 text-xs text-[#E8E1D2]"
+          className="portal-select"
         >
           <option value="General Assembly">General Assembly</option>
           <option value="Security Council">Security Council</option>
@@ -1409,29 +1460,26 @@ export const CommitteesManagerView: React.FC = () => {
         <select
           value={difficulty}
           onChange={(e) => setDifficulty(e.target.value)}
-          className="border border-[#263D59] bg-[#030914] px-3 py-2 text-xs text-[#E8E1D2]"
+          className="portal-select"
         >
           <option value="Beginner">Beginner</option>
           <option value="Intermediate">Intermediate</option>
           <option value="Advanced">Advanced</option>
           <option value="Crisis">Crisis</option>
         </select>
-        <button
-          type="submit"
-          className="border border-[#B89A62] bg-[#030914] px-4 py-2 font-mono text-xs text-[#D5BD8B] uppercase"
-        >
+        <button type="submit" className="portal-btn-primary">
           Publish Committee
         </button>
       </form>
 
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid divide-y divide-[#263D59]/50 border border-[#263D59]/65 bg-[#050E1C]/85 sm:grid-cols-2 sm:divide-x">
         {committees.map((c) => (
-          <div key={c.id} className="flex items-center justify-between border border-[#263D59]/80 bg-[#071426] p-4">
+          <div key={c.id} className="flex items-center justify-between px-5 py-4">
             <div>
-              <p className="font-mono text-[10px] text-[#B89A62] uppercase">
+              <p className="font-mono text-[10px] tracking-[0.14em] text-[#B89A62] uppercase">
                 {c.abbreviation} · {c.difficulty}
               </p>
-              <p className="font-display text-xl text-[#E8E1D2]">{c.name}</p>
+              <p className="mt-0.5 font-display text-xl text-[#F3EDE0]">{c.name}</p>
             </div>
             <button
               type="button"
@@ -1439,7 +1487,8 @@ export const CommitteesManagerView: React.FC = () => {
                 await apiRequest(`/api/cms/committees/${c.id}`, { method: 'DELETE' });
                 await load();
               }}
-              className="text-[#FCA5A5]/70"
+              className="text-[#FCA5A5]/70 transition-colors hover:text-[#FCA5A5]"
+              aria-label="Delete committee"
             >
               <Trash2 className="h-4 w-4" />
             </button>
@@ -1456,9 +1505,9 @@ export const NotificationsCenterView: React.FC = () => {
   >([]);
 
   const load = async () => {
-    const res = await apiRequest<{ notifications: typeof items }>('/api/cms/notifications').catch(() => ({
-      notifications: [],
-    }));
+    const res = await apiRequest<{ notifications: typeof items }>('/api/cms/notifications').catch(
+      () => ({ notifications: [] })
+    );
     setItems(res.notifications || []);
   };
 
@@ -1467,40 +1516,51 @@ export const NotificationsCenterView: React.FC = () => {
   }, []);
 
   return (
-    <div className="space-y-4">
-      <h2 className="flex items-center gap-2 font-display text-2xl text-[#E8E1D2]">
-        <Bell className="h-5 w-5 text-[#B89A62]" />
-        <span>Notifications Center</span>
-      </h2>
+    <div className="space-y-6">
+      <PortalPageHeader
+        kicker="Dispatches & Alerts"
+        title="Notifications Center"
+        subtitle="Conference-wide announcements, administrative bulletins, and departmental updates."
+      />
       {items.length === 0 ? (
-        <EmptyState title="No Notifications" description="System announcements and alerts will appear here." />
+        <EmptyState
+          title="No Notifications"
+          description="System announcements and alerts will appear here."
+        />
       ) : (
-        items.map((n) => (
-          <div
-            key={n.id}
-            className={`flex items-start justify-between gap-4 border p-4 ${
-              n.is_read ? 'border-[#263D59]/50 bg-[#040B18]' : 'border-[#B89A62]/60 bg-[#071426]'
-            }`}
-          >
-            <div>
-              <p className="font-mono text-[10px] text-[#B89A62] uppercase">{n.category}</p>
-              <p className="font-sans text-sm font-medium text-[#E8E1D2]">{n.title}</p>
-              <p className="mt-1 font-sans text-xs text-[#E8E1D2]/70">{n.body}</p>
+        <div className="divide-y divide-[#263D59]/55 border border-[#263D59]/65 bg-[#050E1C]/85">
+          {items.map((n) => (
+            <div
+              key={n.id}
+              className={`flex items-start justify-between gap-4 p-5 transition-colors ${
+                n.is_read ? 'opacity-75' : 'bg-[#071426]/65'
+              }`}
+            >
+              <div>
+                <div className="flex items-center gap-2.5">
+                  <Bell className="h-3.5 w-3.5 text-[#B89A62]" />
+                  <p className="font-mono text-[10px] tracking-[0.16em] text-[#B89A62] uppercase">
+                    {n.category}
+                  </p>
+                </div>
+                <p className="mt-1 font-sans text-sm font-medium text-[#F3EDE0]">{n.title}</p>
+                <p className="mt-1 font-sans text-xs leading-relaxed text-[#E8E1D2]/70">{n.body}</p>
+              </div>
+              {!n.is_read && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await apiRequest(`/api/cms/notifications/${n.id}/read`, { method: 'PATCH' });
+                    await load();
+                  }}
+                  className="portal-btn-secondary py-1.5 text-[10px]"
+                >
+                  Mark Read
+                </button>
+              )}
             </div>
-            {!n.is_read && (
-              <button
-                type="button"
-                onClick={async () => {
-                  await apiRequest(`/api/cms/notifications/${n.id}/read`, { method: 'PATCH' });
-                  await load();
-                }}
-                className="border border-[#263D59] px-3 py-1 font-mono text-[10px] text-[#D5BD8B] uppercase"
-              >
-                Mark Read
-              </button>
-            )}
-          </div>
-        ))
+          ))}
+        </div>
       )}
     </div>
   );

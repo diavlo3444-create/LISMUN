@@ -38,25 +38,28 @@ export const TeamMemberSignupPage: React.FC = () => {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#030914] p-4 text-[#E8E1D2]">
-      <div className="w-full max-w-md border border-[#B89A62]/45 bg-[#071426] p-8">
+    <div className="portal-app-shell portal-gateway flex min-h-screen items-center justify-center px-4 py-10 text-[#E8E1D2]">
+      <div className="portal-modal-enter w-full max-w-md border border-[#263D59]/75 bg-[#050E1C]/95 p-8 shadow-2xl shadow-black/50">
         <button
           type="button"
           onClick={() => navigate('/portal')}
-          className="inline-flex items-center gap-2 font-mono text-[11px] tracking-[0.16em] text-[#B89A62] uppercase"
+          className="inline-flex items-center gap-2 font-mono text-[11px] tracking-[0.16em] text-[#B89A62] uppercase hover:text-[#D5BD8B] whitespace-nowrap"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
           <span>Portal Directory</span>
         </button>
-        <h1 className="mt-4 font-display text-3xl text-[#E8E1D2]">
+        <p className="mt-6 font-mono text-[10px] tracking-[0.22em] text-[#B89A62] uppercase">
+          Credential Activation
+        </p>
+        <h1 className="mt-1.5 font-display text-3xl text-[#F3EDE0]">
           Accepted Staff Onboarding
         </h1>
-        <p className="mt-1.5 font-sans text-xs text-[#E8E1D2]/70">
-          Claim your non-expiring personal LIS MUN onboarding link to activate your portal and QR pass.
+        <p className="mt-2 font-sans text-xs leading-relaxed text-[#E8E1D2]/65">
+          Claim your non-expiring personal LIS MUN onboarding link to activate your portal and cryptographic QR pass.
         </p>
 
         {done ? (
-          <div className="mt-6 space-y-4 border border-[#16A34A]/60 bg-[#081A12] p-5">
+          <div className="mt-6 space-y-4 border border-[#16A34A]/50 bg-[#05140E] p-5">
             <div className="flex items-center gap-2 text-[#86EFAC]">
               <Check className="h-4 w-4" />
               <span className="font-mono text-xs uppercase">Account Activated</span>
@@ -67,15 +70,15 @@ export const TeamMemberSignupPage: React.FC = () => {
             <button
               type="button"
               onClick={() => navigate('/login')}
-              className="w-full border border-[#B89A62] bg-[#030914] py-2.5 font-mono text-xs tracking-[0.16em] text-[#D5BD8B] uppercase"
+              className="portal-btn-primary w-full py-2.5"
             >
               Proceed to Sign In
             </button>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+          <form onSubmit={handleSubmit} className="mt-6 space-y-4 border-t border-[#263D59]/55 pt-5">
             {error && (
-              <div className="border border-[#DC2626]/60 bg-[#1B0B10] p-3 text-xs text-[#FCA5A5]">
+              <div className="border border-[#DC2626]/55 bg-[#16080D] p-3 text-xs text-[#FCA5A5]">
                 {error}
               </div>
             )}
@@ -87,7 +90,7 @@ export const TeamMemberSignupPage: React.FC = () => {
                 required
                 value={token}
                 onChange={(e) => setToken(e.target.value)}
-                className="mt-1 w-full border border-[#263D59] bg-[#030914] px-3 py-2 font-mono text-xs text-[#E8E1D2]"
+                className="portal-input mt-1.5 font-mono text-xs"
               />
             </div>
             <div>
@@ -99,7 +102,7 @@ export const TeamMemberSignupPage: React.FC = () => {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 w-full border border-[#263D59] bg-[#030914] px-3 py-2 text-sm text-[#E8E1D2]"
+                className="portal-input mt-1.5"
               />
             </div>
             <div>
@@ -112,13 +115,13 @@ export const TeamMemberSignupPage: React.FC = () => {
                 minLength={10}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="mt-1 w-full border border-[#263D59] bg-[#030914] px-3 py-2 text-sm text-[#E8E1D2]"
+                className="portal-input mt-1.5"
               />
             </div>
             <button
               type="submit"
               disabled={loading}
-              className="w-full border border-[#B89A62] bg-[#030914] py-3 font-mono text-xs tracking-[0.18em] text-[#D5BD8B] uppercase"
+              className="portal-btn-primary w-full py-3"
             >
               {loading ? 'Activating Account...' : 'Activate Account'}
             </button>
@@ -201,30 +204,41 @@ export const EbSignupPage: React.FC = () => {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#030914] p-4 text-[#E8E1D2]">
-      <div className="w-full max-w-md border border-[#B89A62]/45 bg-[#071426] p-8">
-        <h1 className="font-display text-3xl text-[#E8E1D2]">Executive Board Signup</h1>
-        <p className="mt-1 font-mono text-[10px] tracking-[0.18em] text-[#B89A62] uppercase">
-          Mode: {mode.replace(/_/g, ' ')}
+    <div
+      data-portal-dept="eb"
+      className="portal-app-shell portal-gateway flex min-h-screen items-center justify-center px-4 py-10 text-[#E8E1D2]"
+    >
+      <div className="portal-modal-enter w-full max-w-md border border-[#263D59]/75 bg-[#050E1C]/95 p-8 shadow-2xl shadow-black/50">
+        <button
+          type="button"
+          onClick={() => navigate('/portal')}
+          className="inline-flex items-center gap-2 font-mono text-[11px] tracking-[0.16em] text-[#B89A62] uppercase hover:text-[#D5BD8B] whitespace-nowrap"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          <span>Portal Directory</span>
+        </button>
+        <p className="mt-6 font-mono text-[10px] tracking-[0.22em] text-[#B89A62] uppercase">
+          Executive Board · {mode.replace(/_/g, ' ')}
         </p>
+        <h1 className="mt-1.5 font-display text-3xl text-[#F3EDE0]">Executive Board Signup</h1>
 
         {done ? (
-          <div className="mt-6 space-y-4 border border-[#16A34A]/60 bg-[#081A12] p-5">
+          <div className="mt-6 space-y-4 border border-[#16A34A]/50 bg-[#05140E] p-5">
             <p className="font-sans text-sm text-[#86EFAC]">
               Executive Board credentials and QR pass created.
             </p>
             <button
               type="button"
               onClick={() => navigate('/eb-login')}
-              className="w-full border border-[#B89A62] bg-[#030914] py-2.5 font-mono text-xs text-[#D5BD8B] uppercase"
+              className="portal-btn-primary w-full py-2.5"
             >
               Sign In to EB Portal
             </button>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="mt-5 space-y-3.5">
+          <form onSubmit={handleSubmit} className="mt-5 space-y-3.5 border-t border-[#263D59]/55 pt-5">
             {error && (
-              <div className="border border-[#DC2626]/60 bg-[#1B0B10] p-3 text-xs text-[#FCA5A5]">
+              <div className="border border-[#DC2626]/55 bg-[#16080D] p-3 text-xs text-[#FCA5A5]">
                 {error}
               </div>
             )}
@@ -234,7 +248,7 @@ export const EbSignupPage: React.FC = () => {
               placeholder="EB Email Address *"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full border border-[#263D59] bg-[#030914] px-3 py-2.5 text-sm text-[#E8E1D2]"
+              className="portal-input"
             />
             {mode !== 'allowlist' && (
               <input
@@ -242,7 +256,7 @@ export const EbSignupPage: React.FC = () => {
                 placeholder="Full Name *"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                className="w-full border border-[#263D59] bg-[#030914] px-3 py-2.5 text-sm text-[#E8E1D2]"
+                className="portal-input"
               />
             )}
             {mode === 'reusable_link' && (
@@ -250,7 +264,7 @@ export const EbSignupPage: React.FC = () => {
                 <select
                   value={ebRole}
                   onChange={(e) => setEbRole(e.target.value as 'co_head' | 'designer' | 'marketing')}
-                  className="w-full border border-[#263D59] bg-[#030914] px-3 py-2.5 text-sm text-[#E8E1D2]"
+                  className="portal-select"
                 >
                   <option value="co_head">Co-Head</option>
                   <option value="designer">Designer</option>
@@ -261,7 +275,7 @@ export const EbSignupPage: React.FC = () => {
                     required
                     value={reportingHeadId}
                     onChange={(e) => setReportingHeadId(e.target.value)}
-                    className="w-full border border-[#263D59] bg-[#030914] px-3 py-2.5 text-sm text-[#E8E1D2]"
+                    className="portal-select"
                   >
                     <option value="">Select Reporting Department Head *</option>
                     {activeHeads.map((h) => (
@@ -274,7 +288,7 @@ export const EbSignupPage: React.FC = () => {
                 <select
                   value={gender}
                   onChange={(e) => setGender(e.target.value as 'male' | 'female')}
-                  className="w-full border border-[#263D59] bg-[#030914] px-3 py-2.5 text-sm text-[#E8E1D2]"
+                  className="portal-select"
                 >
                   <option value="male">Male Division</option>
                   <option value="female">Female Division</option>
@@ -284,7 +298,7 @@ export const EbSignupPage: React.FC = () => {
                   placeholder="Unique Mobile Phone (7–15 digits) *"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="w-full border border-[#263D59] bg-[#030914] px-3 py-2.5 font-mono text-sm text-[#E8E1D2]"
+                  className="portal-input font-mono"
                 />
               </>
             )}
@@ -295,12 +309,12 @@ export const EbSignupPage: React.FC = () => {
               placeholder="Password (10–128 chars) *"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full border border-[#263D59] bg-[#030914] px-3 py-2.5 text-sm text-[#E8E1D2]"
+              className="portal-input"
             />
             <button
               type="submit"
               disabled={loading}
-              className="w-full border border-[#B89A62] bg-[#030914] py-3 font-mono text-xs tracking-[0.18em] text-[#D5BD8B] uppercase"
+              className="portal-btn-primary w-full py-3"
             >
               {loading ? 'Provisioning EB Account...' : 'Complete EB Signup'}
             </button>
@@ -333,22 +347,25 @@ export const HeadSetupPage: React.FC = () => {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#030914] p-4 text-[#E8E1D2]">
-      <div className="w-full max-w-md border border-[#B89A62]/45 bg-[#071426] p-8">
-        <h1 className="font-display text-3xl text-[#E8E1D2]">Account Password Setup</h1>
+    <div className="portal-app-shell portal-gateway flex min-h-screen items-center justify-center px-4 py-10 text-[#E8E1D2]">
+      <div className="portal-modal-enter w-full max-w-md border border-[#263D59]/75 bg-[#050E1C]/95 p-8 shadow-2xl shadow-black/50">
+        <p className="font-mono text-[10px] tracking-[0.22em] text-[#B89A62] uppercase">
+          Secretariat Onboarding
+        </p>
+        <h1 className="mt-1.5 font-display text-3xl text-[#F3EDE0]">Account Password Setup</h1>
         {done ? (
-          <div className="mt-5 space-y-4">
+          <div className="mt-6 space-y-4 border border-[#16A34A]/50 bg-[#05140E] p-5">
             <p className="text-sm text-[#86EFAC]">Password configured successfully.</p>
             <button
               type="button"
               onClick={() => navigate('/head-login')}
-              className="w-full border border-[#B89A62] bg-[#030914] py-2.5 font-mono text-xs text-[#D5BD8B] uppercase"
+              className="portal-btn-primary w-full py-2.5"
             >
               Go to Head Login
             </button>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="mt-5 space-y-4">
+          <form onSubmit={handleSubmit} className="mt-6 space-y-4 border-t border-[#263D59]/55 pt-5">
             {error && <p className="text-xs text-[#FCA5A5]">{error}</p>}
             <input
               required
@@ -357,12 +374,9 @@ export const HeadSetupPage: React.FC = () => {
               placeholder="New Password (10+ characters)"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full border border-[#263D59] bg-[#030914] px-3 py-2.5 text-sm text-[#E8E1D2]"
+              className="portal-input"
             />
-            <button
-              type="submit"
-              className="w-full border border-[#B89A62] bg-[#030914] py-3 font-mono text-xs text-[#D5BD8B] uppercase"
-            >
+            <button type="submit" className="portal-btn-primary w-full py-3">
               Set Password &amp; Activate
             </button>
           </form>
@@ -373,20 +387,20 @@ export const HeadSetupPage: React.FC = () => {
 };
 
 export const LegalDocumentPage: React.FC<{ doc: 'privacy' | 'terms' }> = ({ doc }) => (
-  <div className="min-h-screen bg-[#030914] px-4 py-12 text-[#E8E1D2] md:px-10">
-    <div className="mx-auto max-w-3xl border border-[#263D59]/80 bg-[#071426] p-8">
+  <div className="portal-app-shell portal-gateway min-h-screen px-4 py-12 text-[#E8E1D2] md:px-10">
+    <div className="portal-panel-enter mx-auto max-w-3xl border border-[#263D59]/70 bg-[#050E1C]/92 p-8 md:p-10">
       <button
         type="button"
         onClick={() => navigate('/')}
-        className="inline-flex items-center gap-2 font-mono text-xs tracking-[0.16em] text-[#B89A62] uppercase"
+        className="inline-flex items-center gap-2 font-mono text-xs tracking-[0.16em] text-[#B89A62] uppercase hover:text-[#D5BD8B] whitespace-nowrap"
       >
         <ArrowLeft className="h-3.5 w-3.5" />
         <span>Return to Atlas</span>
       </button>
-      <h1 className="mt-4 font-display text-4xl text-[#E8E1D2]">
+      <h1 className="mt-5 font-display text-4xl text-[#F3EDE0]">
         {doc === 'privacy' ? 'Privacy Policy & Medical Data Protection' : 'Terms & Conference Code of Conduct'}
       </h1>
-      <div className="mt-6 space-y-4 font-sans text-sm leading-relaxed text-[#E8E1D2]/80">
+      <div className="mt-6 space-y-4 border-t border-[#263D59]/55 pt-6 font-sans text-sm leading-relaxed text-[#E8E1D2]/80">
         {doc === 'privacy' ? (
           <>
             <p>

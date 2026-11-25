@@ -6,6 +6,7 @@ import {
   Building2,
   ClipboardCheck,
   Download,
+  ExternalLink,
   FileText,
   FlaskConical,
   Globe,
@@ -13,11 +14,13 @@ import {
   Mail,
   MessageSquare,
   QrCode,
+  Search,
   Shield,
   Sliders,
   Trash2,
   UserPlus,
   Users,
+  X,
 } from 'lucide-react';
 import { apiRequest } from '../client/api';
 import { useAuth } from '../client/AuthContext';
@@ -28,6 +31,9 @@ import {
   ConfirmDialog,
   EmptyState,
   LoadingSkeleton,
+  MetricLedger,
+  PortalPageHeader,
+  ProportionalDistributionBar,
   StatusLabel,
   useToast,
 } from '../client/components/UiPrimitives';
@@ -68,7 +74,6 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
   const {
     effectiveActor,
     departments,
-    refreshStatusAndSession,
     launchAndEnterTestMode,
   } = useAuth();
   const { addToast } = useToast();
@@ -475,11 +480,20 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
   });
 
   const recommendedApps = apps.filter((a) => Boolean(a.head_recommendation));
+  const acceptedCount = apps.filter((a) => a.status === 'accepted').length;
+  const pendingStage2Count = apps.filter((a) =>
+    ['pending', 'received', 'under_review'].includes(a.status)
+  ).length;
+  const waitlistedCount = apps.filter((a) => a.status === 'waitlisted').length;
+  const rejectedCount = apps.filter((a) => a.status === 'rejected').length;
+  const insideVenueCount = qrPasses.filter((p) => p.inside).length;
+  const tableRows = activeTab === 'recommendations' ? recommendedApps : filteredApps;
 
   return (
     <DashboardShell
       portalLabel={isSuperAdminRoute || isSuper ? 'Super Admin Control' : 'Admin Secretariat'}
       breadcrumbSection={navItems.find((n) => n.id === activeTab)?.label || 'Overview'}
+      departmentTheme="secretariat"
       navItems={navItems}
       activeTab={activeTab}
       onSelectTab={setActiveTab}
@@ -487,9 +501,10 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
         <button
           type="button"
           onClick={() => navigate('/preview?preview=1')}
-          className="hidden border border-[#263D59] bg-[#071426] px-3 py-1.5 font-mono text-[11px] text-[#E8E1D2] uppercase sm:inline-flex"
+          className="portal-btn-secondary hidden py-1.5 text-[10px] sm:inline-flex"
         >
-          Live Site Preview
+          <ExternalLink className="h-3.5 w-3.5" />
+          <span>Live Site Preview</span>
         </button>
       }
     >
@@ -499,104 +514,150 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
         <>
           {activeTab === 'overview' && (
             <div className="space-y-6">
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <h1 className="font-display text-3xl text-[#E8E1D2]">
-                  Secretariat Command &amp; Analytics
-                </h1>
-                <button
-                  type="button"
-                  onClick={exportApplicationsCsv}
-                  className="inline-flex items-center gap-2 border border-[#B89A62] bg-[#071426] px-4 py-2 font-mono text-xs text-[#D5BD8B] uppercase"
-                >
-                  <Download className="h-3.5 w-3.5" />
-                  <span>Export CSV</span>
-                </button>
-              </div>
+              <PortalPageHeader
+                kicker={isSuper ? 'Secretariat Command · Supreme Governance' : 'Secretariat Command'}
+                title="Secretariat Command & Analytics"
+                subtitle="Admissions velocity, Stage 2 adjudication backlog, credentialed attendance, and conference track allocation."
+                actions={
+                  <button
+                    type="button"
+                    onClick={exportApplicationsCsv}
+                    className="portal-btn-primary"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    <span>Export CSV</span>
+                  </button>
+                }
+              />
 
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <div className="border border-[#263D59]/80 bg-[#071426] p-5">
-                  <p className="font-mono text-[10px] tracking-[0.18em] text-[#B89A62] uppercase">
-                    Total Applications
-                  </p>
-                  <p className="mt-2 font-display text-4xl tabular-nums text-[#E8E1D2]">
-                    {apps.length}
-                  </p>
-                </div>
-                <div className="border border-[#263D59]/80 bg-[#071426] p-5">
-                  <p className="font-mono text-[10px] tracking-[0.18em] text-[#B89A62] uppercase">
-                    Accepted
-                  </p>
-                  <p className="mt-2 font-display text-4xl tabular-nums text-[#86EFAC]">
-                    {apps.filter((a) => a.status === 'accepted').length}
-                  </p>
-                </div>
-                <div className="border border-[#263D59]/80 bg-[#071426] p-5">
-                  <p className="font-mono text-[10px] tracking-[0.18em] text-[#B89A62] uppercase">
-                    Pending Stage 2 Review
-                  </p>
-                  <p className="mt-2 font-display text-4xl tabular-nums text-[#FCD34D]">
-                    {apps.filter((a) => ['pending', 'received', 'under_review'].includes(a.status)).length}
-                  </p>
-                </div>
-                <div className="border border-[#263D59]/80 bg-[#071426] p-5">
-                  <p className="font-mono text-[10px] tracking-[0.18em] text-[#B89A62] uppercase">
-                    Inside Venue (QR)
-                  </p>
-                  <p className="mt-2 font-display text-4xl tabular-nums text-[#D5BD8B]">
-                    {qrPasses.filter((p) => p.inside).length} / {qrPasses.length}
-                  </p>
-                </div>
-              </div>
+              <MetricLedger
+                items={[
+                  {
+                    label: 'Total Applications',
+                    value: apps.length,
+                    detail: `${recommendedApps.length} with head recs`,
+                  },
+                  {
+                    label: 'Accepted',
+                    value: acceptedCount,
+                    detail: apps.length
+                      ? `${Math.round((acceptedCount / apps.length) * 100)}% acceptance rate`
+                      : 'Awaiting admissions',
+                    accent: 'green',
+                  },
+                  {
+                    label: 'Pending Stage 2 Review',
+                    value: pendingStage2Count,
+                    detail: `${waitlistedCount} waitlisted`,
+                    accent: 'amber',
+                  },
+                  {
+                    label: 'Inside Venue (QR)',
+                    value: `${insideVenueCount} / ${qrPasses.length}`,
+                    detail: 'Active credentials on floor',
+                    accent: 'gold',
+                  },
+                ]}
+              />
 
-              <div className="border border-[#263D59]/80 bg-[#071426] p-5">
-                <p className="mb-4 font-mono text-[10px] tracking-[0.18em] text-[#B89A62] uppercase">
-                  Track Breakdown
-                </p>
-                <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
-                  {(['delegate', 'chair', 'media', 'press', 'security', 'volunteers'] as const).map((t) => (
-                    <div key={t} className="border border-[#263D59]/60 bg-[#030914] p-3">
-                      <p className="font-mono text-[10px] text-[#B89A62] uppercase">{t}</p>
-                      <p className="mt-1 font-display text-2xl tabular-nums text-[#E8E1D2]">
-                        {apps.filter((a) => a.application_type === t).length}
-                      </p>
-                    </div>
-                  ))}
+              <ProportionalDistributionBar
+                title="Admissions Pipeline Distribution"
+                segments={[
+                  { label: 'Accepted', value: acceptedCount, color: '#86EFAC' },
+                  { label: 'Pending Review', value: pendingStage2Count, color: '#D5BD8B' },
+                  { label: 'Waitlisted', value: waitlistedCount, color: '#FCD34D' },
+                  { label: 'Rejected', value: rejectedCount, color: '#FCA5A5' },
+                ]}
+              />
+
+              <div className="portal-surface">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#263D59]/55 px-5 py-3.5">
+                  <p className="font-mono text-[10px] tracking-[0.2em] text-[#B89A62] uppercase">
+                    Track Distribution Matrix
+                  </p>
+                  <p className="font-mono text-[11px] tabular-nums text-[#E8E1D2]/55">
+                    6 Conference Tracks
+                  </p>
+                </div>
+                <div className="grid divide-y divide-[#263D59]/45 sm:grid-cols-3 sm:divide-x sm:divide-y-0 lg:grid-cols-6">
+                  {(['delegate', 'chair', 'media', 'press', 'security', 'volunteers'] as const).map(
+                    (t) => {
+                      const count = apps.filter((a) => a.application_type === t).length;
+                      const pct = apps.length > 0 ? Math.round((count / apps.length) * 100) : 0;
+                      return (
+                        <div key={t} className="p-4">
+                          <div className="flex items-baseline justify-between gap-2">
+                            <p className="font-mono text-[10px] tracking-[0.16em] text-[#B89A62] uppercase">
+                              {t}
+                            </p>
+                            <span className="font-mono text-[10px] tabular-nums text-[#E8E1D2]/45">
+                              {pct}%
+                            </span>
+                          </div>
+                          <p className="mt-2 font-display text-3xl font-normal tabular-nums text-[#F3EDE0]">
+                            {count}
+                          </p>
+                          <div className="mt-3 h-1 w-full bg-[#030914]">
+                            <div
+                              className="h-full bg-[#D5BD8B] transition-[width] duration-300"
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    }
+                  )}
                 </div>
               </div>
             </div>
           )}
 
           {(activeTab === 'applications' || activeTab === 'recommendations') && (
-            <div className="space-y-5">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <h1 className="font-display text-3xl text-[#E8E1D2]">
-                  {activeTab === 'recommendations'
+            <div className="space-y-6">
+              <PortalPageHeader
+                kicker={
+                  activeTab === 'recommendations'
+                    ? 'Stage 1 -> Stage 2 Hand-Off'
+                    : 'Conference Admissions Registry'
+                }
+                title={
+                  activeTab === 'recommendations'
                     ? `Head Recommendations Queue (${recommendedApps.length})`
-                    : 'All Conference Applications'}
-                </h1>
-                {batchSelectedIds.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => void issueBatchInvites()}
-                    className="border border-[#D5BD8B] bg-[#071426] px-4 py-2 font-mono text-xs text-[#D5BD8B] uppercase"
-                  >
-                    Create Batch Signup Links ({batchSelectedIds.length})
-                  </button>
-                )}
-              </div>
+                    : 'All Conference Applications'
+                }
+                subtitle={
+                  activeTab === 'recommendations'
+                    ? 'Applicants carrying Department Head recommendations queued for final Secretariat adjudication.'
+                    : 'Inspect dossiers, record Stage 2 decisions, dispatch credentials, and manage non-expiring staff signup links.'
+                }
+                actions={
+                  batchSelectedIds.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => void issueBatchInvites()}
+                      className="portal-btn-primary"
+                    >
+                      Create Batch Signup Links ({batchSelectedIds.length})
+                    </button>
+                  ) : undefined
+                }
+              />
 
               {activeTab === 'applications' && (
-                <div className="grid gap-3 border border-[#263D59]/80 bg-[#071426] p-4 sm:grid-cols-3">
-                  <input
-                    placeholder="Search applicant name, email, code..."
-                    value={appSearch}
-                    onChange={(e) => setAppSearch(e.target.value)}
-                    className="border border-[#263D59] bg-[#030914] px-3 py-2 text-xs text-[#E8E1D2]"
-                  />
+                <div className="portal-surface grid gap-3 p-4 sm:grid-cols-3">
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-[#B89A62]/75" />
+                    <input
+                      placeholder="Search applicant name, email, code..."
+                      value={appSearch}
+                      onChange={(e) => setAppSearch(e.target.value)}
+                      className="portal-input pl-9"
+                    />
+                  </div>
                   <select
                     value={appFilterType}
                     onChange={(e) => setAppFilterType(e.target.value)}
-                    className="border border-[#263D59] bg-[#030914] px-3 py-2 text-xs text-[#E8E1D2]"
+                    className="portal-select"
                   >
                     <option value="all">All Tracks</option>
                     <option value="delegate">Delegate</option>
@@ -609,7 +670,7 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
                   <select
                     value={appFilterStatus}
                     onChange={(e) => setAppFilterStatus(e.target.value)}
-                    className="border border-[#263D59] bg-[#030914] px-3 py-2 text-xs text-[#E8E1D2]"
+                    className="portal-select"
                   >
                     <option value="all">All Statuses</option>
                     <option value="pending">Pending</option>
@@ -620,28 +681,49 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
                 </div>
               )}
 
-              {(activeTab === 'recommendations' ? recommendedApps : filteredApps).length === 0 ? (
+              {Object.keys(issuedInviteUrls).length > 0 && (
+                <div className="portal-surface-editorial p-4">
+                  <p className="font-mono text-[10px] tracking-[0.18em] text-[#86EFAC] uppercase">
+                    Issued Non-Expiring Signup Links ({Object.keys(issuedInviteUrls).length})
+                  </p>
+                  <div className="mt-2 space-y-1.5 font-mono text-[11px] text-[#E8E1D2]/85">
+                    {Object.entries(issuedInviteUrls).map(([id, link]) => {
+                      const holder = apps.find((x) => x.id === id);
+                      return (
+                        <div key={id} className="flex flex-wrap items-center justify-between gap-2 break-all border-b border-[#263D59]/35 pb-1.5 last:border-b-0 last:pb-0">
+                          <span className="text-[#D5BD8B]">
+                            {holder?.applicant_name || id}:
+                          </span>
+                          <span>{link}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {tableRows.length === 0 ? (
                 <EmptyState
                   title="No Applications Matching Filter"
                   description="Submitted applications from the public portal and Registration modal will appear here."
                 />
               ) : (
-                <div className="overflow-x-auto border border-[#263D59]/80 bg-[#071426]">
+                <div className="portal-surface overflow-x-auto">
                   <table className="w-full text-left font-sans text-xs">
-                    <thead className="border-b border-[#263D59] bg-[#040B18] font-mono text-[10px] tracking-[0.15em] text-[#B89A62] uppercase">
+                    <thead className="border-b border-[#263D59]/75 bg-[#040B18]/90 font-mono text-[10px] tracking-[0.16em] text-[#B89A62] uppercase">
                       <tr>
-                        <th className="p-3">Batch</th>
-                        <th className="p-3">Applicant</th>
-                        <th className="p-3">Track</th>
-                        <th className="p-3">Head Rec</th>
-                        <th className="p-3">Status &amp; Decision Maker</th>
-                        <th className="p-3">Actions</th>
+                        <th className="px-4 py-3">Batch</th>
+                        <th className="px-4 py-3">Applicant</th>
+                        <th className="px-4 py-3">Track</th>
+                        <th className="px-4 py-3">Head Rec</th>
+                        <th className="px-4 py-3">Status &amp; Decision Maker</th>
+                        <th className="px-4 py-3 text-right">Actions</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-[#263D59]/50">
-                      {(activeTab === 'recommendations' ? recommendedApps : filteredApps).map((a) => (
-                        <tr key={a.id} className="hover:bg-[#040B18]/60">
-                          <td className="p-3">
+                    <tbody className="divide-y divide-[#263D59]/45">
+                      {tableRows.map((a) => (
+                        <tr key={a.id} className="transition-colors hover:bg-[#040B18]/70">
+                          <td className="px-4 py-3 align-top">
                             {a.status === 'accepted' && !['delegate', 'chair'].includes(a.application_type) && (
                               <input
                                 type="checkbox"
@@ -651,24 +733,29 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
                                     e.target.checked ? [...p, a.id] : p.filter((x) => x !== a.id)
                                   )
                                 }
+                                className="mt-1 h-3.5 w-3.5 accent-[#D5BD8B]"
                               />
                             )}
                           </td>
-                          <td className="p-3">
-                            <p className="font-medium text-[#E8E1D2]">{a.applicant_name}</p>
-                            <p className="font-mono text-[10px] text-[#E8E1D2]/60">
+                          <td className="px-4 py-3">
+                            <p className="font-medium text-[#F3EDE0]">{a.applicant_name}</p>
+                            <p className="mt-0.5 font-mono text-[11px] tabular-nums text-[#E8E1D2]/58">
                               {a.application_code} · {a.email}
                             </p>
                             {a.medical_has_conditions && (
-                              <span className="mt-1 inline-block border border-[#DC2626]/60 bg-[#1B0B10] px-1.5 py-0.5 font-mono text-[9px] text-[#FCA5A5] uppercase">
-                                Confidential Medical Flag
-                              </span>
+                              <p className="mt-1 inline-flex items-center gap-1.5 font-mono text-[9px] tracking-[0.14em] text-[#FCA5A5] uppercase">
+                                <span aria-hidden="true" className="inline-block h-1.5 w-1.5 bg-[#FCA5A5]" />
+                                <span>Confidential Medical Flag</span>
+                              </p>
                             )}
                           </td>
-                          <td className="p-3">
-                            <StatusLabel status={`${a.application_type}${a.gender ? ` · ${a.gender}` : ''}`} tone="gold" />
+                          <td className="px-4 py-3">
+                            <StatusLabel
+                              status={`${a.application_type}${a.gender ? ` · ${a.gender}` : ''}`}
+                              tone="gold"
+                            />
                           </td>
-                          <td className="p-3">
+                          <td className="px-4 py-3">
                             {a.head_recommendation ? (
                               <div>
                                 <StatusLabel status={a.head_recommendation} />
@@ -679,23 +766,23 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
                                 )}
                               </div>
                             ) : (
-                              <span className="font-mono text-[10px] text-[#E8E1D2]/40">None yet</span>
+                              <span className="font-mono text-[10px] text-[#E8E1D2]/38">None yet</span>
                             )}
                           </td>
-                          <td className="p-3">
+                          <td className="px-4 py-3">
                             <StatusLabel status={a.status} />
                             {a.decision_by_name && (
-                              <p className="mt-1 font-mono text-[10px] text-[#E8E1D2]/65">
+                              <p className="mt-1 font-mono text-[10px] text-[#E8E1D2]/60">
                                 {formatDecisionByLabel(a.status, a.decision_by_name)}
                               </p>
                             )}
                           </td>
-                          <td className="p-3">
-                            <div className="flex flex-wrap gap-1.5">
+                          <td className="px-4 py-3">
+                            <div className="flex flex-nowrap items-center justify-end gap-1.5 whitespace-nowrap">
                               <button
                                 type="button"
                                 onClick={() => setSelectedApp(a)}
-                                className="border border-[#263D59] bg-[#030914] px-2.5 py-1 font-mono text-[10px] text-[#D5BD8B] uppercase"
+                                className="portal-btn-secondary px-2.5 py-1 text-[10px]"
                               >
                                 Inspect
                               </button>
@@ -707,7 +794,7 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
                                       setOverrideTarget(a);
                                       setOverrideStatus(a.status);
                                     }}
-                                    className="border border-[#D97706]/60 bg-[#1B1409] px-2 py-1 font-mono text-[10px] text-[#FCD34D] uppercase"
+                                    className="inline-flex items-center border border-[#D97706]/55 bg-[#161006] px-2.5 py-1 font-mono text-[10px] tracking-[0.12em] text-[#FCD34D] uppercase whitespace-nowrap shrink-0 transition-colors hover:border-[#FCD34D]"
                                   >
                                     Override
                                   </button>
@@ -718,14 +805,14 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
                                       setSpoofStatus(a.status);
                                       setSpoofAdminId(spoofAdmins[0]?.user_id || '');
                                     }}
-                                    className="border border-[#B89A62]/60 bg-[#030914] px-2 py-1 font-mono text-[10px] text-[#D5BD8B] uppercase"
+                                    className="portal-btn-primary px-2.5 py-1 text-[10px]"
                                   >
                                     Spoof
                                   </button>
                                   <button
                                     type="button"
                                     onClick={() => setDeleteAppTarget(a)}
-                                    className="border border-[#DC2626]/60 bg-[#1B0B10] px-2 py-1 font-mono text-[10px] text-[#FCA5A5] uppercase"
+                                    className="portal-btn-danger px-2.5 py-1 text-[10px]"
                                   >
                                     Del
                                   </button>
@@ -743,16 +830,32 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
           )}
 
           {activeTab === 'app_toggles' && (
-            <div className="space-y-4">
-              <h1 className="font-display text-3xl text-[#E8E1D2]">Public Registration Toggles</h1>
+            <div className="space-y-6">
+              <PortalPageHeader
+                kicker="Intake Gateways"
+                title="Public Registration Toggles"
+                subtitle="Open or close live submission forms on the public portal for each track and department."
+              />
+
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {publicDepts
                   .filter((d) => d.has_public_intake || d.slug === 'dcc')
                   .map((d) => (
-                    <div key={d.id} className="flex items-center justify-between border border-[#263D59]/80 bg-[#071426] p-5">
-                      <div>
-                        <p className="font-display text-xl text-[#E8E1D2]">{d.name}</p>
-                        <p className="font-mono text-[10px] text-[#B89A62] uppercase">{d.slug}</p>
+                    <div
+                      key={d.id}
+                      className="portal-surface flex items-center justify-between gap-4 p-5"
+                    >
+                      <div className="min-w-0">
+                        <p className="font-display text-2xl font-medium text-[#F3EDE0]">{d.name}</p>
+                        <div className="mt-1.5 flex items-center gap-3">
+                          <span className="font-mono text-[10px] tracking-[0.16em] text-[#B89A62] uppercase">
+                            {d.slug}
+                          </span>
+                          <StatusLabel
+                            status={d.registration_open ? 'Open' : 'Closed'}
+                            tone={d.registration_open ? 'green' : 'red'}
+                          />
+                        </div>
                       </div>
                       <button
                         type="button"
@@ -764,13 +867,9 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
                           addToast(`Toggled ${d.name} registration.`, 'success');
                           await loadAll();
                         }}
-                        className={`border px-3 py-1.5 font-mono text-xs uppercase ${
-                          d.registration_open
-                            ? 'border-[#16A34A] bg-[#081A12] text-[#86EFAC]'
-                            : 'border-[#DC2626] bg-[#1B0B10] text-[#FCA5A5]'
-                        }`}
+                        className={d.registration_open ? 'portal-btn-secondary' : 'portal-btn-primary'}
                       >
-                        {d.registration_open ? 'Open' : 'Closed'}
+                        {d.registration_open ? 'Close Track' : 'Open Track'}
                       </button>
                     </div>
                   ))}
@@ -785,9 +884,11 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
 
           {activeTab === 'qr_registry' && (
             <div className="space-y-6">
-              <h1 className="font-display text-3xl text-[#E8E1D2]">
-                QR Attendance Registry &amp; Corrections
-              </h1>
+              <PortalPageHeader
+                kicker="Attendance Audit & Overrides"
+                title="QR Attendance Registry & Corrections"
+                subtitle="Apply audited status corrections across individual passes or perform a Super Admin conference-day reset."
+              />
 
               <form
                 onSubmit={async (e) => {
@@ -804,13 +905,13 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
                     addToast(err instanceof Error ? err.message : 'Correction failed.', 'error');
                   }
                 }}
-                className="grid gap-3 border border-[#263D59]/80 bg-[#071426] p-5 sm:grid-cols-4"
+                className="portal-surface grid gap-3 p-5 sm:grid-cols-4"
               >
                 <select
                   required
                   value={corrPassId}
                   onChange={(e) => setCorrPassId(e.target.value)}
-                  className="border border-[#263D59] bg-[#030914] px-3 py-2 text-xs text-[#E8E1D2]"
+                  className="portal-select"
                 >
                   <option value="">Select Badge Holder...</option>
                   {qrPasses.map((p) => (
@@ -822,7 +923,7 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
                 <select
                   value={corrAction}
                   onChange={(e) => setCorrAction(e.target.value)}
-                  className="border border-[#263D59] bg-[#030914] px-3 py-2 text-xs text-[#E8E1D2]"
+                  className="portal-select"
                 >
                   <option value="mark_checked_in">Mark Checked In</option>
                   <option value="mark_checked_out">Mark Checked Out</option>
@@ -835,30 +936,31 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
                   placeholder="Audit Rationale (min 4 chars) *"
                   value={corrReason}
                   onChange={(e) => setCorrReason(e.target.value)}
-                  className="border border-[#263D59] bg-[#030914] px-3 py-2 text-xs text-[#E8E1D2]"
+                  className="portal-input"
                 />
-                <button
-                  type="submit"
-                  className="border border-[#B89A62] bg-[#030914] px-4 py-2 font-mono text-xs text-[#D5BD8B] uppercase"
-                >
+                <button type="submit" className="portal-btn-primary">
                   Apply Correction
                 </button>
               </form>
 
               {isSuper && (
-                <div className="border border-[#DC2626]/60 bg-[#1B0B10] p-5">
-                  <h3 className="font-display text-xl text-[#FCA5A5]">
-                    Global Attendance Reset (Super Admin Exclusive)
-                  </h3>
-                  <p className="mt-1 font-sans text-xs text-[#E8E1D2]/75">
-                    Clears all active venue check-in/check-out stamps across every pass and deletes scan check-in history. Type exact word <code className="font-mono">RESET</code> to confirm.
+                <div className="border border-[#DC2626]/45 bg-[#12070B]/90 p-5">
+                  <p className="font-mono text-[10px] tracking-[0.2em] text-[#FCA5A5] uppercase">
+                    Destructive Operation · Super Admin Exclusive
                   </p>
-                  <div className="mt-3 flex flex-wrap gap-3">
+                  <h3 className="mt-1 font-display text-2xl font-medium text-[#FCA5A5]">
+                    Global Attendance Reset
+                  </h3>
+                  <p className="mt-1.5 font-sans text-xs leading-relaxed text-[#E8E1D2]/75">
+                    Clears all active venue check-in/check-out stamps across every pass and deletes scan check-in history. Type exact word{' '}
+                    <code className="bg-[#030914] px-1.5 py-0.5 font-mono text-[#FCA5A5]">RESET</code> to confirm.
+                  </p>
+                  <div className="mt-4 flex flex-wrap items-center gap-3">
                     <input
                       placeholder='Type "RESET"'
                       value={resetConfirmText}
                       onChange={(e) => setResetConfirmText(e.target.value)}
-                      className="border border-[#DC2626]/60 bg-[#030914] px-3 py-2 font-mono text-xs text-[#E8E1D2]"
+                      className="portal-input w-56 border-[#DC2626]/55 font-mono"
                     />
                     <button
                       type="button"
@@ -875,7 +977,7 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
                           addToast(err instanceof Error ? err.message : 'Reset failed.', 'error');
                         }
                       }}
-                      className="border border-[#DC2626] bg-[#030914] px-4 py-2 font-mono text-xs text-[#FCA5A5] uppercase"
+                      className="portal-btn-danger"
                     >
                       Execute Global Reset
                     </button>
@@ -884,14 +986,26 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
               )}
 
               {qrCorrections.length > 0 && (
-                <div className="border border-[#263D59]/80 bg-[#071426] p-4">
-                  <p className="mb-2 font-mono text-[10px] tracking-[0.16em] text-[#B89A62] uppercase">
-                    Recent Manual Corrections
-                  </p>
-                  <div className="space-y-1.5 font-mono text-[11px] text-[#E8E1D2]/75">
+                <div className="portal-surface">
+                  <div className="border-b border-[#263D59]/55 px-5 py-3">
+                    <p className="font-mono text-[10px] tracking-[0.18em] text-[#B89A62] uppercase">
+                      Recent Manual Corrections ({qrCorrections.length})
+                    </p>
+                  </div>
+                  <div className="divide-y divide-[#263D59]/45">
                     {qrCorrections.slice(0, 10).map((c) => (
-                      <div key={c.id}>
-                        {new Date(c.created_at).toLocaleString()} · {c.actor_name} · {c.action} — {c.reason}
+                      <div
+                        key={c.id}
+                        className="flex flex-wrap items-center justify-between gap-2 px-5 py-3 text-xs"
+                      >
+                        <div className="flex flex-wrap items-center gap-3">
+                          <StatusLabel status={c.action} tone="amber" />
+                          <span className="font-medium text-[#F3EDE0]">{c.actor_name}</span>
+                          <span className="text-[#E8E1D2]/70">{c.reason}</span>
+                        </div>
+                        <span className="font-mono text-[10px] tabular-nums text-[#E8E1D2]/50">
+                          {new Date(c.created_at).toLocaleString()}
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -909,9 +1023,11 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
 
           {activeTab === 'cms_editor' && (
             <div className="space-y-6">
-              <h1 className="font-display text-3xl text-[#E8E1D2]">
-                Website Content &amp; Dynamic Form Builder
-              </h1>
+              <PortalPageHeader
+                kicker="Editorial & Public Assets"
+                title="Website Content & Dynamic Form Builder"
+                subtitle="Publish official dispatches, frequently asked questions, Secretariat rosters, reference briefings, and custom intake forms."
+              />
 
               <div className="grid gap-6 lg:grid-cols-2">
                 <form
@@ -926,15 +1042,15 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
                     addToast('Announcement published.', 'success');
                     await loadAll();
                   }}
-                  className="space-y-3 border border-[#263D59]/80 bg-[#071426] p-5"
+                  className="portal-surface space-y-3 p-5"
                 >
-                  <h3 className="font-display text-xl text-[#D5BD8B]">Announcements</h3>
+                  <h3 className="font-display text-2xl font-medium text-[#D5BD8B]">Announcements</h3>
                   <input
                     required
                     placeholder="Title"
                     value={annTitle}
                     onChange={(e) => setAnnTitle(e.target.value)}
-                    className="w-full border border-[#263D59] bg-[#030914] px-3 py-2 text-xs text-[#E8E1D2]"
+                    className="portal-input"
                   />
                   <textarea
                     required
@@ -942,28 +1058,31 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
                     placeholder="Announcement Body"
                     value={annBody}
                     onChange={(e) => setAnnBody(e.target.value)}
-                    className="w-full border border-[#263D59] bg-[#030914] px-3 py-2 text-xs text-[#E8E1D2]"
+                    className="portal-textarea"
                   />
-                  <button type="submit" className="border border-[#B89A62] px-4 py-1.5 font-mono text-xs text-[#D5BD8B] uppercase">
-                    Publish
+                  <button type="submit" className="portal-btn-primary">
+                    Publish Announcement
                   </button>
-                  <div className="space-y-1.5 pt-2">
-                    {cmsBundle.announcements.map((a) => (
-                      <div key={a.id} className="flex justify-between border border-[#263D59]/50 bg-[#030914] p-2 text-xs">
-                        <span>{a.title}</span>
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            await apiRequest(`/api/cms/announcements/${a.id}`, { method: 'DELETE' });
-                            await loadAll();
-                          }}
-                          className="text-[#FCA5A5]"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
+                  {cmsBundle.announcements.length > 0 && (
+                    <div className="divide-y divide-[#263D59]/45 border border-[#263D59]/55 bg-[#030914]">
+                      {cmsBundle.announcements.map((a) => (
+                        <div key={a.id} className="flex items-center justify-between gap-3 px-3 py-2.5 text-xs">
+                          <span className="truncate text-[#E8E1D2]">{a.title}</span>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              await apiRequest(`/api/cms/announcements/${a.id}`, { method: 'DELETE' });
+                              await loadAll();
+                            }}
+                            aria-label={`Delete ${a.title}`}
+                            className="text-[#FCA5A5] transition-opacity hover:opacity-80"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </form>
 
                 <form
@@ -978,15 +1097,15 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
                     addToast('FAQ published.', 'success');
                     await loadAll();
                   }}
-                  className="space-y-3 border border-[#263D59]/80 bg-[#071426] p-5"
+                  className="portal-surface space-y-3 p-5"
                 >
-                  <h3 className="font-display text-xl text-[#D5BD8B]">FAQs</h3>
+                  <h3 className="font-display text-2xl font-medium text-[#D5BD8B]">FAQs</h3>
                   <input
                     required
                     placeholder="Question"
                     value={faqQ}
                     onChange={(e) => setFaqQ(e.target.value)}
-                    className="w-full border border-[#263D59] bg-[#030914] px-3 py-2 text-xs text-[#E8E1D2]"
+                    className="portal-input"
                   />
                   <textarea
                     required
@@ -994,28 +1113,31 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
                     placeholder="Answer"
                     value={faqA}
                     onChange={(e) => setFaqA(e.target.value)}
-                    className="w-full border border-[#263D59] bg-[#030914] px-3 py-2 text-xs text-[#E8E1D2]"
+                    className="portal-textarea"
                   />
-                  <button type="submit" className="border border-[#B89A62] px-4 py-1.5 font-mono text-xs text-[#D5BD8B] uppercase">
+                  <button type="submit" className="portal-btn-primary">
                     Add FAQ
                   </button>
-                  <div className="space-y-1.5 pt-2">
-                    {cmsBundle.faqs.map((f) => (
-                      <div key={f.id} className="flex justify-between border border-[#263D59]/50 bg-[#030914] p-2 text-xs">
-                        <span className="truncate">{f.question}</span>
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            await apiRequest(`/api/cms/faqs/${f.id}`, { method: 'DELETE' });
-                            await loadAll();
-                          }}
-                          className="text-[#FCA5A5]"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
+                  {cmsBundle.faqs.length > 0 && (
+                    <div className="divide-y divide-[#263D59]/45 border border-[#263D59]/55 bg-[#030914]">
+                      {cmsBundle.faqs.map((f) => (
+                        <div key={f.id} className="flex items-center justify-between gap-3 px-3 py-2.5 text-xs">
+                          <span className="truncate text-[#E8E1D2]">{f.question}</span>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              await apiRequest(`/api/cms/faqs/${f.id}`, { method: 'DELETE' });
+                              await loadAll();
+                            }}
+                            aria-label={`Delete ${f.question}`}
+                            className="text-[#FCA5A5] transition-opacity hover:opacity-80"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </form>
 
                 <form
@@ -1030,24 +1152,26 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
                     addToast('Secretariat member saved.', 'success');
                     await loadAll();
                   }}
-                  className="space-y-3 border border-[#263D59]/80 bg-[#071426] p-5"
+                  className="portal-surface space-y-3 p-5"
                 >
-                  <h3 className="font-display text-xl text-[#D5BD8B]">Secretariat Profiles</h3>
+                  <h3 className="font-display text-2xl font-medium text-[#D5BD8B]">
+                    Secretariat Profiles ({cmsBundle.secretariat.length})
+                  </h3>
                   <input
                     required
                     placeholder="Full Name"
                     value={secName}
                     onChange={(e) => setSecName(e.target.value)}
-                    className="w-full border border-[#263D59] bg-[#030914] px-3 py-2 text-xs text-[#E8E1D2]"
+                    className="portal-input"
                   />
                   <input
                     required
                     placeholder="Official Secretariat Title"
                     value={secTitle}
                     onChange={(e) => setSecTitle(e.target.value)}
-                    className="w-full border border-[#263D59] bg-[#030914] px-3 py-2 text-xs text-[#E8E1D2]"
+                    className="portal-input"
                   />
-                  <button type="submit" className="border border-[#B89A62] px-4 py-1.5 font-mono text-xs text-[#D5BD8B] uppercase">
+                  <button type="submit" className="portal-btn-primary">
                     Add Member
                   </button>
                 </form>
@@ -1064,15 +1188,17 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
                     addToast('Document published.', 'success');
                     await loadAll();
                   }}
-                  className="space-y-3 border border-[#263D59]/80 bg-[#071426] p-5"
+                  className="portal-surface space-y-3 p-5"
                 >
-                  <h3 className="font-display text-xl text-[#D5BD8B]">Conference Documents</h3>
+                  <h3 className="font-display text-2xl font-medium text-[#D5BD8B]">
+                    Conference Documents ({cmsBundle.documents.length})
+                  </h3>
                   <input
                     required
                     placeholder="Document Title"
                     value={docTitle}
                     onChange={(e) => setDocTitle(e.target.value)}
-                    className="w-full border border-[#263D59] bg-[#030914] px-3 py-2 text-xs text-[#E8E1D2]"
+                    className="portal-input"
                   />
                   <input
                     required
@@ -1080,9 +1206,9 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
                     placeholder="https://..."
                     value={docUrl}
                     onChange={(e) => setDocUrl(e.target.value)}
-                    className="w-full border border-[#263D59] bg-[#030914] px-3 py-2 text-xs text-[#E8E1D2]"
+                    className="portal-input font-mono"
                   />
-                  <button type="submit" className="border border-[#B89A62] px-4 py-1.5 font-mono text-xs text-[#D5BD8B] uppercase">
+                  <button type="submit" className="portal-btn-primary">
                     Publish Document
                   </button>
                 </form>
@@ -1107,34 +1233,47 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
                   addToast('Dynamic form published.', 'success');
                   await loadAll();
                 }}
-                className="grid gap-3 border border-[#263D59]/80 bg-[#071426] p-5 sm:grid-cols-3"
+                className="portal-surface space-y-3 p-5"
               >
-                <input
-                  required
-                  placeholder="Form Title (e.g. Position Paper Portal)"
-                  value={formTitle}
-                  onChange={(e) => setFormTitle(e.target.value)}
-                  className="border border-[#263D59] bg-[#030914] px-3 py-2 text-xs text-[#E8E1D2]"
-                />
-                <input
-                  required
-                  placeholder="slug (e.g. position-papers)"
-                  value={formSlug}
-                  onChange={(e) => setFormSlug(e.target.value)}
-                  className="border border-[#263D59] bg-[#030914] px-3 py-2 font-mono text-xs text-[#E8E1D2]"
-                />
-                <button type="submit" className="border border-[#B89A62] px-4 py-2 font-mono text-xs text-[#D5BD8B] uppercase">
-                  Create Custom Form
-                </button>
+                <p className="font-mono text-[10px] tracking-[0.18em] text-[#B89A62] uppercase">
+                  Dynamic Form Builder ({cmsBundle.customForms.length} Published)
+                </p>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <input
+                    required
+                    placeholder="Form Title (e.g. Position Paper Portal)"
+                    value={formTitle}
+                    onChange={(e) => setFormTitle(e.target.value)}
+                    className="portal-input"
+                  />
+                  <input
+                    required
+                    placeholder="slug (e.g. position-papers)"
+                    value={formSlug}
+                    onChange={(e) => setFormSlug(e.target.value)}
+                    className="portal-input font-mono"
+                  />
+                  <button type="submit" className="portal-btn-primary">
+                    Create Custom Form
+                  </button>
+                </div>
               </form>
             </div>
           )}
 
           {activeTab === 'accounts' && (
             <div className="space-y-6">
-              <h1 className="font-display text-3xl text-[#E8E1D2]">
-                {isSuper ? 'Accounts, RBAC Permissions & EB Onboarding' : 'Authorized Staff Directory'}
-              </h1>
+              <PortalPageHeader
+                kicker={isSuper ? 'Identity & Access Control' : 'Authorized Personnel'}
+                title={
+                  isSuper ? 'Accounts, RBAC Permissions & EB Onboarding' : 'Authorized Staff Directory'
+                }
+                subtitle={
+                  isSuper
+                    ? `Provision institutional accounts with ${ALL_PERMISSION_KEYS.length}-key permission scoping, manage EB allowlists, and audit access violations.`
+                    : 'Directory of verified Secretariat officers, Department Heads, Executive Board members, and floor staff.'
+                }
+              />
 
               {isSuper && (
                 <>
@@ -1169,11 +1308,11 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
                         addToast(err instanceof Error ? err.message : 'Account creation failed.', 'error');
                       }
                     }}
-                    className="space-y-4 border border-[#263D59]/80 bg-[#071426] p-5"
+                    className="portal-surface space-y-4 p-5"
                   >
-                    <p className="flex items-center gap-2 font-mono text-xs text-[#B89A62] uppercase">
+                    <p className="flex items-center gap-2 font-mono text-[11px] tracking-[0.16em] text-[#B89A62] uppercase">
                       <UserPlus className="h-4 w-4" />
-                      <span>Provision New Account (47-Key Permissions Matrix)</span>
+                      <span>Provision New Account ({ALL_PERMISSION_KEYS.length}-Key Permissions Matrix)</span>
                     </p>
                     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
                       <input
@@ -1182,19 +1321,19 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
                         placeholder="Email *"
                         value={newAccEmail}
                         onChange={(e) => setNewAccEmail(e.target.value)}
-                        className="border border-[#263D59] bg-[#030914] px-3 py-2 text-xs text-[#E8E1D2]"
+                        className="portal-input"
                       />
                       <input
                         required
                         placeholder="Full Name *"
                         value={newAccName}
                         onChange={(e) => setNewAccName(e.target.value)}
-                        className="border border-[#263D59] bg-[#030914] px-3 py-2 text-xs text-[#E8E1D2]"
+                        className="portal-input"
                       />
                       <select
                         value={newAccRole}
                         onChange={(e) => setNewAccRole(e.target.value as UserRole)}
-                        className="border border-[#263D59] bg-[#030914] px-3 py-2 text-xs text-[#E8E1D2]"
+                        className="portal-select"
                       >
                         <option value="admin">Admin</option>
                         <option value="department_head">Department Head</option>
@@ -1205,7 +1344,7 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
                         <select
                           value={newAccDept}
                           onChange={(e) => setNewAccDept(e.target.value)}
-                          className="border border-[#263D59] bg-[#030914] px-3 py-2 text-xs text-[#E8E1D2]"
+                          className="portal-select"
                         >
                           {CORE_DEPARTMENTS.map((d) => (
                             <option key={d.slug} value={d.slug}>
@@ -1218,7 +1357,7 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
                         <select
                           value={newAccGender}
                           onChange={(e) => setNewAccGender(e.target.value as GenderSection)}
-                          className="border border-[#263D59] bg-[#030914] px-3 py-2 text-xs text-[#E8E1D2]"
+                          className="portal-select"
                         >
                           <option value="male">Male Division</option>
                           <option value="female">Female Division</option>
@@ -1231,22 +1370,23 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
                       placeholder="Initial Password (leave empty to generate 7-day /head-setup link)"
                       value={newAccPassword}
                       onChange={(e) => setNewAccPassword(e.target.value)}
-                      className="w-full border border-[#263D59] bg-[#030914] px-3 py-2 text-xs text-[#E8E1D2]"
+                      className="portal-input"
                     />
 
-                    <details className="border border-[#263D59]/60 bg-[#030914] p-3">
-                      <summary className="cursor-pointer font-mono text-[11px] text-[#D5BD8B] uppercase">
+                    <details className="portal-surface-subtle p-3.5">
+                      <summary className="cursor-pointer font-mono text-[11px] tracking-[0.14em] text-[#D5BD8B] uppercase">
                         Custom Permission Overrides ({ALL_PERMISSION_KEYS.length} Keys)
                       </summary>
-                      <div className="mt-3 grid max-h-48 gap-1.5 overflow-y-auto sm:grid-cols-3 lg:grid-cols-4">
+                      <div className="mt-3 grid max-h-48 gap-2 overflow-y-auto pt-2 sm:grid-cols-3 lg:grid-cols-4">
                         {ALL_PERMISSION_KEYS.map((pk) => (
-                          <label key={pk} className="flex items-center gap-1.5 font-mono text-[10px]">
+                          <label key={pk} className="flex items-center gap-2 font-mono text-[10px] text-[#E8E1D2]/80">
                             <input
                               type="checkbox"
                               checked={Boolean(newAccPerms[pk])}
                               onChange={(e) =>
                                 setNewAccPerms((p) => ({ ...p, [pk]: e.target.checked }))
                               }
+                              className="h-3.5 w-3.5 accent-[#D5BD8B]"
                             />
                             <span className="truncate">{pk}</span>
                           </label>
@@ -1254,15 +1394,12 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
                       </div>
                     </details>
 
-                    <button
-                      type="submit"
-                      className="border border-[#B89A62] bg-[#030914] px-5 py-2 font-mono text-xs text-[#D5BD8B] uppercase"
-                    >
+                    <button type="submit" className="portal-btn-primary">
                       Create Account
                     </button>
 
                     {lastSetupLink && (
-                      <div className="border border-[#16A34A]/60 bg-[#081A12] p-3 font-mono text-xs text-[#86EFAC]">
+                      <div className="border border-[#16A34A]/50 bg-[#05130D] p-3 font-mono text-xs break-all text-[#86EFAC]">
                         Setup Link Generated: {lastSetupLink}
                       </div>
                     )}
@@ -1287,31 +1424,31 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
                         addToast('EB allowlist entry saved (/eb-signup).', 'success');
                         await loadAll();
                       }}
-                      className="space-y-3 border border-[#263D59]/80 bg-[#071426] p-5"
+                      className="portal-surface space-y-3 p-5"
                     >
-                      <h3 className="font-display text-xl text-[#D5BD8B]">
+                      <h3 className="font-display text-2xl font-medium text-[#D5BD8B]">
                         EB Signup Allowlist ({ebAllowlist.length})
                       </h3>
-                      <div className="grid gap-2 sm:grid-cols-2">
+                      <div className="grid gap-2.5 sm:grid-cols-2">
                         <input
                           required
                           type="email"
                           placeholder="EB Email *"
                           value={allowEmail}
                           onChange={(e) => setAllowEmail(e.target.value)}
-                          className="border border-[#263D59] bg-[#030914] px-3 py-2 text-xs text-[#E8E1D2]"
+                          className="portal-input"
                         />
                         <input
                           required
                           placeholder="Full Name *"
                           value={allowName}
                           onChange={(e) => setAllowName(e.target.value)}
-                          className="border border-[#263D59] bg-[#030914] px-3 py-2 text-xs text-[#E8E1D2]"
+                          className="portal-input"
                         />
                         <select
                           value={allowDept}
                           onChange={(e) => setAllowDept(e.target.value)}
-                          className="border border-[#263D59] bg-[#030914] px-3 py-2 text-xs text-[#E8E1D2]"
+                          className="portal-select"
                         >
                           {CORE_DEPARTMENTS.map((d) => (
                             <option key={`al-${d.slug}`} value={d.slug}>
@@ -1322,7 +1459,7 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
                         <select
                           value={allowRank}
                           onChange={(e) => setAllowRank(e.target.value)}
-                          className="border border-[#263D59] bg-[#030914] px-3 py-2 text-xs text-[#E8E1D2]"
+                          className="portal-select"
                         >
                           <option value="co_head">Co-Head</option>
                           <option value="designer">Designer</option>
@@ -1330,30 +1467,27 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
                           <option value="member">Member</option>
                         </select>
                       </div>
-                      <button
-                        type="submit"
-                        className="border border-[#B89A62] px-4 py-1.5 font-mono text-xs text-[#D5BD8B] uppercase"
-                      >
+                      <button type="submit" className="portal-btn-primary">
                         Add to Allowlist
                       </button>
                     </form>
 
-                    <div className="space-y-3 border border-[#263D59]/80 bg-[#071426] p-5">
-                      <h3 className="font-display text-xl text-[#D5BD8B]">
+                    <div className="portal-surface space-y-3 p-5">
+                      <h3 className="font-display text-2xl font-medium text-[#D5BD8B]">
                         EB Invite &amp; Reusable Link Generator
                       </h3>
-                      <div className="grid gap-2 sm:grid-cols-3">
+                      <div className="grid gap-2.5 sm:grid-cols-3">
                         <input
                           type="email"
                           placeholder="EB Email (7-day lock)"
                           value={ebInvEmail}
                           onChange={(e) => setEbInvEmail(e.target.value)}
-                          className="border border-[#263D59] bg-[#030914] px-3 py-2 text-xs text-[#E8E1D2]"
+                          className="portal-input"
                         />
                         <select
                           value={ebInvDept}
                           onChange={(e) => setEbInvDept(e.target.value)}
-                          className="border border-[#263D59] bg-[#030914] px-3 py-2 text-xs text-[#E8E1D2]"
+                          className="portal-select"
                         >
                           {CORE_DEPARTMENTS.map((d) => (
                             <option key={`ei-${d.slug}`} value={d.slug}>
@@ -1364,7 +1498,7 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
                         <select
                           value={ebInvRole}
                           onChange={(e) => setEbInvRole(e.target.value)}
-                          className="border border-[#263D59] bg-[#030914] px-3 py-2 text-xs text-[#E8E1D2]"
+                          className="portal-select"
                         >
                           <option value="co_head">Co-Head</option>
                           <option value="designer">Designer</option>
@@ -1386,7 +1520,7 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
                             });
                             setEbGeneratedUrl(`${window.location.origin}${r.inviteUrl}`);
                           }}
-                          className="border border-[#B89A62] px-3 py-1.5 font-mono text-[11px] text-[#D5BD8B] uppercase"
+                          className="portal-btn-primary"
                         >
                           Issue 7-Day Invite
                         </button>
@@ -1399,13 +1533,13 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
                             });
                             setEbGeneratedUrl(`${window.location.origin}${r.signupUrl}`);
                           }}
-                          className="border border-[#263D59] px-3 py-1.5 font-mono text-[11px] text-[#E8E1D2] uppercase"
+                          className="portal-btn-secondary"
                         >
                           Generate Reusable #token Link
                         </button>
                       </div>
                       {ebGeneratedUrl && (
-                        <p className="break-all border border-[#B89A62]/40 bg-[#030914] p-2 font-mono text-[11px] text-[#D5BD8B]">
+                        <p className="break-all border border-[#B89A62]/45 bg-[#030914] p-2.5 font-mono text-[11px] text-[#D5BD8B]">
                           {ebGeneratedUrl}
                         </p>
                       )}
@@ -1414,40 +1548,42 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
                 </>
               )}
 
-              <div className="overflow-x-auto border border-[#263D59]/80 bg-[#071426]">
+              <div className="portal-surface overflow-x-auto">
                 <table className="w-full text-left font-sans text-xs">
-                  <thead className="border-b border-[#263D59] bg-[#040B18] font-mono text-[10px] text-[#B89A62] uppercase">
+                  <thead className="border-b border-[#263D59]/75 bg-[#040B18]/90 font-mono text-[10px] tracking-[0.16em] text-[#B89A62] uppercase">
                     <tr>
-                      <th className="p-3">Account</th>
-                      <th className="p-3">Role &amp; Dept</th>
-                      <th className="p-3">Status</th>
-                      {isSuper && <th className="p-3">Governance</th>}
+                      <th className="px-4 py-3">Account</th>
+                      <th className="px-4 py-3">Role &amp; Dept</th>
+                      <th className="px-4 py-3">Status</th>
+                      {isSuper && <th className="px-4 py-3 text-right">Governance</th>}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#263D59]/50">
+                  <tbody className="divide-y divide-[#263D59]/45">
                     {accounts.map((acc) => (
-                      <tr key={acc.user_id}>
-                        <td className="p-3">
-                          <p className="font-medium text-[#E8E1D2]">{acc.full_name}</p>
-                          <p className="font-mono text-[10px] text-[#E8E1D2]/60">{acc.email}</p>
+                      <tr key={acc.user_id} className="transition-colors hover:bg-[#040B18]/70">
+                        <td className="px-4 py-3">
+                          <p className="font-medium text-[#F3EDE0]">{acc.full_name}</p>
+                          <p className="mt-0.5 font-mono text-[11px] text-[#E8E1D2]/58">{acc.email}</p>
                         </td>
-                        <td className="p-3">
-                          <StatusLabel status={acc.role} tone="gold" />
-                          {acc.department_slug && (
-                            <span className="ml-2 font-mono text-[10px] text-[#E8E1D2]/70">
-                              {acc.department_slug} {acc.gender ? `(${acc.gender})` : ''}
-                            </span>
-                          )}
+                        <td className="px-4 py-3">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <StatusLabel status={acc.role} tone="gold" />
+                            {acc.department_slug && (
+                              <span className="font-mono text-[11px] text-[#E8E1D2]/70">
+                                {acc.department_slug} {acc.gender ? `(${acc.gender})` : ''}
+                              </span>
+                            )}
+                          </div>
                         </td>
-                        <td className="p-3">
+                        <td className="px-4 py-3">
                           <StatusLabel
                             status={acc.is_active ? 'Active' : 'Suspended'}
                             tone={acc.is_active ? 'green' : 'red'}
                           />
                         </td>
                         {isSuper && (
-                          <td className="p-3">
-                            <div className="flex flex-wrap gap-1.5">
+                          <td className="px-4 py-3">
+                            <div className="flex flex-wrap items-center justify-end gap-1.5">
                               {!acc.is_primary_super_admin && (
                                 <>
                                   <button
@@ -1460,7 +1596,7 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
                                       addToast('Account status updated.', 'success');
                                       await loadAll();
                                     }}
-                                    className="border border-[#263D59] px-2 py-1 font-mono text-[10px] text-[#D5BD8B] uppercase"
+                                    className="portal-btn-primary px-2.5 py-1 text-[10px]"
                                   >
                                     {acc.is_active ? 'Suspend' : 'Reactivate'}
                                   </button>
@@ -1476,7 +1612,7 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
                                         addToast('Password setup link generated.', 'success');
                                       }
                                     }}
-                                    className="border border-[#263D59] px-2 py-1 font-mono text-[10px] text-[#E8E1D2] uppercase"
+                                    className="portal-btn-secondary px-2.5 py-1 text-[10px]"
                                   >
                                     Setup Link
                                   </button>
@@ -1489,7 +1625,7 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
                                       addToast('Account deleted.', 'info');
                                       await loadAll();
                                     }}
-                                    className="border border-[#DC2626]/60 px-2 py-1 font-mono text-[10px] text-[#FCA5A5] uppercase"
+                                    className="portal-btn-danger px-2.5 py-1 text-[10px]"
                                   >
                                     Delete
                                   </button>
@@ -1505,14 +1641,21 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
               </div>
 
               {violations.length > 0 && (
-                <div className="border border-[#DC2626]/40 bg-[#071426] p-4">
-                  <p className="mb-2 font-mono text-[10px] text-[#FCA5A5] uppercase">
-                    Security Portal Violation Audit ({violations.length})
-                  </p>
-                  <div className="max-h-40 space-y-1 overflow-y-auto font-mono text-[11px] text-[#E8E1D2]/70">
+                <div className="border border-[#DC2626]/45 bg-[#12070B]/80">
+                  <div className="border-b border-[#DC2626]/30 px-5 py-3">
+                    <p className="font-mono text-[10px] tracking-[0.18em] text-[#FCA5A5] uppercase">
+                      Security Portal Violation Audit ({violations.length})
+                    </p>
+                  </div>
+                  <div className="max-h-48 divide-y divide-[#DC2626]/20 overflow-y-auto font-mono text-[11px] text-[#E8E1D2]/75">
                     {violations.map((v) => (
-                      <div key={v.id}>
-                        {new Date(v.created_at).toLocaleString()} · {v.attempted_email} → {v.portal_attempted} ({v.reason})
+                      <div key={v.id} className="flex flex-wrap items-center justify-between gap-2 px-5 py-2.5">
+                        <span>
+                          {v.attempted_email} → {v.portal_attempted} ({v.reason})
+                        </span>
+                        <span className="tabular-nums text-[#E8E1D2]/45">
+                          {new Date(v.created_at).toLocaleString()}
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -1523,16 +1666,21 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
 
           {activeTab === 'test_mode' && isSuper && (
             <div className="space-y-6">
-              <div className="border border-[#D5BD8B]/45 bg-[#071426] p-6">
-                <h2 className="font-display text-3xl text-[#E8E1D2]">Super IT Test Mode Launcher</h2>
-                <p className="mt-2 font-sans text-xs text-[#E8E1D2]/75">
-                  Impersonate any Department Head with server-clamped privileges (`department_head` role only, Super Admin bypass disabled inside test session) and full audit trail.
+              <PortalPageHeader
+                kicker="Super IT Diagnostics"
+                title="Super IT Test Mode Launcher"
+                subtitle="Impersonate any Department Head with server-clamped privileges (department_head role only, Super Admin bypass disabled inside test session) and immutable audit logging."
+              />
+
+              <div className="portal-surface-editorial p-6">
+                <p className="font-mono text-[10px] tracking-[0.2em] text-[#D5BD8B] uppercase">
+                  Target Scoped Department Session
                 </p>
-                <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                <div className="mt-4 grid gap-3 sm:grid-cols-3">
                   <select
                     value={testDept}
                     onChange={(e) => setTestDept(e.target.value)}
-                    className="border border-[#263D59] bg-[#030914] px-3 py-2.5 text-sm text-[#E8E1D2]"
+                    className="portal-select py-2.5 text-sm"
                   >
                     {CORE_DEPARTMENTS.map((d) => (
                       <option key={`tm-${d.slug}`} value={d.slug}>
@@ -1544,7 +1692,7 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
                     <select
                       value={testSection}
                       onChange={(e) => setTestSection(e.target.value as GenderSection)}
-                      className="border border-[#263D59] bg-[#030914] px-3 py-2.5 text-sm text-[#E8E1D2]"
+                      className="portal-select py-2.5 text-sm"
                     >
                       <option value="male">Male Section</option>
                       <option value="female">Female Section</option>
@@ -1558,50 +1706,70 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
                         isSectionedDepartment(testDept) ? testSection : null
                       )
                     }
-                    className="border border-[#D5BD8B] bg-[#030914] px-5 py-2.5 font-mono text-xs text-[#D5BD8B] uppercase"
+                    className="portal-btn-primary py-2.5"
                   >
                     Enter Scoped Head Portal
                   </button>
                 </div>
               </div>
 
-              <div className="border border-[#263D59]/80 bg-[#071426] p-5">
-                <p className="mb-3 font-mono text-[10px] text-[#B89A62] uppercase">
-                  Test Mode Audit Log
-                </p>
-                <div className="space-y-1.5 font-mono text-xs text-[#E8E1D2]/75">
-                  {testLogs.map((l) => (
-                    <div key={l.id}>
-                      {new Date(l.created_at).toLocaleString()} · {l.actor_email} · {l.action} · {l.department_slug}{' '}
-                      {l.section ? `(${l.section})` : ''}
-                    </div>
-                  ))}
+              <div className="portal-surface">
+                <div className="border-b border-[#263D59]/55 px-5 py-3">
+                  <p className="font-mono text-[10px] tracking-[0.18em] text-[#B89A62] uppercase">
+                    Test Mode Audit Log ({testLogs.length})
+                  </p>
                 </div>
+                {testLogs.length === 0 ? (
+                  <p className="px-5 py-6 font-mono text-xs text-[#E8E1D2]/50">
+                    No test mode sessions recorded yet.
+                  </p>
+                ) : (
+                  <div className="divide-y divide-[#263D59]/45 font-mono text-xs text-[#E8E1D2]/80">
+                    {testLogs.map((l) => (
+                      <div key={l.id} className="flex flex-wrap items-center justify-between gap-2 px-5 py-3">
+                        <span>
+                          {l.actor_email} · {l.action} · {l.department_slug}{' '}
+                          {l.section ? `(${l.section})` : ''}
+                        </span>
+                        <span className="tabular-nums text-[#E8E1D2]/45">
+                          {new Date(l.created_at).toLocaleString()}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}
 
           {activeTab === 'spoof_audit' && isSuper && (
-            <div className="space-y-4">
-              <h1 className="font-display text-3xl text-[#E8E1D2]">
-                Decision Overrides &amp; Stealth Attribution Audit
-              </h1>
+            <div className="space-y-6">
+              <PortalPageHeader
+                kicker="Super Admin Governance Ledger"
+                title="Decision Overrides & Stealth Attribution Audit"
+                subtitle="Immutable history of formal administrative overrides and silent Stage 2 decision attributions."
+              />
+
               {spoofLogs.length === 0 ? (
-                <EmptyState title="No Overrides Recorded" description="Super Admin overrides and stealth spoof attributions are permanently audited here." />
+                <EmptyState
+                  title="No Overrides Recorded"
+                  description="Super Admin overrides and stealth spoof attributions are permanently audited here."
+                />
               ) : (
-                <div className="space-y-2">
+                <div className="portal-surface divide-y divide-[#263D59]/45">
                   {spoofLogs.map((log) => (
-                    <div key={log.id} className="border border-[#263D59]/80 bg-[#071426] p-4 text-xs">
+                    <div key={log.id} className="px-5 py-4 text-xs">
                       <div className="flex flex-wrap items-center justify-between gap-2">
-                        <span className="font-medium text-[#E8E1D2]">
-                          {log.applicant_name} ({log.application_code}) · {log.previous_status} → {log.new_status}
+                        <span className="font-medium text-[#F3EDE0]">
+                          {log.applicant_name} ({log.application_code}) · {log.previous_status} →{' '}
+                          {log.new_status}
                         </span>
                         <StatusLabel
                           status={log.is_spoof ? 'Stealth Spoof' : 'Formal Override'}
                           tone={log.is_spoof ? 'gold' : 'amber'}
                         />
                       </div>
-                      <p className="mt-1 font-mono text-[11px] text-[#E8E1D2]/70">
+                      <p className="mt-1.5 font-mono text-[11px] text-[#E8E1D2]/65">
                         Actor: {log.actor_name}
                         {log.spoofed_decision_by_name
                           ? ` · Attributed as: ${log.spoofed_decision_by_name}`
@@ -1622,45 +1790,74 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-[75] flex items-center justify-center bg-[#030914]/90 p-4"
+          className="fixed inset-0 z-[75] flex items-center justify-center bg-[#02060E]/88 p-4 backdrop-blur-sm"
           onClick={() => setSelectedApp(null)}
         >
           <div
-            className="max-h-[90vh] w-full max-w-2xl overflow-y-auto border border-[#B89A62]/60 bg-[#071426] p-6"
+            className="portal-modal-enter max-h-[90vh] w-full max-w-2xl overflow-y-auto border border-[#B89A62]/45 bg-[#061020] p-6 shadow-2xl shadow-black/60"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-start justify-between border-b border-[#263D59] pb-4">
+            <div className="flex items-start justify-between gap-4 border-b border-[#263D59]/70 pb-4">
               <div>
-                <p className="font-mono text-[11px] text-[#B89A62] uppercase">
+                <p className="font-mono text-[10px] tracking-[0.2em] text-[#B89A62] uppercase">
                   {selectedApp.application_code} · {selectedApp.application_type}
                 </p>
-                <h2 className="mt-1 font-display text-3xl text-[#E8E1D2]">
+                <h2 className="mt-1 font-display text-3xl font-medium text-[#F3EDE0]">
                   {selectedApp.applicant_name}
                 </h2>
               </div>
-              <StatusLabel status={selectedApp.status} />
+              <div className="flex items-center gap-3">
+                <StatusLabel status={selectedApp.status} />
+                <button
+                  type="button"
+                  onClick={() => setSelectedApp(null)}
+                  aria-label="Close application dossier"
+                  className="text-[#E8E1D2]/50 transition-colors hover:text-[#E8E1D2]"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
             </div>
 
-            <div className="mt-4 space-y-3 font-sans text-xs text-[#E8E1D2]/85">
-              <p>
-                <strong>Email:</strong> {selectedApp.email} · <strong>Phone:</strong> {selectedApp.phone || 'N/A'}
-              </p>
-              <p>
-                <strong>Institution:</strong> {selectedApp.institution || 'N/A'} ·{' '}
-                <strong>Division:</strong> {selectedApp.gender || 'N/A'}
-              </p>
+            <div className="mt-5 space-y-4 font-sans text-xs text-[#E8E1D2]/85">
+              <div className="grid divide-y divide-[#263D59]/45 border border-[#263D59]/60 bg-[#030914] sm:grid-cols-2 sm:divide-x sm:divide-y-0">
+                <div className="space-y-1.5 p-3.5">
+                  <p>
+                    <span className="font-mono text-[10px] text-[#B89A62] uppercase">Email: </span>
+                    {selectedApp.email}
+                  </p>
+                  <p>
+                    <span className="font-mono text-[10px] text-[#B89A62] uppercase">Phone: </span>
+                    {selectedApp.phone || 'N/A'}
+                  </p>
+                </div>
+                <div className="space-y-1.5 p-3.5">
+                  <p>
+                    <span className="font-mono text-[10px] text-[#B89A62] uppercase">Institution: </span>
+                    {selectedApp.institution || 'N/A'}
+                  </p>
+                  <p>
+                    <span className="font-mono text-[10px] text-[#B89A62] uppercase">Division: </span>
+                    {selectedApp.gender || 'N/A'}
+                  </p>
+                </div>
+              </div>
+
               {selectedApp.statement && (
-                <div className="border border-[#263D59] bg-[#030914] p-3">
-                  <p className="font-mono text-[10px] text-[#B89A62] uppercase">Statement</p>
-                  <p className="mt-1 leading-relaxed">{selectedApp.statement}</p>
+                <div className="border border-[#263D59]/60 bg-[#030914] p-4">
+                  <p className="font-mono text-[10px] tracking-[0.16em] text-[#B89A62] uppercase">
+                    Statement
+                  </p>
+                  <p className="mt-1.5 leading-relaxed text-[#E8E1D2]/85">{selectedApp.statement}</p>
                 </div>
               )}
+
               {selectedApp.medical_has_conditions !== undefined && (
-                <div className="border border-[#DC2626]/50 bg-[#1B0B10] p-3">
-                  <p className="font-mono text-[10px] text-[#FCA5A5] uppercase">
+                <div className="border border-[#DC2626]/45 bg-[#12070B] p-4">
+                  <p className="font-mono text-[10px] tracking-[0.16em] text-[#FCA5A5] uppercase">
                     Confidential Medical Disclosure (Admin Only)
                   </p>
-                  <p className="mt-1">
+                  <p className="mt-1.5 leading-relaxed text-[#E8E1D2]/90">
                     {selectedApp.medical_has_conditions
                       ? selectedApp.medical_details || 'Flagged without additional text.'
                       : 'No medical conditions disclosed.'}
@@ -1669,54 +1866,64 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
               )}
 
               {Array.isArray(selectedApp.attachments) && selectedApp.attachments.length > 0 && (
-                <div className="space-y-1.5">
-                  <p className="font-mono text-[10px] text-[#B89A62] uppercase">Attachments</p>
-                  {selectedApp.attachments.map((att) => (
-                    <button
-                      key={att.id}
-                      type="button"
-                      onClick={async () => {
-                        const r = await apiRequest<{ signedUrl: string }>(
-                          `/api/applications/${selectedApp.id}/sign-attachment`,
-                          { method: 'POST', body: { storage_key: att.storage_key } }
-                        );
-                        window.location.assign(r.signedUrl);
-                      }}
-                      className="mr-2 border border-[#263D59] bg-[#030914] px-3 py-1.5 font-mono text-[11px] text-[#D5BD8B]"
-                    >
-                      Download {att.file_name}
-                    </button>
-                  ))}
+                <div className="space-y-2">
+                  <p className="font-mono text-[10px] tracking-[0.16em] text-[#B89A62] uppercase">
+                    Attachments
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedApp.attachments.map((att) => (
+                      <button
+                        key={att.id}
+                        type="button"
+                        onClick={async () => {
+                          const r = await apiRequest<{ signedUrl: string }>(
+                            `/api/applications/${selectedApp.id}/sign-attachment`,
+                            { method: 'POST', body: { storage_key: att.storage_key } }
+                          );
+                          window.location.assign(r.signedUrl);
+                        }}
+                        className="portal-btn-secondary py-1.5 text-[11px]"
+                      >
+                        <Download className="h-3 w-3" />
+                        <span>Download {att.file_name}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
 
-              <textarea
-                rows={2}
-                placeholder="Stage 2 review notes..."
-                value={reviewNotes}
-                onChange={(e) => setReviewNotes(e.target.value)}
-                className="w-full border border-[#263D59] bg-[#030914] px-3 py-2 text-xs text-[#E8E1D2]"
-              />
+              <div>
+                <label className="mb-1.5 block font-mono text-[10px] tracking-[0.16em] text-[#B89A62] uppercase">
+                  Stage 2 Review Notes
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="Optional review notes for record..."
+                  value={reviewNotes}
+                  onChange={(e) => setReviewNotes(e.target.value)}
+                  className="portal-textarea"
+                />
+              </div>
 
-              <div className="flex flex-wrap gap-2 border-t border-[#263D59] pt-4">
+              <div className="flex flex-wrap gap-2 border-t border-[#263D59]/60 pt-4">
                 <button
                   type="button"
                   onClick={() => void handleDecision(selectedApp, 'accepted')}
-                  className="border border-[#16A34A] bg-[#081A12] px-4 py-2 font-mono text-xs text-[#86EFAC] uppercase"
+                  className="inline-flex items-center border border-[#16A34A]/70 bg-[#05130D] px-4 py-2 font-mono text-[11px] tracking-[0.13em] text-[#86EFAC] uppercase whitespace-nowrap shrink-0 transition-colors hover:border-[#86EFAC]"
                 >
                   Accept
                 </button>
                 <button
                   type="button"
                   onClick={() => void handleDecision(selectedApp, 'waitlisted')}
-                  className="border border-[#D97706] bg-[#1B1409] px-4 py-2 font-mono text-xs text-[#FCD34D] uppercase"
+                  className="inline-flex items-center border border-[#D97706]/70 bg-[#161006] px-4 py-2 font-mono text-[11px] tracking-[0.13em] text-[#FCD34D] uppercase whitespace-nowrap shrink-0 transition-colors hover:border-[#FCD34D]"
                 >
                   Waitlist
                 </button>
                 <button
                   type="button"
                   onClick={() => void handleDecision(selectedApp, 'rejected')}
-                  className="border border-[#DC2626] bg-[#1B0B10] px-4 py-2 font-mono text-xs text-[#FCA5A5] uppercase"
+                  className="portal-btn-danger"
                 >
                   Reject
                 </button>
@@ -1725,14 +1932,14 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
                     <button
                       type="button"
                       onClick={() => void sendDecisionEmail(selectedApp, 'resend')}
-                      className="border border-[#B89A62] bg-[#030914] px-3 py-2 font-mono text-xs text-[#D5BD8B] uppercase"
+                      className="portal-btn-primary"
                     >
                       Send via Resend
                     </button>
                     <button
                       type="button"
                       onClick={() => void sendDecisionEmail(selectedApp, 'gmail_oauth')}
-                      className="border border-[#263D59] bg-[#030914] px-3 py-2 font-mono text-xs text-[#E8E1D2] uppercase"
+                      className="portal-btn-secondary"
                     >
                       Send via Gmail
                     </button>
@@ -1742,7 +1949,7 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
                   <button
                     type="button"
                     onClick={() => void issueSingleInvite(selectedApp.id)}
-                    className="border border-[#D5BD8B] bg-[#030914] px-3 py-2 font-mono text-xs text-[#D5BD8B] uppercase"
+                    className="portal-btn-primary"
                   >
                     Create Signup Link
                   </button>
@@ -1750,7 +1957,7 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
               </div>
 
               {issuedInviteUrls[selectedApp.id] && (
-                <p className="break-all border border-[#16A34A]/60 bg-[#081A12] p-2 font-mono text-[11px] text-[#86EFAC]">
+                <p className="break-all border border-[#16A34A]/55 bg-[#05130D] p-3 font-mono text-[11px] text-[#86EFAC]">
                   {issuedInviteUrls[selectedApp.id]}
                 </p>
               )}
@@ -1761,13 +1968,29 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
 
       {/* Override Modal */}
       {overrideTarget && (
-        <div role="dialog" aria-modal="true" className="fixed inset-0 z-[80] flex items-center justify-center bg-[#030914]/90 p-4">
-          <form onSubmit={handleOverride} className="w-full max-w-md space-y-4 border border-[#D97706] bg-[#071426] p-6">
-            <h3 className="font-display text-2xl text-[#FCD34D]">Super Admin Decision Override</h3>
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-[#02060E]/88 p-4 backdrop-blur-sm"
+          onClick={() => setOverrideTarget(null)}
+        >
+          <form
+            onSubmit={handleOverride}
+            onClick={(e) => e.stopPropagation()}
+            className="portal-modal-enter w-full max-w-md space-y-4 border border-[#D97706]/65 bg-[#061020] p-6 shadow-2xl shadow-black/60"
+          >
+            <div>
+              <p className="font-mono text-[10px] tracking-[0.2em] text-[#FCD34D] uppercase">
+                Audited Status Correction
+              </p>
+              <h3 className="mt-1 font-display text-2xl font-medium text-[#F3EDE0]">
+                Super Admin Decision Override
+              </h3>
+            </div>
             <select
               value={overrideStatus}
               onChange={(e) => setOverrideStatus(e.target.value as ApplicationStatus)}
-              className="w-full border border-[#263D59] bg-[#030914] px-3 py-2 text-xs text-[#E8E1D2]"
+              className="portal-select"
             >
               <option value="accepted">accepted</option>
               <option value="rejected">rejected</option>
@@ -1780,13 +2003,20 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
               placeholder="Mandatory override rationale (min 8 chars) *"
               value={overrideReason}
               onChange={(e) => setOverrideReason(e.target.value)}
-              className="w-full border border-[#263D59] bg-[#030914] px-3 py-2 text-xs text-[#E8E1D2]"
+              className="portal-textarea"
             />
-            <div className="flex justify-end gap-2">
-              <button type="button" onClick={() => setOverrideTarget(null)} className="px-3 py-1.5 font-mono text-xs text-[#E8E1D2]/70 uppercase">
+            <div className="flex justify-end gap-2.5 border-t border-[#263D59]/60 pt-4">
+              <button
+                type="button"
+                onClick={() => setOverrideTarget(null)}
+                className="portal-btn-secondary"
+              >
                 Cancel
               </button>
-              <button type="submit" className="border border-[#D97706] bg-[#1B1409] px-4 py-1.5 font-mono text-xs text-[#FCD34D] uppercase">
+              <button
+                type="submit"
+                className="inline-flex items-center border border-[#D97706]/70 bg-[#161006] px-4 py-2 font-mono text-[11px] tracking-[0.13em] text-[#FCD34D] uppercase whitespace-nowrap shrink-0 transition-colors hover:border-[#FCD34D]"
+              >
                 Confirm Override
               </button>
             </div>
@@ -1796,16 +2026,32 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
 
       {/* Stealth Spoof Modal */}
       {spoofTarget && (
-        <div role="dialog" aria-modal="true" className="fixed inset-0 z-[80] flex items-center justify-center bg-[#030914]/90 p-4">
-          <form onSubmit={handleSpoof} className="w-full max-w-md space-y-4 border border-[#B89A62] bg-[#071426] p-6">
-            <h3 className="font-display text-2xl text-[#D5BD8B]">Stealth Decision Attribution</h3>
-            <p className="font-sans text-xs text-[#E8E1D2]/70">
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-[#02060E]/88 p-4 backdrop-blur-sm"
+          onClick={() => setSpoofTarget(null)}
+        >
+          <form
+            onSubmit={handleSpoof}
+            onClick={(e) => e.stopPropagation()}
+            className="portal-modal-enter w-full max-w-md space-y-4 border border-[#B89A62]/55 bg-[#061020] p-6 shadow-2xl shadow-black/60"
+          >
+            <div>
+              <p className="font-mono text-[10px] tracking-[0.2em] text-[#B89A62] uppercase">
+                Silent Governance Attribution
+              </p>
+              <h3 className="mt-1 font-display text-2xl font-medium text-[#F3EDE0]">
+                Stealth Decision Attribution
+              </h3>
+            </div>
+            <p className="font-sans text-xs leading-relaxed text-[#E8E1D2]/70">
               Updates decision attribution silently without sending any email notification.
             </p>
             <select
               value={spoofStatus}
               onChange={(e) => setSpoofStatus(e.target.value as ApplicationStatus)}
-              className="w-full border border-[#263D59] bg-[#030914] px-3 py-2 text-xs text-[#E8E1D2]"
+              className="portal-select"
             >
               <option value="accepted">accepted</option>
               <option value="rejected">rejected</option>
@@ -1817,7 +2063,7 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
                 required
                 value={spoofAdminId}
                 onChange={(e) => setSpoofAdminId(e.target.value)}
-                className="w-full border border-[#263D59] bg-[#030914] px-3 py-2 text-xs text-[#E8E1D2]"
+                className="portal-select"
               >
                 <option value="">Select Attributed Admin *</option>
                 {spoofAdmins.map((adm) => (
@@ -1831,13 +2077,17 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
               placeholder="Internal notes (optional)"
               value={spoofNotes}
               onChange={(e) => setSpoofNotes(e.target.value)}
-              className="w-full border border-[#263D59] bg-[#030914] px-3 py-2 text-xs text-[#E8E1D2]"
+              className="portal-textarea"
             />
-            <div className="flex justify-end gap-2">
-              <button type="button" onClick={() => setSpoofTarget(null)} className="px-3 py-1.5 font-mono text-xs text-[#E8E1D2]/70 uppercase">
+            <div className="flex justify-end gap-2.5 border-t border-[#263D59]/60 pt-4">
+              <button
+                type="button"
+                onClick={() => setSpoofTarget(null)}
+                className="portal-btn-secondary"
+              >
                 Cancel
               </button>
-              <button type="submit" className="border border-[#B89A62] bg-[#030914] px-4 py-1.5 font-mono text-xs text-[#D5BD8B] uppercase">
+              <button type="submit" className="portal-btn-primary">
                 Apply Attribution
               </button>
             </div>
