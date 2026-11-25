@@ -72,12 +72,12 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
   const groups = Array.from(new Set(navItems.map((n) => n.group || 'Navigation')));
 
   const sidebarContent = (
-    <div className="flex h-full flex-col bg-[#040B18] text-[#E8E1D2]">
-      <div className="border-b border-[#263D59]/70 px-5 py-5">
+    <div className="portal-sidebar-inner flex h-full flex-col text-[#E8E1D2]">
+      <div className="portal-brand-block border-b border-[#263D59]/70 px-5 py-6">
         <button
           type="button"
           onClick={() => navigate('/')}
-          className="text-left focus:outline-none"
+          className="portal-wordmark text-left focus:outline-none"
         >
           <p className="font-display text-xl font-semibold tracking-[0.18em] text-[#E8E1D2]">
             LISMUN
@@ -108,9 +108,9 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
                           onSelectTab(item.id);
                           setMobileDrawerOpen(false);
                         }}
-                        className={`flex w-full items-center gap-2.5 border-l-2 px-3 py-2 text-left font-sans text-xs font-medium tracking-wide transition-colors ${
+                        className={`portal-nav-item flex w-full items-center gap-3 border-l-2 px-3 py-2.5 text-left font-sans text-xs font-medium tracking-wide transition-colors ${
                           active
-                            ? 'border-[#D5BD8B] bg-[#071426] text-[#D5BD8B]'
+                            ? 'portal-nav-item-active border-[#D5BD8B] bg-[#071426] text-[#D5BD8B]'
                             : 'border-transparent text-[#E8E1D2]/72 hover:bg-[#071426]/60 hover:text-[#E8E1D2]'
                         }`}
                       >
@@ -150,9 +150,9 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
   );
 
   return (
-    <div className="min-h-screen bg-[#030914] text-[#E8E1D2]">
+    <div className="portal-app-shell min-h-screen text-[#E8E1D2]">
       {/* Fixed Desktop Sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[260px] border-r border-[#263D59]/70 lg:block">
+      <aside className="portal-sidebar fixed inset-y-0 left-0 z-30 hidden w-[270px] border-r border-[#263D59]/70 lg:block">
         {sidebarContent}
       </aside>
 
@@ -172,7 +172,7 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
       )}
 
       {/* Main Content Area */}
-      <div className="lg:pl-[260px]">
+      <div className="lg:pl-[270px]">
         {testSession && (
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#D5BD8B]/60 bg-[#1B1406] px-4 py-2.5 text-xs">
             <div className="flex items-center gap-2 font-mono text-[11px] text-[#D5BD8B]">
@@ -195,7 +195,7 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
           </div>
         )}
 
-        <header className="sticky top-0 z-20 flex h-14 items-center justify-between gap-4 border-b border-[#263D59]/70 bg-[#030914]/96 px-4 md:px-6">
+        <header className="portal-topbar sticky top-0 z-20 flex h-[68px] items-center justify-between gap-4 border-b border-[#263D59]/70 px-4 md:px-7">
           <div className="flex min-w-0 items-center gap-3">
             <button
               type="button"
@@ -225,7 +225,7 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
           </div>
         </header>
 
-        <main className="mx-auto max-w-[1400px] p-4 md:p-6">{children}</main>
+        <main className="portal-main-stage mx-auto min-h-[calc(100vh-68px)] max-w-[1500px] p-4 md:p-7 xl:p-9"><div className="relative z-[1]">{children}</div></main>
       </div>
 
       {/* My QR Modal */}
