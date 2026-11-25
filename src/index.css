@@ -1,0 +1,222 @@
+@import "tailwindcss";
+
+@theme {
+  --color-atlas-void: #030914;
+  --color-atlas-navy: #071426;
+  --color-atlas-slate: #0D1E36;
+  --color-atlas-blue: #263D59;
+  --color-atlas-gold: #B89A62;
+  --color-atlas-champagne: #D5BD8B;
+  --color-atlas-ivory: #E8E1D2;
+  --color-atlas-crimson: #7F1D26;
+
+  --font-serif: "Cormorant Garamond", Georgia, "Times New Roman", serif;
+  --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  html {
+    background-color: #030914;
+    color: #E8E1D2;
+    font-family: var(--font-sans);
+  }
+
+  body {
+    background-color: #030914;
+    color: #E8E1D2;
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3, h4, .font-display {
+    font-family: var(--font-serif);
+    letter-spacing: 0.01em;
+  }
+
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Subtle engraved atlas parchment grain & coordinate grid overlay */
+.atlas-engraving-grid {
+  background-image:
+    linear-gradient(to right, rgba(38, 61, 89, 0.14) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(38, 61, 89, 0.14) 1px, transparent 1px);
+  background-size: 96px 96px;
+}
+
+.atlas-fine-hairline {
+  border-color: rgba(184, 154, 98, 0.22);
+}
+
+.atlas-blue-hairline {
+  border-color: rgba(38, 61, 89, 0.55);
+}
+
+/* Custom gold hairline draw button micro-interaction */
+.atlas-btn-gold {
+  position: relative;
+  border: 1px solid rgba(184, 154, 98, 0.38);
+  transition: border-color 200ms cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 200ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.atlas-btn-gold::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border: 1px solid #D5BD8B;
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 280ms cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+}
+
+.atlas-btn-gold:hover::before,
+.atlas-btn-gold:focus-visible::before {
+  transform: scaleX(1);
+}
+
+.atlas-btn-gold:hover .atlas-btn-arrow,
+.atlas-btn-gold:focus-visible .atlas-btn-arrow {
+  transform: translateX(4px);
+}
+
+.atlas-btn-arrow {
+  transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Clipping reveal utilities */
+.clip-reveal-mask {
+  clip-path: inset(0 0 0 0);
+}
+
+/* Diplomatic Book Physical Surfaces (lightweight GPU-friendly gradients) */
+.book-leather-surface {
+  background-color: #071426;
+  background-image:
+    radial-gradient(circle at 22% 18%, rgba(213, 189, 139, 0.07), transparent 55%),
+    radial-gradient(circle at 80% 82%, rgba(3, 9, 20, 0.65), transparent 62%);
+}
+
+.book-ivory-paper {
+  background-color: #f2eadb;
+  background-image:
+    radial-gradient(circle at 30% 25%, rgba(255, 252, 245, 0.52), transparent 65%),
+    radial-gradient(circle at 75% 80%, rgba(196, 179, 148, 0.2), transparent 60%);
+  color: #161f2e;
+}
+
+.book-preserve-3d {
+  transform-style: preserve-3d;
+}
+
+.book-backface-hidden {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.book-volume-glide {
+  transition: transform 480ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 360ms ease-out;
+  will-change: transform, opacity;
+}
+
+.book-leaf-turn {
+  transition: transform 480ms cubic-bezier(0.22, 1, 0.36, 1),
+    z-index 0ms linear 220ms;
+  will-change: transform;
+}
+
+/* Lightweight GPU-Composited Ambient Atlas Motion */
+@keyframes atlasOrbitSlow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes atlasOrbitReverse {
+  from {
+    transform: rotate(360deg);
+  }
+  to {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes atlasRouteFlow {
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: -48;
+  }
+}
+
+@keyframes atlasBeaconPulse {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.9;
+  }
+  70% {
+    transform: scale(1.65);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.65);
+    opacity: 0;
+  }
+}
+
+.atlas-ambient-orbit {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: atlasOrbitSlow 72s linear infinite;
+}
+
+.atlas-ambient-orbit-reverse {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: atlasOrbitReverse 96s linear infinite;
+}
+
+.atlas-ambient-route {
+  animation: atlasRouteFlow 2.6s linear infinite;
+}
+
+.atlas-ambient-beacon {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: atlasBeaconPulse 2.8s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
+[data-ambient-active='false'] .atlas-ambient-orbit,
+[data-ambient-active='false'] .atlas-ambient-orbit-reverse,
+[data-ambient-active='false'] .atlas-ambient-route,
+[data-ambient-active='false'] .atlas-ambient-beacon {
+  animation-play-state: paused;
+}
+
+/* Respect reduced motion globally */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

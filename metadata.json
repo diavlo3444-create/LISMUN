@@ -1,0 +1,8 @@
+{
+  "name": "BRITUS Model United Nations — The Living Atlas",
+  "description": "An interactive cinematic diplomatic atlas for BRITUS Model United Nations, weaving antique cartography, golden geodesic routes, and classical institutional typography into a continuous living map.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
