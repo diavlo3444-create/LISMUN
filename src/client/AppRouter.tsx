@@ -8,6 +8,9 @@ import {
 } from './components/UiPrimitives';
 import App from '../App';
 
+const SuperAdminSetupPage = lazy(() =>
+  import('../portals/SuperAdminSetupPage').then((m) => ({ default: m.SuperAdminSetupPage }))
+);
 const PublicApplicationPage = lazy(() =>
   import('./components/PublicApplicationPage').then((m) => ({
     default: m.PublicApplicationPage,
@@ -164,7 +167,9 @@ const RouteRenderer: React.FC = () => {
           </div>
         }
       >
-        {pathname === '/apply' ? (
+        {pathname === '/setup' ? (
+          <SuperAdminSetupPage />
+        ) : pathname === '/apply' ? (
           <PublicApplicationPage />
         ) : pathname === '/portal' ? (
           <PortalDirectoryPage />
