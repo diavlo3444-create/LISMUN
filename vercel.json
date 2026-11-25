@@ -4,5 +4,11 @@
     "api/[...path].ts": {
       "includeFiles": "src/server/db/migrations/**/*.sql"
     }
-  }
+  },
+  "rewrites": [
+    {
+      "source": "/setup",
+      "destination": "/"
+    }
+  ]
 }
