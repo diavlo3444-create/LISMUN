@@ -41,7 +41,6 @@ import {
 import { EmailsDashboardView } from './EmailsDashboardView';
 import {
   CommitteesManagerView,
-  DepartmentWorkspaceView,
   InquiriesManagerView,
   NotificationsCenterView,
   SponsorsManagerView,
@@ -346,7 +345,6 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
     { id: 'notifications', label: 'Notifications Center', group: 'Communications', icon: Bell },
     { id: 'scanner', label: 'Live QR Scanner', group: 'Attendance & QR', icon: QrCode },
     { id: 'qr_registry', label: 'QR Attendance Registry', group: 'Attendance & QR', icon: Activity },
-    { id: 'ops_workspace', label: 'Dept Workspace', group: 'Operations', icon: Building2 },
     { id: 'cms_editor', label: 'Website & Form CMS', group: 'Content & CMS', icon: Globe },
     { id: 'committees', label: 'Committees & Windows', group: 'Content & CMS', icon: Building2 },
     { id: 'sponsors', label: 'Sponsors', group: 'Content & CMS', icon: Building2 },
@@ -1075,7 +1073,6 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
             </div>
           )}
 
-          {activeTab === 'ops_workspace' && <DepartmentWorkspaceView />}
           {activeTab === 'committees' && <CommitteesManagerView />}
           {activeTab === 'sponsors' && <SponsorsManagerView />}
 
