@@ -118,7 +118,7 @@ export async function requireDbMiddleware(
 
 export async function attachAuthOptional(
   req: AuthenticatedRequest,
-  _res: Response,
+  res: Response,
   next: NextFunction
 ): Promise<void> {
   try {
@@ -180,7 +180,7 @@ export async function attachAuthOptional(
     req.departments = departments;
     req.sessionTokenHash = tokenHash;
 
-    // Optional Super IT Test Mode header (ONLY honored if real authenticated user is super_admin)
+    // Test previews are only honored while the real authenticated actor is an active Super Admin.
     const testToken = req.headers['x-test-session'];
     if (profile.role === 'super_admin' && typeof testToken === 'string' && testToken.trim()) {
       const payload = verifyHmacPayload<{
@@ -190,6 +190,7 @@ export async function attachAuthOptional(
         actorEmail: string;
         departmentSlug: string;
         section: GenderSection | null;
+        targetUserId?: string | null;
       }>(testToken.trim());
 
       if (
@@ -197,34 +198,75 @@ export async function attachAuthOptional(
         payload.kind === 'super_it_test_session' &&
         payload.actorUserId === profile.user_id
       ) {
-        const targetDept = departments.find((d) => d.slug === payload.departmentSlug);
-        req.testSession = {
-          active: true,
-          sessionId: payload.sessionId,
-          departmentSlug: payload.departmentSlug,
-          section: payload.section ?? null,
-          impersonatedName: `${targetDept?.name ?? payload.departmentSlug} Head (Test Mode)`,
-          actorEmail: payload.actorEmail,
-          expiresAt: new Date(payload.exp * 1000).toISOString(),
-        };
-        req.effectiveActor = {
-          ...profile,
-          role: 'department_head',
-          department_id: targetDept?.id ?? null,
-          department_slug: payload.departmentSlug,
-          department_name: targetDept?.name ?? payload.departmentSlug,
-          division: payload.section ?? null,
-          gender: payload.section ?? null,
-          title: `${targetDept?.name ?? payload.departmentSlug} Head (Test Mode)`,
-          eb_rank: 'head',
-          eb_permissions: {
-            manage_department: true,
-            manage_committees: payload.departmentSlug === 'dcc',
-            scan_qr: payload.departmentSlug === 'security',
-          },
-          permissions: {},
-          is_primary_super_admin: false,
-        };
+        if (payload.targetUserId) {
+          const target = await resolveProfileByUserId(payload.targetUserId);
+          const targetSection = target?.gender ?? target?.division ?? null;
+          const validTarget =
+            Boolean(target) &&
+            target!.is_active === true &&
+            (target!.role === 'department_head' || target!.role === 'executive_board') &&
+            Boolean(target!.department_slug) &&
+            target!.department_slug === payload.departmentSlug &&
+            targetSection === (payload.section ?? null);
+
+          // Never fall back to the Super Admin actor if a selected account becomes invalid.
+          if (!validTarget || !target) {
+            res.status(401).json({
+              error: 'TEST_SESSION_TARGET_INVALID',
+              message: 'The account being previewed is no longer active or no longer eligible for Sign In As.',
+            });
+            return;
+          }
+
+          req.testSession = {
+            active: true,
+            sessionId: payload.sessionId,
+            targetUserId: target.user_id,
+            departmentSlug: payload.departmentSlug,
+            section: payload.section ?? null,
+            impersonatedName: target.full_name,
+            actorEmail: payload.actorEmail,
+            expiresAt: new Date(payload.exp * 1000).toISOString(),
+          };
+          req.effectiveActor = target;
+        } else {
+          const targetDept = departments.find((d) => d.slug === payload.departmentSlug);
+          if (!targetDept) {
+            res.status(401).json({
+              error: 'TEST_SESSION_DEPARTMENT_INVALID',
+              message: 'The department selected for this preview no longer exists.',
+            });
+            return;
+          }
+          req.testSession = {
+            active: true,
+            sessionId: payload.sessionId,
+            targetUserId: null,
+            departmentSlug: payload.departmentSlug,
+            section: payload.section ?? null,
+            impersonatedName: targetDept.name + ' Head (Test Mode)',
+            actorEmail: payload.actorEmail,
+            expiresAt: new Date(payload.exp * 1000).toISOString(),
+          };
+          req.effectiveActor = {
+            ...profile,
+            role: 'department_head',
+            department_id: targetDept.id,
+            department_slug: payload.departmentSlug,
+            department_name: targetDept.name,
+            division: payload.section ?? null,
+            gender: payload.section ?? null,
+            title: targetDept.name + ' Head (Test Mode)',
+            eb_rank: 'head',
+            eb_permissions: {
+              manage_department: true,
+              manage_committees: payload.departmentSlug === 'dcc',
+              scan_qr: payload.departmentSlug === 'security',
+            },
+            permissions: {},
+            is_primary_super_admin: false,
+          };
+        }
       }
     }
 
@@ -258,8 +300,18 @@ export function requireSuperAdmin(
   res: Response,
   next: NextFunction
 ): void {
-  if (!req.authUser || req.authUser.role !== 'super_admin' || !req.authUser.is_active) {
-    res.status(403).json({ error: 'FORBIDDEN', message: 'Super Admin authority required.' });
+  if (
+    !req.authUser ||
+    req.authUser.role !== 'super_admin' ||
+    !req.authUser.is_active ||
+    req.testSession?.active
+  ) {
+    res.status(403).json({
+      error: 'FORBIDDEN',
+      message: req.testSession?.active
+        ? 'Exit Sign In As preview mode before using Super Admin controls.'
+        : 'Super Admin authority required.',
+    });
     return;
   }
   next();
