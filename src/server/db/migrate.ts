@@ -59,6 +59,15 @@ export const DEFAULT_SETTINGS: Record<string, unknown> = {
   cms_venue_name: 'Leadership International School Campus',
 };
 
+export function getOrderedMigrationFiles(): string[] {
+  const migrationsDir = path.resolve(__dirname, 'migrations');
+  return fs
+    .readdirSync(migrationsDir)
+    .filter((file) => file.endsWith('.sql'))
+    .sort((a, b) => a.localeCompare(b))
+    .map((file) => path.join(migrationsDir, file));
+}
+
 export async function runMigrationsAndSeed(): Promise<boolean> {
   if (!isDatabaseConfigured()) {
     return false;
@@ -68,20 +77,23 @@ export async function runMigrationsAndSeed(): Promise<boolean> {
   }
 
   migrationPromise = (async () => {
-    const migrationPath = path.resolve(
-      __dirname,
-      'migrations/001_lismun_core_schema.sql'
-    );
-    const sql = fs.readFileSync(migrationPath, 'utf8');
+    const migrationFiles = getOrderedMigrationFiles();
     const pool = getPool();
-    await pool.query(sql);
+    for (const filePath of migrationFiles) {
+      const sql = fs.readFileSync(filePath, 'utf8');
+      await pool.query(sql);
+    }
 
     await withTransaction(async (client) => {
-      await client.query(
-        `INSERT INTO schema_migrations (version)
-         VALUES ('001_lismun_core_schema')
-         ON CONFLICT (version) DO NOTHING`
-      );
+      for (const filePath of migrationFiles) {
+        const version = path.basename(filePath, '.sql');
+        await client.query(
+          `INSERT INTO schema_migrations (version)
+           VALUES ($1)
+           ON CONFLICT (version) DO NOTHING`,
+          [version]
+        );
+      }
 
       for (const dept of CORE_DEPARTMENTS) {
         await client.query(

@@ -5,7 +5,6 @@ import {
   getPrimarySuperAdminEmail,
   hashOpaqueToken,
   hashPassword,
-  signHmacPayload,
   verifyHmacPayload,
 } from '../services/crypto.ts';
 import { ensureQrPassForUser } from '../services/qrService.ts';
@@ -868,7 +867,14 @@ superAdminRouter.post(
         return;
       }
 
-      if (isSectionedDepartment(departmentSlug) && section !== 'male' && section !== 'female') {
+      const requireSection =
+        !requestedUserId || targetRole === 'department_head';
+      if (
+        requireSection &&
+        isSectionedDepartment(departmentSlug) &&
+        section !== 'male' &&
+        section !== 'female'
+      ) {
         res.status(400).json({
           error: 'SECTION_REQUIRED',
           message: 'Select the male or female section for ' + departmentSlug + '.',
@@ -877,24 +883,14 @@ superAdminRouter.post(
       }
 
       const ticketId = generateOpaqueToken(12);
-      const launchTicket = signHmacPayload(
-        {
-          kind: 'super_it_launch_ticket',
-          ticketId,
-          actorUserId: req.authUser!.user_id,
-          actorEmail: req.authUser!.email,
-          departmentSlug,
-          section,
-          targetUserId,
-        },
-        180
-      );
+      const launchTicket = generateOpaqueToken(32);
+      const ticketHash = hashOpaqueToken(launchTicket);
 
       await pool.query(
         `INSERT INTO test_mode_launch_tickets
-          (ticket_id, actor_user_id, target_user_id, department_slug, section, expires_at)
-         VALUES ($1, $2, $3, $4, $5, now() + interval '3 minutes')`,
-        [ticketId, req.authUser!.user_id, targetUserId, departmentSlug, section]
+          (ticket_id, ticket_hash, actor_user_id, target_user_id, department_slug, section, expires_at)
+         VALUES ($1, $2, $3, $4, $5, $6, now() + interval '3 minutes')`,
+        [ticketId, ticketHash, req.authUser!.user_id, targetUserId, departmentSlug, section]
       );
 
       await pool.query(
@@ -909,9 +905,10 @@ superAdminRouter.post(
         ]
       );
 
+      const targetPath = targetRole === 'executive_board' ? '/eb' : '/head';
       res.json({
         launchTicket,
-        launchUrl: '/head?test_ticket=' + encodeURIComponent(launchTicket),
+        launchUrl: `${targetPath}?test_ticket=${encodeURIComponent(launchTicket)}`,
         targetUserId,
         targetName,
         targetRole,
@@ -928,28 +925,17 @@ superAdminRouter.post(
   async (req: AuthenticatedRequest, res, next) => {
     try {
       const launchTicket = String(req.body?.launchTicket ?? '').trim();
-      const payload = verifyHmacPayload<{
-        kind: string;
-        ticketId: string;
-        actorUserId: string;
-        actorEmail: string;
-        departmentSlug: string;
-        section: GenderSection | null;
-        targetUserId?: string | null;
-      }>(launchTicket);
-
-      if (
-        !payload ||
-        payload.kind !== 'super_it_launch_ticket' ||
-        payload.actorUserId !== req.authUser!.user_id
-      ) {
+      if (!launchTicket) {
         res.status(401).json({ error: 'INVALID_TICKET', message: 'Invalid or expired test ticket.' });
         return;
       }
 
       const pool = getPool();
-      const consumed = (
+      const ticketHash = hashOpaqueToken(launchTicket);
+
+      let consumed = (
         await pool.query<{
+          ticket_id: string;
           actor_user_id: string;
           target_user_id: string | null;
           department_slug: string;
@@ -957,21 +943,83 @@ superAdminRouter.post(
         }>(
           `UPDATE test_mode_launch_tickets
            SET consumed_at = now()
-           WHERE ticket_id = $1
+           WHERE ticket_hash = $1
              AND actor_user_id = $2
              AND consumed_at IS NULL
              AND expires_at > now()
-           RETURNING actor_user_id, target_user_id, department_slug, section`,
-          [payload.ticketId, req.authUser!.user_id]
+           RETURNING ticket_id, actor_user_id, target_user_id, department_slug, section`,
+          [ticketHash, req.authUser!.user_id]
         )
       ).rows[0];
 
-      if (
-        !consumed ||
-        consumed.target_user_id !== (payload.targetUserId ?? null) ||
-        consumed.department_slug !== payload.departmentSlug ||
-        consumed.section !== (payload.section ?? null)
-      ) {
+      // Backward compatibility for any signed HMAC launch ticket already in flight
+      let legacyPayload: {
+        kind: string;
+        ticketId: string;
+        actorUserId: string;
+        departmentSlug: string;
+        section: GenderSection | null;
+        targetUserId?: string | null;
+      } | null = null;
+      if (!consumed && launchTicket.includes('.')) {
+        legacyPayload = verifyHmacPayload(launchTicket);
+        if (
+          legacyPayload &&
+          legacyPayload.kind === 'super_it_launch_ticket' &&
+          legacyPayload.actorUserId === req.authUser!.user_id
+        ) {
+          const candidate = (
+            await pool.query<{
+              ticket_id: string;
+              actor_user_id: string;
+              target_user_id: string | null;
+              department_slug: string;
+              section: GenderSection | null;
+            }>(
+              `UPDATE test_mode_launch_tickets
+               SET consumed_at = now()
+               WHERE ticket_id = $1
+                 AND actor_user_id = $2
+                 AND consumed_at IS NULL
+                 AND expires_at > now()
+               RETURNING ticket_id, actor_user_id, target_user_id, department_slug, section`,
+              [legacyPayload.ticketId, req.authUser!.user_id]
+            )
+          ).rows[0];
+          if (
+            candidate &&
+            candidate.target_user_id === (legacyPayload.targetUserId ?? null) &&
+            candidate.department_slug === legacyPayload.departmentSlug &&
+            candidate.section === (legacyPayload.section ?? null)
+          ) {
+            consumed = candidate;
+          }
+        }
+      }
+
+      if (!consumed) {
+        const lookupId = legacyPayload?.ticketId ?? null;
+        const inspect = (
+          await pool.query<{
+            actor_user_id: string;
+            consumed_at: string | null;
+            expires_at: string;
+          }>(
+            `SELECT actor_user_id, consumed_at, expires_at
+             FROM test_mode_launch_tickets
+             WHERE ticket_hash = $1 OR ($2::text IS NOT NULL AND ticket_id = $2)
+             LIMIT 1`,
+            [ticketHash, lookupId]
+          )
+        ).rows[0];
+
+        if (!inspect || inspect.actor_user_id !== req.authUser!.user_id) {
+          res.status(401).json({
+            error: 'INVALID_TICKET',
+            message: 'Invalid or unauthorized preview ticket.',
+          });
+          return;
+        }
         res.status(409).json({
           error: 'TICKET_ALREADY_USED_OR_EXPIRED',
           message: 'This preview link has already been used or expired. Launch Sign In As again.',
@@ -979,6 +1027,7 @@ superAdminRouter.post(
         return;
       }
 
+      let targetRole: UserRole = 'department_head';
       if (consumed.target_user_id) {
         const targetRes = await pool.query<{
           role: UserRole;
@@ -1022,20 +1071,26 @@ superAdminRouter.post(
           });
           return;
         }
+        targetRole = target.role;
       }
 
       const sessionId = generateOpaqueToken(12);
-      const sessionToken = signHmacPayload(
-        {
-          kind: 'super_it_test_session',
+      const sessionToken = generateOpaqueToken(32);
+      const sessionTokenHash = hashOpaqueToken(sessionToken);
+
+      await pool.query(
+        `INSERT INTO test_mode_sessions
+          (session_id, token_hash, actor_user_id, actor_email, target_user_id, department_slug, section, expires_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, now() + interval '2 hours')`,
+        [
           sessionId,
-          actorUserId: req.authUser!.user_id,
-          actorEmail: req.authUser!.email,
-          departmentSlug: consumed.department_slug,
-          section: consumed.section,
-          targetUserId: consumed.target_user_id,
-        },
-        7200
+          sessionTokenHash,
+          req.authUser!.user_id,
+          req.authUser!.email,
+          consumed.target_user_id,
+          consumed.department_slug,
+          consumed.section,
+        ]
       );
 
       await pool.query(
@@ -1052,9 +1107,11 @@ superAdminRouter.post(
 
       res.json({
         sessionToken,
+        sessionId,
         departmentSlug: consumed.department_slug,
         section: consumed.section,
         targetUserId: consumed.target_user_id,
+        targetRole,
         expiresInSeconds: 7200,
       });
     } catch (err) {
@@ -1073,8 +1130,30 @@ superAdminRouter.post(
         res.status(403).json({ error: 'FORBIDDEN', message: 'Super Admin authority required.' });
         return;
       }
+      const pool = getPool();
+      const rawTestToken =
+        typeof req.headers['x-test-session'] === 'string'
+          ? req.headers['x-test-session'].trim()
+          : '';
+      const testTokenHash = rawTestToken ? hashOpaqueToken(rawTestToken) : null;
+      const bodySessionId = req.body?.session_id ? String(req.body.session_id).trim() : null;
+
+      if (testTokenHash || bodySessionId) {
+        await pool.query(
+          `UPDATE test_mode_sessions
+           SET revoked_at = now()
+           WHERE actor_user_id = $1
+             AND revoked_at IS NULL
+             AND (
+               ($2::text IS NOT NULL AND token_hash = $2)
+               OR ($3::text IS NOT NULL AND session_id = $3)
+             )`,
+          [req.authUser.user_id, testTokenHash, bodySessionId]
+        );
+      }
+
       const dept = String(req.body?.department_slug ?? 'unknown');
-      await getPool().query(
+      await pool.query(
         `INSERT INTO test_mode_audit_logs (actor_user_id, actor_email, department_slug, section, action, details)
          VALUES ($1, $2, $3, $4, 'session_terminated', $5::jsonb)`,
         [
@@ -1082,7 +1161,10 @@ superAdminRouter.post(
           req.authUser.email,
           dept,
           req.body?.section ?? null,
-          JSON.stringify({ targetUserId: req.body?.target_user_id ?? null }),
+          JSON.stringify({
+            sessionId: bodySessionId,
+            targetUserId: req.body?.target_user_id ?? null,
+          }),
         ]
       );
       res.json({ ok: true });

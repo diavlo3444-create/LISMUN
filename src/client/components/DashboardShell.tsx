@@ -221,7 +221,7 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
               onClick={() => void exitTestMode()}
               className="portal-btn-primary py-1 text-[10px]"
             >
-              Exit Test Mode
+              Exit Preview
             </button>
           </div>
         )}

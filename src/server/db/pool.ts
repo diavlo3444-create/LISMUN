@@ -68,6 +68,10 @@ export async function withTransaction<T>(
   }
 }
 
+export function setPoolForTests(pool: pg.Pool | null): void {
+  poolInstance = pool;
+}
+
 export async function closePool(): Promise<void> {
   if (poolInstance) {
     await poolInstance.end();

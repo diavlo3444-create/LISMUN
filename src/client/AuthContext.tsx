@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import { apiRequest, setAuthTokens } from './api';
+import { ApiError, apiRequest, getAuthTokens, setAuthTokens } from './api';
 import { navigate } from './router';
 import { ALL_PERMISSION_KEYS } from '../shared/permissions';
 import type {
@@ -55,17 +55,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [testSession, setTestSession] = useState<TestSessionContext | null>(null);
 
   const refreshStatusAndSession = useCallback(async () => {
+    const fetchSession = () =>
+      apiRequest<{
+        authenticated: boolean;
+        user: UserProfile | null;
+        effectiveActor: UserProfile | null;
+        resolvedPermissions?: Record<PermissionKey, boolean>;
+        testSession?: TestSessionContext | null;
+        departments?: DepartmentRecord[];
+      }>('/api/auth/session');
+
     try {
       const [statusResp, sessResp] = await Promise.all([
         apiRequest<SystemStatusResponse>('/api/system/status'),
-        apiRequest<{
-          authenticated: boolean;
-          user: UserProfile | null;
-          effectiveActor: UserProfile | null;
-          resolvedPermissions?: Record<PermissionKey, boolean>;
-          testSession?: TestSessionContext | null;
-          departments?: DepartmentRecord[];
-        }>('/api/auth/session'),
+        fetchSession().catch(async (err) => {
+          if (
+            err instanceof ApiError &&
+            err.status === 401 &&
+            err.code.startsWith('TEST_SESSION_') &&
+            getAuthTokens().testSessionToken
+          ) {
+            setAuthTokens({ testSessionToken: null });
+            return fetchSession();
+          }
+          throw err;
+        }),
       ]);
       setSystemStatus(statusResp);
       if (sessResp.authenticated && sessResp.user) {
@@ -151,9 +165,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const consumeTestTicket = useCallback(
     async (ticket: string) => {
+      setAuthTokens({ testSessionToken: null });
       const resp = await apiRequest<{ sessionToken: string }>('/api/super-admin/test-mode/consume', {
         method: 'POST',
         body: { launchTicket: ticket },
+        skipTestSession: true,
       });
       setAuthTokens({ testSessionToken: resp.sessionToken });
       await refreshStatusAndSession();
@@ -161,8 +177,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     [refreshStatusAndSession]
   );
 
+  const saveTestReturnPath = () => {
+    try {
+      const cur = window.location.pathname;
+      const target = cur.startsWith('/admin') ? '/admin' : '/super-admin';
+      window.sessionStorage.setItem('lismun_test_return_path', target);
+    } catch {
+      // Ignore storage failures
+    }
+  };
+
+  const consumeTestReturnPath = (): string => {
+    try {
+      const saved = window.sessionStorage.getItem('lismun_test_return_path');
+      window.sessionStorage.removeItem('lismun_test_return_path');
+      if (saved === '/admin' || saved === '/super-admin') return saved;
+    } catch {
+      // Ignore storage failures
+    }
+    return '/super-admin';
+  };
+
   const launchAndEnterTestMode = useCallback(
     async (departmentSlug: string, section?: GenderSection | null) => {
+      saveTestReturnPath();
       const resp = await apiRequest<{ launchTicket: string }>('/api/super-admin/test-mode/launch', {
         method: 'POST',
         body: { department_slug: departmentSlug, section: section ?? null },
@@ -175,6 +213,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const launchAndEnterAccountTestMode = useCallback(
     async (userId: string) => {
+      saveTestReturnPath();
       const resp = await apiRequest<{
         launchTicket: string;
         targetRole?: string;
@@ -194,6 +233,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await apiRequest('/api/super-admin/test-mode/terminate', {
           method: 'POST',
           body: {
+            session_id: testSession.sessionId,
             department_slug: testSession.departmentSlug,
             section: testSession.section,
             target_user_id: testSession.targetUserId ?? null,
@@ -205,7 +245,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     setAuthTokens({ testSessionToken: null });
     await refreshStatusAndSession();
-    navigate('/super-admin');
+    navigate(consumeTestReturnPath());
   }, [testSession, refreshStatusAndSession]);
 
   return (

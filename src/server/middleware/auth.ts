@@ -183,94 +183,174 @@ export async function attachAuthOptional(
     req.sessionTokenHash = tokenHash;
 
     // Test previews are only honored while the real authenticated actor is an active Super Admin.
-    const testToken = req.headers['x-test-session'];
-    if (profile.role === 'super_admin' && typeof testToken === 'string' && testToken.trim()) {
-      const payload = verifyHmacPayload<{
-        kind: string;
+    const testTokenHeader = req.headers['x-test-session'];
+    const rawTestToken = typeof testTokenHeader === 'string' ? testTokenHeader.trim() : '';
+    if (rawTestToken) {
+      if (profile.role !== 'super_admin') {
+        res.status(401).json({
+          error: 'TEST_SESSION_FORBIDDEN',
+          message: 'Preview session tokens require an active Super Admin session.',
+        });
+        return;
+      }
+
+      const testTokenHash = hashOpaqueToken(rawTestToken);
+      const dbPreviewRes = await pool.query<{
+        session_id: string;
+        actor_user_id: string;
+        actor_email: string;
+        target_user_id: string | null;
+        department_slug: string;
+        section: GenderSection | null;
+        expires_at: string;
+        revoked_at: string | null;
+      }>(
+        `SELECT session_id, actor_user_id, actor_email, target_user_id,
+                department_slug, section, expires_at, revoked_at
+         FROM test_mode_sessions
+         WHERE token_hash = $1
+         LIMIT 1`,
+        [testTokenHash]
+      );
+
+      let resolvedSession: {
         sessionId: string;
         actorUserId: string;
         actorEmail: string;
         departmentSlug: string;
         section: GenderSection | null;
-        targetUserId?: string | null;
-      }>(testToken.trim());
+        targetUserId: string | null;
+        expiresAtIso: string;
+      } | null = null;
 
-      if (
-        payload &&
-        payload.kind === 'super_it_test_session' &&
-        payload.actorUserId === profile.user_id
-      ) {
-        if (payload.targetUserId) {
-          const target = await resolveProfileByUserId(payload.targetUserId);
-          const targetSection = target && isSectionedDepartment(payload.departmentSlug)
+      const dbRow = dbPreviewRes.rows[0];
+      if (dbRow) {
+        const expired = new Date(dbRow.expires_at).getTime() <= Date.now();
+        if (
+          dbRow.revoked_at !== null ||
+          expired ||
+          dbRow.actor_user_id !== profile.user_id
+        ) {
+          res.status(401).json({
+            error: 'TEST_SESSION_INVALID',
+            message: 'Sign In As preview session is invalid, revoked, or expired.',
+          });
+          return;
+        }
+        resolvedSession = {
+          sessionId: dbRow.session_id,
+          actorUserId: dbRow.actor_user_id,
+          actorEmail: dbRow.actor_email,
+          departmentSlug: dbRow.department_slug,
+          section: dbRow.section ?? null,
+          targetUserId: dbRow.target_user_id ?? null,
+          expiresAtIso: new Date(dbRow.expires_at).toISOString(),
+        };
+      } else {
+        const hmacPayload = verifyHmacPayload<{
+          kind: string;
+          sessionId: string;
+          actorUserId: string;
+          actorEmail: string;
+          departmentSlug: string;
+          section: GenderSection | null;
+          targetUserId?: string | null;
+        }>(rawTestToken);
+
+        if (
+          !hmacPayload ||
+          hmacPayload.kind !== 'super_it_test_session' ||
+          hmacPayload.actorUserId !== profile.user_id
+        ) {
+          res.status(401).json({
+            error: 'TEST_SESSION_INVALID',
+            message: 'Sign In As preview session is invalid or expired.',
+          });
+          return;
+        }
+
+        resolvedSession = {
+          sessionId: hmacPayload.sessionId,
+          actorUserId: hmacPayload.actorUserId,
+          actorEmail: hmacPayload.actorEmail,
+          departmentSlug: hmacPayload.departmentSlug,
+          section: hmacPayload.section ?? null,
+          targetUserId: hmacPayload.targetUserId ?? null,
+          expiresAtIso: new Date(hmacPayload.exp * 1000).toISOString(),
+        };
+      }
+
+      if (resolvedSession.targetUserId) {
+        const target = await resolveProfileByUserId(resolvedSession.targetUserId);
+        const targetSection =
+          target && isSectionedDepartment(resolvedSession.departmentSlug)
             ? getActorGenderScope(target)
             : null;
-          const validTarget =
-            Boolean(target) &&
-            target!.is_active === true &&
-            (target!.role === 'department_head' || target!.role === 'executive_board') &&
-            Boolean(target!.department_slug) &&
-            target!.department_slug === payload.departmentSlug &&
-            targetSection === (payload.section ?? null);
+        const validTarget =
+          Boolean(target) &&
+          target!.is_active === true &&
+          (target!.role === 'department_head' || target!.role === 'executive_board') &&
+          Boolean(target!.department_slug) &&
+          target!.department_slug === resolvedSession.departmentSlug &&
+          targetSection === (resolvedSession.section ?? null);
 
-          // Never fall back to the Super Admin actor if a selected account becomes invalid.
-          if (!validTarget || !target) {
-            res.status(401).json({
-              error: 'TEST_SESSION_TARGET_INVALID',
-              message: 'The account being previewed is no longer active or no longer eligible for Sign In As.',
-            });
-            return;
-          }
-
-          req.testSession = {
-            active: true,
-            sessionId: payload.sessionId,
-            targetUserId: target.user_id,
-            departmentSlug: payload.departmentSlug,
-            section: payload.section ?? null,
-            impersonatedName: target.full_name,
-            actorEmail: payload.actorEmail,
-            expiresAt: new Date(payload.exp * 1000).toISOString(),
-          };
-          req.effectiveActor = target;
-        } else {
-          const targetDept = departments.find((d) => d.slug === payload.departmentSlug);
-          if (!targetDept) {
-            res.status(401).json({
-              error: 'TEST_SESSION_DEPARTMENT_INVALID',
-              message: 'The department selected for this preview no longer exists.',
-            });
-            return;
-          }
-          req.testSession = {
-            active: true,
-            sessionId: payload.sessionId,
-            targetUserId: null,
-            departmentSlug: payload.departmentSlug,
-            section: payload.section ?? null,
-            impersonatedName: targetDept.name + ' Head (Test Mode)',
-            actorEmail: payload.actorEmail,
-            expiresAt: new Date(payload.exp * 1000).toISOString(),
-          };
-          req.effectiveActor = {
-            ...profile,
-            role: 'department_head',
-            department_id: targetDept.id,
-            department_slug: payload.departmentSlug,
-            department_name: targetDept.name,
-            division: payload.section ?? null,
-            gender: payload.section ?? null,
-            title: targetDept.name + ' Head (Test Mode)',
-            eb_rank: 'head',
-            eb_permissions: {
-              manage_department: true,
-              manage_committees: payload.departmentSlug === 'dcc',
-              scan_qr: payload.departmentSlug === 'security',
-            },
-            permissions: {},
-            is_primary_super_admin: false,
-          };
+        // Never fall back to the Super Admin actor if a selected account becomes invalid.
+        if (!validTarget || !target) {
+          res.status(401).json({
+            error: 'TEST_SESSION_TARGET_INVALID',
+            message: 'The account being previewed is no longer active or no longer eligible for Sign In As.',
+          });
+          return;
         }
+
+        req.testSession = {
+          active: true,
+          sessionId: resolvedSession.sessionId,
+          targetUserId: target.user_id,
+          departmentSlug: resolvedSession.departmentSlug,
+          section: resolvedSession.section ?? null,
+          impersonatedName: target.full_name,
+          actorEmail: resolvedSession.actorEmail,
+          expiresAt: resolvedSession.expiresAtIso,
+        };
+        req.effectiveActor = target;
+      } else {
+        const targetDept = departments.find((d) => d.slug === resolvedSession!.departmentSlug);
+        if (!targetDept) {
+          res.status(401).json({
+            error: 'TEST_SESSION_DEPARTMENT_INVALID',
+            message: 'The department selected for this preview no longer exists.',
+          });
+          return;
+        }
+        req.testSession = {
+          active: true,
+          sessionId: resolvedSession.sessionId,
+          targetUserId: null,
+          departmentSlug: resolvedSession.departmentSlug,
+          section: resolvedSession.section ?? null,
+          impersonatedName: targetDept.name + ' Head (Test Mode)',
+          actorEmail: resolvedSession.actorEmail,
+          expiresAt: resolvedSession.expiresAtIso,
+        };
+        req.effectiveActor = {
+          ...profile,
+          role: 'department_head',
+          department_id: targetDept.id,
+          department_slug: resolvedSession.departmentSlug,
+          department_name: targetDept.name,
+          division: resolvedSession.section ?? null,
+          gender: resolvedSession.section ?? null,
+          title: targetDept.name + ' Head (Test Mode)',
+          eb_rank: 'head',
+          eb_permissions: {
+            manage_department: true,
+            manage_committees: resolvedSession.departmentSlug === 'dcc',
+            scan_qr: resolvedSession.departmentSlug === 'security',
+          },
+          permissions: {},
+          is_primary_super_admin: false,
+        };
       }
     }
 

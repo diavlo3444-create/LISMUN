@@ -313,10 +313,13 @@ export const AccountManagementPanel: React.FC<AccountManagementPanelProps> = ({
 
   const signInAs = async (account: UserProfile) => {
     if (!account.is_active || !['department_head', 'executive_board'].includes(account.role)) return;
+    setBusyId(account.user_id);
     try {
       await launchAndEnterAccountTestMode(account.user_id);
     } catch (error) {
       addToast(error instanceof Error ? error.message : 'Could not start Sign In As preview.', 'error');
+    } finally {
+      setBusyId('');
     }
   };
 

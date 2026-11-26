@@ -63,13 +63,14 @@ export async function apiRequest<T = unknown>(
     rawBody?: Blob | File;
     contentType?: string;
     skipAuth?: boolean;
+    skipTestSession?: boolean;
   } = {}
 ): Promise<T> {
   const headers: Record<string, string> = {};
   if (!options.skipAuth && inMemoryBearerToken) {
     headers.Authorization = `Bearer ${inMemoryBearerToken}`;
   }
-  if (!options.skipAuth && inMemoryTestSessionToken) {
+  if (!options.skipAuth && !options.skipTestSession && inMemoryTestSessionToken) {
     headers['X-Test-Session'] = inMemoryTestSessionToken;
   }
 

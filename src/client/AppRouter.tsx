@@ -82,19 +82,27 @@ const PortalGuard: React.FC<{
   allowedRoles: string[];
   children: React.ReactNode;
 }> = ({ loginPath, allowedRoles, children }) => {
-  const { ready, effectiveActor, consumeTestTicket } = useAuth();
+  const { ready, user, effectiveActor, consumeTestTicket } = useAuth();
+  const { addToast } = useToast();
   const [consuming, setConsuming] = useState(false);
 
   useEffect(() => {
     const ticket = new URLSearchParams(window.location.search).get('test_ticket');
-    if (ready && effectiveActor?.role === 'super_admin' && ticket && !consuming) {
+    if (ready && user?.role === 'super_admin' && ticket && !consuming) {
       setConsuming(true);
-      void consumeTestTicket(ticket).finally(() => {
-        setConsuming(false);
-        window.history.replaceState({}, '', window.location.pathname);
-      });
+      void consumeTestTicket(ticket)
+        .catch((err) => {
+          addToast(
+            err instanceof Error ? err.message : 'Preview ticket is invalid or expired.',
+            'error'
+          );
+        })
+        .finally(() => {
+          setConsuming(false);
+          window.history.replaceState({}, '', window.location.pathname);
+        });
     }
-  }, [ready, effectiveActor, consumeTestTicket, consuming]);
+  }, [ready, user, consumeTestTicket, consuming, addToast]);
 
   if (!ready || consuming) {
     return (

@@ -1841,7 +1841,12 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
                       void launchAndEnterTestMode(
                         testDept,
                         isSectionedDepartment(testDept) ? testSection : null
-                      )
+                      ).catch((err) => {
+                        addToast(
+                          err instanceof Error ? err.message : 'Could not enter scoped preview.',
+                          'error'
+                        );
+                      })
                     }
                     className="portal-btn-primary py-2.5"
                   >
