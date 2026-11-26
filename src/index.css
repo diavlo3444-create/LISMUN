@@ -803,3 +803,19 @@
   .portal-app-shell.wm-admin *::before,
   .portal-app-shell.wm-admin *::after { animation:none !important; transition:none !important; }
 }
+
+
+.portal-app-shell.wm-admin .wm-page-header { border-color:var(--wm-hairline) !important; padding-bottom:22px; margin-bottom:24px; }
+.portal-app-shell.wm-admin .wm-page-header h1 { font-family:"Cormorant Garamond",Georgia,serif; font-size:clamp(29px,3vw,38px); font-weight:600; line-height:1.12; color:var(--wm-ink) !important; }
+.portal-app-shell.wm-admin .wm-page-header p { color:var(--wm-ink-muted) !important; }
+.portal-app-shell.wm-admin .wm-page-header p:first-child { font-family:"Plus Jakarta Sans",sans-serif; font-size:10px; font-weight:700; letter-spacing:.15em; }
+.portal-app-shell.wm-admin .wm-metric-ledger { border-color:var(--wm-hairline); border-radius:7px; background:var(--wm-surface); overflow:hidden; }
+.portal-app-shell.wm-admin .wm-metric-ledger > div { padding:17px 19px; }
+.portal-app-shell.wm-admin .wm-metric-ledger > div + div { border-color:var(--wm-hairline); }
+.portal-app-shell.wm-admin .wm-metric-ledger p:first-child,.portal-app-shell.wm-admin .wm-distribution > div:first-child p:first-child { color:var(--wm-ink-muted) !important; font-family:"Plus Jakarta Sans",sans-serif; font-size:9px; font-weight:700; letter-spacing:.12em; }
+.portal-app-shell.wm-admin .wm-metric-ledger p:nth-child(2) { font-family:"Cormorant Garamond",Georgia,serif; font-size:34px; line-height:1.1; font-weight:600; color:var(--wm-ink) !important; }
+.portal-app-shell.wm-admin .wm-distribution,.portal-app-shell.wm-admin .wm-empty-state { border-color:var(--wm-hairline); border-radius:7px; background:var(--wm-surface); }
+.portal-app-shell.wm-admin .wm-distribution > div:first-child p:first-child { color:var(--wm-accent) !important; }
+.portal-app-shell.wm-admin .wm-empty-state { padding:34px 24px; }
+.portal-app-shell.wm-admin .wm-empty-state > p:first-child { font-family:"Cormorant Garamond",Georgia,serif; font-size:25px; color:var(--wm-ink) !important; }
+.portal-app-shell.wm-admin .wm-confirm-panel { border-color:var(--wm-hairline-strong) !important; border-radius:8px; background:var(--wm-surface) !important; }
