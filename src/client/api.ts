@@ -17,7 +17,15 @@ export class ApiError extends Error {
 }
 
 let inMemoryBearerToken: string | null = null;
-let inMemoryTestSessionToken: string | null = null;
+const TEST_SESSION_STORAGE_KEY = 'lismun_test_session_token';
+let inMemoryTestSessionToken: string | null = (() => {
+  if (typeof window === 'undefined') return null;
+  try {
+    return window.sessionStorage.getItem(TEST_SESSION_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+})();
 
 export function setAuthTokens(params: {
   bearerToken?: string | null;
@@ -28,6 +36,15 @@ export function setAuthTokens(params: {
   }
   if (params.testSessionToken !== undefined) {
     inMemoryTestSessionToken = params.testSessionToken;
+    try {
+      if (params.testSessionToken) {
+        window.sessionStorage.setItem(TEST_SESSION_STORAGE_KEY, params.testSessionToken);
+      } else {
+        window.sessionStorage.removeItem(TEST_SESSION_STORAGE_KEY);
+      }
+    } catch {
+      // Test mode remains usable for the current page even when storage is blocked.
+    }
   }
 }
 
