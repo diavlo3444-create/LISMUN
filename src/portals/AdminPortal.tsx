@@ -1552,7 +1552,7 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
                           const response = await apiRequest<{
                             summary: { created: number; skipped: number; failed: number };
                             results: typeof bulkImportResults;
-                          }>('/api/super-admin/accounts/bulk', {
+                          }>('/api/super-admin/bulk', {
                             method: 'POST',
                             body: { rows: bulkRosterRows },
                           });
