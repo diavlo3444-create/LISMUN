@@ -28,9 +28,6 @@ export const superAdminRouter = Router();
 superAdminRouter.use(attachAuthOptional);
 superAdminRouter.use(requireAuth);
 
-// Single-use Test Mode launch ticket store (HMAC signed + 1-time consumed)
-const consumedTickets = new Map<string, number>();
-
 // GET /api/super-admin/accounts (Super Admin full CRUD list OR Admin read-only directory)
 superAdminRouter.get(
   '/accounts',
@@ -762,22 +759,94 @@ superAdminRouter.delete(
   }
 );
 
-// Super IT Test Mode (1-time launch ticket -> 2h signed HMAC session token)
+// Super Admin Sign In As and department preview.
+// Launch tickets are durably consumed in Postgres so serverless instances cannot replay them.
 superAdminRouter.post(
   '/test-mode/launch',
   requireSuperAdmin,
   async (req: AuthenticatedRequest, res, next) => {
     try {
-      const departmentSlug = canonicalDepartmentForStorage(String(req.body?.department_slug ?? ''));
-      const section = (req.body?.section || null) as GenderSection | null;
+      const pool = getPool();
+      const requestedUserId = String(req.body?.user_id ?? '').trim();
+      let targetUserId: string | null = null;
+      let targetName: string | null = null;
+      let targetEmail: string | null = null;
+      let departmentSlug = '';
+      let section: GenderSection | null = null;
+
+      if (requestedUserId) {
+        const targetRes = await pool.query<{
+          user_id: string;
+          email: string;
+          full_name: string;
+          role: UserRole;
+          department_slug: string | null;
+          gender: GenderSection | null;
+          is_active: boolean;
+          banned_until: string | null;
+        }>(
+          `SELECT p.user_id, p.email, p.full_name, p.role,
+                  COALESCE(d.slug, p.department_slug) AS department_slug,
+                  COALESCE(p.gender, p.division) AS gender,
+                  p.is_active, u.banned_until
+           FROM profiles p
+           JOIN users u ON u.id = p.user_id
+           LEFT JOIN departments d ON d.id = p.department_id
+           WHERE p.user_id = $1
+           LIMIT 1`,
+          [requestedUserId]
+        );
+        const target = targetRes.rows[0];
+        const banned = target?.banned_until
+          ? new Date(target.banned_until).getTime() > Date.now()
+          : false;
+        if (
+          !target ||
+          !target.is_active ||
+          banned ||
+          (target.role !== 'department_head' && target.role !== 'executive_board')
+        ) {
+          res.status(404).json({
+            error: 'ACCOUNT_NOT_ELIGIBLE',
+            message: 'Choose an active Department Head or Executive Board account to preview.',
+          });
+          return;
+        }
+        departmentSlug = canonicalDepartmentForStorage(String(target.department_slug || ''));
+        section = target.gender ?? null;
+        targetUserId = target.user_id;
+        targetName = target.full_name;
+        targetEmail = target.email;
+      } else {
+        departmentSlug = canonicalDepartmentForStorage(String(req.body?.department_slug ?? ''));
+        section = (req.body?.section || null) as GenderSection | null;
+      }
+
       if (!departmentSlug) {
-        res.status(400).json({ error: 'DEPARTMENT_REQUIRED', message: 'Select a target department.' });
+        res.status(400).json({
+          error: 'DEPARTMENT_REQUIRED',
+          message: requestedUserId
+            ? 'The selected account must have a department assigned.'
+            : 'Select a target department.',
+        });
         return;
       }
-      if (isSectionedDepartment(departmentSlug) && !section) {
+
+      const departmentExists = (
+        await pool.query<{ id: string; slug: string }>(
+          `SELECT id, slug FROM departments WHERE slug = $1 LIMIT 1`,
+          [departmentSlug]
+        )
+      ).rows[0];
+      if (!departmentExists) {
+        res.status(400).json({ error: 'UNKNOWN_DEPARTMENT', message: 'The selected department does not exist.' });
+        return;
+      }
+
+      if (isSectionedDepartment(departmentSlug) && section !== 'male' && section !== 'female') {
         res.status(400).json({
           error: 'SECTION_REQUIRED',
-          message: `Select 'male' or 'female' section for ${departmentSlug}.`,
+          message: 'Select the male or female section for ' + departmentSlug + '.',
         });
         return;
       }
@@ -791,11 +860,19 @@ superAdminRouter.post(
           actorEmail: req.authUser!.email,
           departmentSlug,
           section,
+          targetUserId,
         },
         180
       );
 
-      await getPool().query(
+      await pool.query(
+        `INSERT INTO test_mode_launch_tickets
+          (ticket_id, actor_user_id, target_user_id, department_slug, section, expires_at)
+         VALUES ($1, $2, $3, $4, $5, now() + interval '3 minutes')`,
+        [ticketId, req.authUser!.user_id, targetUserId, departmentSlug, section]
+      );
+
+      await pool.query(
         `INSERT INTO test_mode_audit_logs (actor_user_id, actor_email, department_slug, section, action, details)
          VALUES ($1, $2, $3, $4, 'launch_ticket', $5::jsonb)`,
         [
@@ -803,13 +880,15 @@ superAdminRouter.post(
           req.authUser!.email,
           departmentSlug,
           section,
-          JSON.stringify({ ticketId }),
+          JSON.stringify({ ticketId, targetUserId, targetName, targetEmail }),
         ]
       );
 
       res.json({
         launchTicket,
-        launchUrl: `/head?test_ticket=${encodeURIComponent(launchTicket)}`,
+        launchUrl: '/head?test_ticket=' + encodeURIComponent(launchTicket),
+        targetUserId,
+        targetName,
       });
     } catch (err) {
       next(err);
@@ -830,6 +909,7 @@ superAdminRouter.post(
         actorEmail: string;
         departmentSlug: string;
         section: GenderSection | null;
+        targetUserId?: string | null;
       }>(launchTicket);
 
       if (
@@ -840,14 +920,75 @@ superAdminRouter.post(
         res.status(401).json({ error: 'INVALID_TICKET', message: 'Invalid or expired test ticket.' });
         return;
       }
-      if (consumedTickets.has(payload.ticketId)) {
+
+      const pool = getPool();
+      const consumed = (
+        await pool.query<{
+          actor_user_id: string;
+          target_user_id: string | null;
+          department_slug: string;
+          section: GenderSection | null;
+        }>(
+          `UPDATE test_mode_launch_tickets
+           SET consumed_at = now()
+           WHERE ticket_id = $1
+             AND actor_user_id = $2
+             AND consumed_at IS NULL
+             AND expires_at > now()
+           RETURNING actor_user_id, target_user_id, department_slug, section`,
+          [payload.ticketId, req.authUser!.user_id]
+        )
+      ).rows[0];
+
+      if (
+        !consumed ||
+        consumed.target_user_id !== (payload.targetUserId ?? null) ||
+        consumed.department_slug !== payload.departmentSlug ||
+        consumed.section !== (payload.section ?? null)
+      ) {
         res.status(409).json({
-          error: 'TICKET_ALREADY_USED',
-          message: 'Launch ticket can only be exchanged once.',
+          error: 'TICKET_ALREADY_USED_OR_EXPIRED',
+          message: 'This preview link has already been used or expired. Launch Sign In As again.',
         });
         return;
       }
-      consumedTickets.set(payload.ticketId, Date.now());
+
+      if (consumed.target_user_id) {
+        const targetRes = await pool.query<{
+          role: UserRole;
+          is_active: boolean;
+          department_slug: string | null;
+          gender: GenderSection | null;
+          banned_until: string | null;
+        }>(
+          `SELECT p.role, p.is_active, COALESCE(d.slug, p.department_slug) AS department_slug,
+                  COALESCE(p.gender, p.division) AS gender, u.banned_until
+           FROM profiles p
+           JOIN users u ON u.id = p.user_id
+           LEFT JOIN departments d ON d.id = p.department_id
+           WHERE p.user_id = $1
+           LIMIT 1`,
+          [consumed.target_user_id]
+        );
+        const target = targetRes.rows[0];
+        const banned = target?.banned_until
+          ? new Date(target.banned_until).getTime() > Date.now()
+          : false;
+        if (
+          !target ||
+          !target.is_active ||
+          banned ||
+          (target.role !== 'department_head' && target.role !== 'executive_board') ||
+          target.department_slug !== consumed.department_slug ||
+          (target.gender ?? null) !== (consumed.section ?? null)
+        ) {
+          res.status(409).json({
+            error: 'ACCOUNT_CHANGED',
+            message: 'The account changed after the preview was launched. Refresh the account list and try again.',
+          });
+          return;
+        }
+      }
 
       const sessionId = generateOpaqueToken(12);
       const sessionToken = signHmacPayload(
@@ -856,28 +997,30 @@ superAdminRouter.post(
           sessionId,
           actorUserId: req.authUser!.user_id,
           actorEmail: req.authUser!.email,
-          departmentSlug: payload.departmentSlug,
-          section: payload.section,
+          departmentSlug: consumed.department_slug,
+          section: consumed.section,
+          targetUserId: consumed.target_user_id,
         },
-        7200 // 2h TTL
+        7200
       );
 
-      await getPool().query(
+      await pool.query(
         `INSERT INTO test_mode_audit_logs (actor_user_id, actor_email, department_slug, section, action, details)
          VALUES ($1, $2, $3, $4, 'session_started', $5::jsonb)`,
         [
           req.authUser!.user_id,
           req.authUser!.email,
-          payload.departmentSlug,
-          payload.section,
-          JSON.stringify({ sessionId }),
+          consumed.department_slug,
+          consumed.section,
+          JSON.stringify({ sessionId, targetUserId: consumed.target_user_id }),
         ]
       );
 
       res.json({
         sessionToken,
-        departmentSlug: payload.departmentSlug,
-        section: payload.section,
+        departmentSlug: consumed.department_slug,
+        section: consumed.section,
+        targetUserId: consumed.target_user_id,
         expiresInSeconds: 7200,
       });
     } catch (err) {
@@ -886,16 +1029,27 @@ superAdminRouter.post(
   }
 );
 
+// The termination action is permitted only for the original Super Admin session,
+// including while its own preview token is active.
 superAdminRouter.post(
   '/test-mode/terminate',
-  requireSuperAdmin,
   async (req: AuthenticatedRequest, res, next) => {
     try {
+      if (!req.authUser || req.authUser.role !== 'super_admin' || !req.authUser.is_active) {
+        res.status(403).json({ error: 'FORBIDDEN', message: 'Super Admin authority required.' });
+        return;
+      }
       const dept = String(req.body?.department_slug ?? 'unknown');
       await getPool().query(
-        `INSERT INTO test_mode_audit_logs (actor_user_id, actor_email, department_slug, section, action)
-         VALUES ($1, $2, $3, $4, 'session_terminated')`,
-        [req.authUser!.user_id, req.authUser!.email, dept, req.body?.section ?? null]
+        `INSERT INTO test_mode_audit_logs (actor_user_id, actor_email, department_slug, section, action, details)
+         VALUES ($1, $2, $3, $4, 'session_terminated', $5::jsonb)`,
+        [
+          req.authUser.user_id,
+          req.authUser.email,
+          dept,
+          req.body?.section ?? null,
+          JSON.stringify({ targetUserId: req.body?.target_user_id ?? null }),
+        ]
       );
       res.json({ ok: true });
     } catch (err) {
