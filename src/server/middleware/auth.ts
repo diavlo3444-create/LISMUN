@@ -319,7 +319,12 @@ export function requireSuperAdmin(
 
 export function requirePermission(key: PermissionKey, useRealAuthUser = false) {
   return (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
-    const actor = useRealAuthUser ? req.authUser : req.effectiveActor;
+    // A test preview must never inherit the original Super Admin's permission bypass.
+    const actor = req.testSession?.active
+      ? req.effectiveActor
+      : useRealAuthUser
+        ? req.authUser
+        : req.effectiveActor;
     if (!actor || !hasPermission(actor, key, req.departments)) {
       res.status(403).json({
         error: 'FORBIDDEN',
