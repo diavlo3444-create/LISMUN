@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  Bell,
+
   Building2,
   ClipboardCheck,
   FileText,
@@ -27,7 +27,7 @@ import { EmailsDashboardView } from './EmailsDashboardView';
 import {
   CommitteesManagerView,
   InquiriesManagerView,
-  NotificationsCenterView,
+
   SponsorsManagerView,
 } from './OperationalHubComponents';
 import { DepartmentQrSectionView, LiveQrScannerWorkspace } from './ScannerAndPassPages';
@@ -160,7 +160,7 @@ export const HeadPortal: React.FC = () => {
           { id: 'committees', label: 'Committees & Windows', group: 'DCC Hub', icon: Building2 },
         ]
       : []),
-    { id: 'notifications', label: 'Notifications', group: 'Coordination', icon: Bell },
+
   ];
 
   const handleRecommend = async (appId: string, rec: 'recommend_accept' | 'recommend_reject') => {
@@ -520,7 +520,7 @@ export const HeadPortal: React.FC = () => {
       {activeTab === 'inquiries' && <InquiriesManagerView />}
       {activeTab === 'sponsors' && <SponsorsManagerView />}
       {activeTab === 'committees' && <CommitteesManagerView />}
-      {activeTab === 'notifications' && <NotificationsCenterView />}
+
 
       {certPreview &&
         createPortal(
