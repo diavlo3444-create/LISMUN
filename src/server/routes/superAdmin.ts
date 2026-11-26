@@ -106,7 +106,7 @@ superAdminRouter.post(
           row: index + 1, email, full_name: fullName, status: 'failed' as const, reason,
         });
 
-        if (!email || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) {
+        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
           fail('A valid email address is required.');
           continue;
         }
