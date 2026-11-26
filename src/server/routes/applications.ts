@@ -75,11 +75,13 @@ applicationsRouter.get('/', async (req: AuthenticatedRequest, res, next) => {
     // 2. HR Head / HR EB -> Accepted roster (cross-dept & cross-gender), strictly zero medical data
     if (isHrActor(actor, req.departments)) {
       const hrRows = (
-        scopeMode === 'hr_accepted'
-          ? allRows.filter((a) => a.status === 'accepted')
-          : allRows.filter((a) =>
-              ['accepted', 'rejected', 'waitlisted'].includes(a.status)
-            )
+        scopeMode === 'hr_roster'
+          ? allRows.filter((a) => ['media', 'press', 'security', 'volunteers'].includes(a.application_type))
+          : scopeMode === 'hr_accepted'
+            ? allRows.filter((a) => a.status === 'accepted')
+            : allRows.filter((a) =>
+                ['accepted', 'rejected', 'waitlisted'].includes(a.status)
+              )
       ).map(stripMediaMedical);
       res.json({ applications: hrRows });
       return;
