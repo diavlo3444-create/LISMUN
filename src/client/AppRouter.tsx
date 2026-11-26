@@ -226,17 +226,11 @@ const RouteRenderer: React.FC = () => {
             title="Executive Board Login"
             subtitle="Co-Head command, Design & Marketing studios, EB shifts, stations, and Event-Day logs."
           />
-        ) : pathname === '/security-login' ? (
-          <PortalLoginPage
-            expectedPortal="security"
-            title="Security Scanner Desk Login"
-            subtitle="Live entrance QR Check-In / Check-Out terminal."
-          />
-        ) : pathname === '/staff-login' ? (
+        ) : pathname === '/security-login' || pathname === '/staff-login' ? (
           <PortalLoginPage
             expectedPortal="staff"
-            title="Staff Member Login"
-            subtitle="Personal conference QR credential, tasks, groups, and shift schedule."
+            title="Staff Portal"
+            subtitle="Sign in once. Your account determines your department and the workspace you can access."
           />
         ) : pathname === '/team-signup' || pathname === '/signup' ? (
           <TeamMemberSignupPage />
@@ -281,35 +275,35 @@ const RouteRenderer: React.FC = () => {
           </PortalGuard>
         ) : pathname === '/scanner' || pathname === '/security' ? (
           <PortalGuard
-            loginPath="/security-login"
+            loginPath="/staff-login"
             allowedRoles={['super_admin', 'admin', 'department_head', 'executive_board', 'staff']}
           >
-            <StaffPortal routeDepartment="security" />
+            <StaffPortal />
           </PortalGuard>
         ) : pathname === '/volunteer' ? (
           <PortalGuard
             loginPath="/staff-login"
             allowedRoles={['super_admin', 'admin', 'department_head', 'executive_board', 'staff']}
           >
-            <StaffPortal routeDepartment="volunteers" />
+            <StaffPortal />
           </PortalGuard>
         ) : pathname === '/media' ? (
           <PortalGuard
             loginPath="/staff-login"
             allowedRoles={['super_admin', 'admin', 'department_head', 'executive_board', 'staff']}
           >
-            <StaffPortal routeDepartment="media_press" />
+            <StaffPortal />
           </PortalGuard>
         ) : pathname.startsWith('/staff') || pathname === '/team-members' ? (
           <PortalGuard
             loginPath="/staff-login"
             allowedRoles={['super_admin', 'admin', 'department_head', 'executive_board', 'staff']}
           >
-            <StaffPortal routeDepartment={pathname.split('/')[2]} />
+            <StaffPortal />
           </PortalGuard>
         ) : pathname === '/scanner-desk' ? (
           <PortalGuard
-            loginPath="/security-login"
+            loginPath="/staff-login"
             allowedRoles={['super_admin', 'admin', 'department_head', 'executive_board', 'staff']}
           >
             <div className="min-h-screen bg-[#030914] p-6">
