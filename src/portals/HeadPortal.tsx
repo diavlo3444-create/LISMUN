@@ -26,7 +26,6 @@ import {
 import { EmailsDashboardView } from './EmailsDashboardView';
 import {
   CommitteesManagerView,
-  DepartmentWorkspaceView,
   InquiriesManagerView,
   NotificationsCenterView,
   SponsorsManagerView,
@@ -161,7 +160,6 @@ export const HeadPortal: React.FC = () => {
           { id: 'committees', label: 'Committees & Windows', group: 'DCC Hub', icon: Building2 },
         ]
       : []),
-    { id: 'workspace', label: 'Department Workspace', group: 'Coordination', icon: Building2 },
     { id: 'notifications', label: 'Notifications', group: 'Coordination', icon: Bell },
   ];
 
@@ -522,7 +520,6 @@ export const HeadPortal: React.FC = () => {
       {activeTab === 'inquiries' && <InquiriesManagerView />}
       {activeTab === 'sponsors' && <SponsorsManagerView />}
       {activeTab === 'committees' && <CommitteesManagerView />}
-      {activeTab === 'workspace' && <DepartmentWorkspaceView departmentSlug={deptSlug} />}
       {activeTab === 'notifications' && <NotificationsCenterView />}
 
       {certPreview &&
