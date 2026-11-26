@@ -33,8 +33,7 @@ function resolveDefaultRouteForUser(
   if (user.role === 'admin') return '/admin';
   if (user.role === 'department_head') return '/head';
   if (user.role === 'executive_board') return '/eb';
-  if (isSecurityAccount(user, departments)) return '/security';
-  return `/staff/${user.department_slug || 'general'}`;
+  return '/staff';
 }
 
 export const PortalDirectoryPage: React.FC = () => {
@@ -82,14 +81,6 @@ export const PortalDirectoryPage: React.FC = () => {
     },
     {
       index: '05',
-      title: 'Security Scanner Desk',
-      path: '/security-login',
-      role: 'Entrance Terminal',
-      desc: 'Live camera QR Check-In / Check-Out terminal with duplicate lock and real-time multi-gate sync.',
-      icon: QrCode,
-    },
-    {
-      index: '06',
       title: 'Staff Member Portal',
       path: '/staff-login',
       role: 'Credential & Duty',
@@ -250,8 +241,8 @@ export const PortalLoginPage: React.FC<{
       else if (expectedPortal === 'admin') navigate('/admin');
       else if (expectedPortal === 'head') navigate('/head');
       else if (expectedPortal === 'eb') navigate('/eb');
-      else if (expectedPortal === 'security') navigate('/security');
-      else if (expectedPortal === 'staff') navigate(`/staff/${user.department_slug || 'general'}`);
+      else if (expectedPortal === 'security') navigate('/staff');
+      else if (expectedPortal === 'staff') navigate(resolveDefaultRouteForUser(user, departments));
       else navigate(resolveDefaultRouteForUser(user, departments));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Sign-in failed.');
