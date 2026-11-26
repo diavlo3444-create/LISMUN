@@ -127,11 +127,27 @@ export async function attachAuthOptional(
       return;
     }
     const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      next();
-      return;
+    let rawToken = authHeader?.startsWith('Bearer ')
+      ? authHeader.slice(7).trim()
+      : '';
+
+    // Prefer the HttpOnly session cookie so authentication survives page refreshes.
+    // Keep bearer-header support for existing clients and integrations.
+    if (!rawToken) {
+      const cookieHeader = req.headers.cookie || '';
+      const sessionCookie = cookieHeader
+        .split(';')
+        .map((part) => part.trim())
+        .find((part) => part.startsWith('lismun_session='));
+      if (sessionCookie) {
+        const value = sessionCookie.slice('lismun_session='.length);
+        try {
+          rawToken = decodeURIComponent(value).trim();
+        } catch {
+          rawToken = value.trim();
+        }
+      }
     }
-    const rawToken = authHeader.slice(7).trim();
     if (!rawToken) {
       next();
       return;
