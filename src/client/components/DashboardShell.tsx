@@ -174,7 +174,7 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
   return (
     <div
       data-portal-dept={resolvedDeptTheme}
-      className="portal-app-shell min-h-screen text-[#E8E1D2]"
+      className="portal-app-shell wm-admin min-h-screen text-[#E8E1D2]"
     >
       {/* Fixed Desktop Sidebar */}
       <aside className="portal-sidebar fixed inset-y-0 left-0 z-30 hidden w-[270px] border-r border-[#263D59]/60 lg:block">
