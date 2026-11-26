@@ -95,9 +95,12 @@ superAdminRouter.post(
         const raw = rows[index] ?? {};
         const email = String(raw.email ?? '').trim().toLowerCase();
         const fullName = String(raw.full_name ?? raw.name ?? '').trim();
-        const role = String(raw.role ?? 'staff').trim() as UserRole;
+        const rawRole = String(raw.role ?? 'staff').trim() as UserRole;
         const rawDept = String(raw.department_slug ?? raw.department ?? '').trim();
         const departmentSlug = rawDept ? canonicalDepartmentForStorage(rawDept) : null;
+        // Secretariat roster members must always receive Admin-level account permissions,
+        // regardless of the role value supplied in the CSV.
+        const role: UserRole = departmentSlug === 'secretariat' ? 'admin' : rawRole;
         const gender = (raw.gender || raw.division || null) as GenderSection | null;
         const title = String(raw.title ?? '').trim();
         const ebRank = raw.eb_rank ?? null;
