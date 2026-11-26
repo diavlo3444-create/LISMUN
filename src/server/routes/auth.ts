@@ -20,6 +20,15 @@ import type { PortalKey } from '../../shared/types.ts';
 
 export const authRouter = Router();
 
+const SESSION_COOKIE = 'lismun_session';
+const SESSION_COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'lax' as const,
+  path: '/',
+  maxAge: 7 * 24 * 60 * 60 * 1000,
+};
+
 authRouter.use(attachAuthOptional);
 
 // GET /api/auth/session
@@ -142,6 +151,7 @@ authRouter.post('/claim-super-admin', requireDbMiddleware, async (req, res, next
     }
 
     const profile = await resolveProfileByUserId(result.userId);
+    res.cookie(SESSION_COOKIE, result.sessionToken, SESSION_COOKIE_OPTIONS);
     res.status(201).json({
       token: result.sessionToken,
       user: profile,
@@ -249,6 +259,7 @@ authRouter.post('/login', requireDbMiddleware, async (req, res, next) => {
       [profile.user_id, hashOpaqueToken(rawToken), expectedPortal || profile.role]
     );
 
+    res.cookie(SESSION_COOKIE, rawToken, SESSION_COOKIE_OPTIONS);
     res.json({
       token: rawToken,
       user: profile,
@@ -269,6 +280,12 @@ authRouter.post('/logout', requireAuth, async (req: AuthenticatedRequest, res, n
         [req.sessionTokenHash]
       );
     }
+    res.clearCookie(SESSION_COOKIE, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+    });
     res.json({ ok: true });
   } catch (err) {
     next(err);
