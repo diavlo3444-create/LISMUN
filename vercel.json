@@ -3,147 +3,42 @@
   "functions": {
     "api/[...path].ts": {
       "includeFiles": "src/server/db/migrations/**/*.sql"
-    },
-    "api/super-admin/accounts/bulk.ts": {
-      "includeFiles": "src/server/db/migrations/**/*.sql"
     }
   },
   "rewrites": [
-    {
-      "source": "/setup",
-      "destination": "/"
-    },
-    {
-      "source": "/apply",
-      "destination": "/"
-    },
-    {
-      "source": "/portal",
-      "destination": "/"
-    },
-    {
-      "source": "/login",
-      "destination": "/"
-    },
-    {
-      "source": "/super-admin-login",
-      "destination": "/"
-    },
-    {
-      "source": "/admin-login",
-      "destination": "/"
-    },
-    {
-      "source": "/head-login",
-      "destination": "/"
-    },
-    {
-      "source": "/eb-login",
-      "destination": "/"
-    },
-    {
-      "source": "/security-login",
-      "destination": "/"
-    },
-    {
-      "source": "/staff-login",
-      "destination": "/"
-    },
-    {
-      "source": "/team-signup",
-      "destination": "/"
-    },
-    {
-      "source": "/signup",
-      "destination": "/"
-    },
-    {
-      "source": "/eb-signup",
-      "destination": "/"
-    },
-    {
-      "source": "/head-setup",
-      "destination": "/"
-    },
-    {
-      "source": "/privacy",
-      "destination": "/"
-    },
-    {
-      "source": "/terms",
-      "destination": "/"
-    },
-    {
-      "source": "/super-admin",
-      "destination": "/"
-    },
-    {
-      "source": "/super-admin/:path*",
-      "destination": "/"
-    },
-    {
-      "source": "/admin",
-      "destination": "/"
-    },
-    {
-      "source": "/admin/:path*",
-      "destination": "/"
-    },
-    {
-      "source": "/head",
-      "destination": "/"
-    },
-    {
-      "source": "/head/:path*",
-      "destination": "/"
-    },
-    {
-      "source": "/eb",
-      "destination": "/"
-    },
-    {
-      "source": "/eb/:path*",
-      "destination": "/"
-    },
-    {
-      "source": "/pass",
-      "destination": "/"
-    },
-    {
-      "source": "/scanner",
-      "destination": "/"
-    },
-    {
-      "source": "/security",
-      "destination": "/"
-    },
-    {
-      "source": "/volunteer",
-      "destination": "/"
-    },
-    {
-      "source": "/media",
-      "destination": "/"
-    },
-    {
-      "source": "/staff",
-      "destination": "/"
-    },
-    {
-      "source": "/staff/:path*",
-      "destination": "/"
-    },
-    {
-      "source": "/team-members",
-      "destination": "/"
-    },
-    {
-      "source": "/scanner-desk",
-      "destination": "/"
-    },
-    {
-      "source": "/preview",
-      "destination": "/"
-    }
+    { "source": "/setup", "destination": "/" },
+    { "source": "/apply", "destination": "/" },
+    { "source": "/portal", "destination": "/" },
+    { "source": "/login", "destination": "/" },
+    { "source": "/super-admin-login", "destination": "/" },
+    { "source": "/admin-login", "destination": "/" },
+    { "source": "/head-login", "destination": "/" },
+    { "source": "/eb-login", "destination": "/" },
+    { "source": "/security-login", "destination": "/" },
+    { "source": "/staff-login", "destination": "/" },
+    { "source": "/team-signup", "destination": "/" },
+    { "source": "/signup", "destination": "/" },
+    { "source": "/eb-signup", "destination": "/" },
+    { "source": "/head-setup", "destination": "/" },
+    { "source": "/privacy", "destination": "/" },
+    { "source": "/terms", "destination": "/" },
+    { "source": "/super-admin", "destination": "/" },
+    { "source": "/super-admin/:path*", "destination": "/" },
+    { "source": "/admin", "destination": "/" },
+    { "source": "/admin/:path*", "destination": "/" },
+    { "source": "/head", "destination": "/" },
+    { "source": "/head/:path*", "destination": "/" },
+    { "source": "/eb", "destination": "/" },
+    { "source": "/eb/:path*", "destination": "/" },
+    { "source": "/pass", "destination": "/" },
+    { "source": "/scanner", "destination": "/" },
+    { "source": "/security", "destination": "/" },
+    { "source": "/volunteer", "destination": "/" },
+    { "source": "/media", "destination": "/" },
+    { "source": "/staff", "destination": "/" },
+    { "source": "/staff/:path*", "destination": "/" },
+    { "source": "/team-members", "destination": "/" },
+    { "source": "/scanner-desk", "destination": "/" },
+    { "source": "/preview", "destination": "/" }
   ]
 }
