@@ -93,8 +93,8 @@ function parseBulkRosterCsv(source: string): BulkRosterRow[] {
       quoted = !quoted;
     } else if (char === ',' && !quoted) {
       row.push(cell.trim()); cell = '';
-    } else if ((char === '\\n' || char === '\\r') && !quoted) {
-      if (char === '\\r' && source[i + 1] === '\\n') i += 1;
+    } else if ((char === '\n' || char === '\r') && !quoted) {
+      if (char === '\r' && source[i + 1] === '\n') i += 1;
       row.push(cell.trim()); cell = '';
       if (row.some((value) => value)) records.push(row);
       row = [];
