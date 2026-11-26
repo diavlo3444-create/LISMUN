@@ -211,14 +211,14 @@ export const FooterSection: React.FC<FooterSectionProps> = ({
               Team Member Applications
             </a>
             <a
-              href="/portal"
+              href="/login"
               onClick={(e) => {
                 e.preventDefault();
-                navigate('/portal');
+                navigate('/login');
               }}
               className="hover:text-[#D5BD8B]"
             >
-              Management Portal
+              Staff & Secretariat Login
             </a>
             <a
               href="/privacy"
