@@ -42,11 +42,8 @@ import { EmailsDashboardView } from './EmailsDashboardView';
 import {
   CommitteesManagerView,
   DepartmentWorkspaceView,
-  GroupManagementView,
   InquiriesManagerView,
   NotificationsCenterView,
-  OrgChartAndRolesView,
-  ShiftManagementView,
   SponsorsManagerView,
 } from './OperationalHubComponents';
 import { LiveQrScannerWorkspace } from './ScannerAndPassPages';
@@ -350,9 +347,6 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
     { id: 'scanner', label: 'Live QR Scanner', group: 'Attendance & QR', icon: QrCode },
     { id: 'qr_registry', label: 'QR Attendance Registry', group: 'Attendance & QR', icon: Activity },
     { id: 'ops_workspace', label: 'Dept Workspace', group: 'Operations', icon: Building2 },
-    { id: 'ops_roles', label: 'Org Chart & Roles', group: 'Operations', icon: Users },
-    { id: 'ops_groups', label: 'Custom Groups', group: 'Operations', icon: Users },
-    { id: 'ops_shifts', label: 'Shift Management', group: 'Operations', icon: Activity },
     { id: 'cms_editor', label: 'Website & Form CMS', group: 'Content & CMS', icon: Globe },
     { id: 'committees', label: 'Committees & Windows', group: 'Content & CMS', icon: Building2 },
     { id: 'sponsors', label: 'Sponsors', group: 'Content & CMS', icon: Building2 },
@@ -1082,9 +1076,6 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
           )}
 
           {activeTab === 'ops_workspace' && <DepartmentWorkspaceView />}
-          {activeTab === 'ops_roles' && <OrgChartAndRolesView />}
-          {activeTab === 'ops_groups' && <GroupManagementView />}
-          {activeTab === 'ops_shifts' && <ShiftManagementView />}
           {activeTab === 'committees' && <CommitteesManagerView />}
           {activeTab === 'sponsors' && <SponsorsManagerView />}
 
