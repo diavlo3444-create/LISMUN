@@ -17,11 +17,6 @@ const PublicApplicationPage = lazy(() =>
     default: m.PublicApplicationPage,
   }))
 );
-const PortalDirectoryPage = lazy(() =>
-  import('../portals/PortalLoginPages').then((m) => ({
-    default: m.PortalDirectoryPage,
-  }))
-);
 const PortalLoginPage = lazy(() =>
   import('../portals/PortalLoginPages').then((m) => ({
     default: m.PortalLoginPage,
@@ -196,7 +191,10 @@ const RouteRenderer: React.FC = () => {
         ) : pathname === '/apply' ? (
           <PublicApplicationPage />
         ) : pathname === '/portal' ? (
-          <PortalDirectoryPage />
+          <PortalLoginPage
+            title="Unified Account Sign In"
+            subtitle="Sign in with your LIS MUN account. Your account role and department determine which portal opens."
+          />
         ) : pathname === '/login' ? (
           <PortalLoginPage
             title="Unified Staff & Secretariat Sign In"
