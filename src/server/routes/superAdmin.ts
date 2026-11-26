@@ -363,8 +363,18 @@ superAdminRouter.patch(
     try {
       const { userId } = req.params;
       const pool = getPool();
-      const targetRes = await pool.query<{ email: string; role: UserRole }>(
-        `SELECT email, role FROM profiles WHERE user_id = $1 LIMIT 1`,
+      const targetRes = await pool.query<{
+        email: string;
+        role: UserRole;
+        department_slug: string | null;
+        gender: GenderSection | null;
+      }>(
+        `SELECT p.email, p.role, COALESCE(d.slug, p.department_slug) AS department_slug,
+                COALESCE(p.gender, p.division) AS gender
+         FROM profiles p
+         LEFT JOIN departments d ON d.id = p.department_id
+         WHERE p.user_id = $1
+         LIMIT 1`,
         [userId]
       );
       const target = targetRes.rows[0];
@@ -374,34 +384,56 @@ superAdminRouter.patch(
       }
 
       const primaryEmail = getPrimarySuperAdminEmail();
-      if (primaryEmail && target.email.toLowerCase() === primaryEmail) {
-        if (req.body?.is_active === false || (req.body?.role && req.body.role !== 'super_admin')) {
-          res.status(403).json({
-            error: 'PRIMARY_PROTECTED',
-            message: 'Primary Super Admin cannot be deactivated or demoted.',
-          });
-          return;
-        }
+      if (target.role === 'super_admin' || (primaryEmail && target.email.toLowerCase() === primaryEmail)) {
+        res.status(403).json({
+          error: 'PROTECTED_ACCOUNT',
+          message: 'Super Admin accounts cannot be edited, demoted, suspended, or deleted through Account Management.',
+        });
+        return;
       }
 
+      if (req.body?.role === 'super_admin') {
+        res.status(403).json({
+          error: 'SUPER_ADMIN_ESCALATION_BLOCKED',
+          message: 'Super Admin privileges cannot be assigned through Account Management.',
+        });
+        return;
+      }
+
+      const allowedRoles = new Set<UserRole>(['admin', 'department_head', 'executive_board', 'staff']);
+      if (req.body?.role !== undefined && !allowedRoles.has(String(req.body.role) as UserRole)) {
+        res.status(400).json({ error: 'INVALID_ROLE', message: 'Select a valid account role.' });
+        return;
+      }
       const nextRole = (req.body?.role ?? target.role) as UserRole;
+
       const rawDept = req.body?.department_slug;
       const deptSlug =
-        rawDept === null
-          ? null
-          : typeof rawDept === 'string' && rawDept.trim()
-          ? canonicalDepartmentForStorage(rawDept)
-          : undefined;
+        rawDept === undefined
+          ? undefined
+          : rawDept === null || String(rawDept).trim() === ''
+            ? null
+            : canonicalDepartmentForStorage(String(rawDept));
+      const resultingDeptSlug = deptSlug === undefined ? target.department_slug : deptSlug;
 
-      let deptId: string | null | undefined = undefined;
+      if (nextRole !== 'admin' && !resultingDeptSlug) {
+        res.status(400).json({
+          error: 'DEPARTMENT_REQUIRED',
+          message: 'Assign a department before saving a Head, Executive Board, or Staff account.',
+        });
+        return;
+      }
+
+      let deptId: string | null | undefined;
       if (deptSlug !== undefined) {
         if (deptSlug === null) {
           deptId = null;
         } else {
           const d = (
-            await pool.query<{ id: string }>(`SELECT id FROM departments WHERE slug = $1 LIMIT 1`, [
-              deptSlug,
-            ])
+            await pool.query<{ id: string }>(
+              `SELECT id FROM departments WHERE slug = $1 LIMIT 1`,
+              [deptSlug]
+            )
           ).rows[0];
           if (!d) {
             res.status(400).json({ error: 'UNKNOWN_DEPARTMENT', message: 'Invalid department.' });
@@ -411,56 +443,146 @@ superAdminRouter.patch(
         }
       }
 
+      const genderWasProvided = req.body?.gender !== undefined || req.body?.division !== undefined;
+      const nextGender = req.body?.gender !== undefined
+        ? req.body.gender
+        : req.body?.division !== undefined
+          ? req.body.division
+          : target.gender;
+
+      if (
+        (nextRole === 'department_head' || nextRole === 'executive_board') &&
+        resultingDeptSlug &&
+        isSectionedDepartment(resultingDeptSlug) &&
+        nextGender !== 'male' &&
+        nextGender !== 'female'
+      ) {
+        res.status(400).json({
+          error: 'SECTION_REQUIRED',
+          message: 'Select the male or female section for this department head.',
+        });
+        return;
+      }
+
+      const nextEmail = req.body?.email === undefined
+        ? undefined
+        : String(req.body.email || '').trim().toLowerCase();
+      if (nextEmail !== undefined) {
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(nextEmail)) {
+          res.status(400).json({ error: 'INVALID_EMAIL', message: 'Enter a valid email address.' });
+          return;
+        }
+        if (nextEmail !== target.email.toLowerCase()) {
+          const duplicate = (
+            await pool.query<{ id: string }>(
+              `SELECT id FROM users WHERE lower(email) = $1 AND id <> $2 LIMIT 1`,
+              [nextEmail, userId]
+            )
+          ).rows[0];
+          if (duplicate) {
+            res.status(409).json({ error: 'EMAIL_EXISTS', message: 'Another account already uses this email address.' });
+            return;
+          }
+        }
+      }
+
       const sanitizedPerms =
         req.body?.permissions !== undefined
           ? sanitizePermissionsMap(nextRole, req.body.permissions)
           : undefined;
+      const rawEbPermissions = req.body?.eb_permissions;
+      let sanitizedEbPermissions: Record<string, boolean> | undefined;
+      if (rawEbPermissions && typeof rawEbPermissions === 'object' && !Array.isArray(rawEbPermissions)) {
+        sanitizedEbPermissions = {};
+        for (const key of ['manage_department', 'manage_committees', 'scan_qr']) {
+          if (typeof rawEbPermissions[key] === 'boolean') {
+            sanitizedEbPermissions[key] = rawEbPermissions[key];
+          }
+        }
+      }
+
+      const fullName = req.body?.full_name === undefined ? null : String(req.body.full_name || '').trim();
+      if (fullName !== null && fullName.length < 2) {
+        res.status(400).json({ error: 'INVALID_NAME', message: 'Enter a valid full name.' });
+        return;
+      }
+      const hasTitle = req.body?.title !== undefined;
+      const title = hasTitle ? String(req.body.title || '').trim() : null;
+      const hasEbRank = req.body?.eb_rank !== undefined;
+      const ebRank = hasEbRank
+        ? (req.body.eb_rank ? String(req.body.eb_rank) : null)
+        : null;
+      const hasEbPermissions = sanitizedEbPermissions !== undefined;
+      const hasPermissions = sanitizedPerms !== undefined;
+      const isActive = typeof req.body?.is_active === 'boolean' ? req.body.is_active : null;
 
       await withTransaction(async (client) => {
         await client.query(
+          `UPDATE users
+           SET email = CASE WHEN $2::boolean THEN $3 ELSE email END,
+               full_name = COALESCE($4, full_name),
+               banned_until = CASE WHEN $5::boolean THEN $6::timestamptz ELSE banned_until END,
+               updated_at = now()
+           WHERE id = $1`,
+          [
+            userId,
+            nextEmail !== undefined,
+            nextEmail ?? null,
+            fullName,
+            isActive !== null,
+            isActive === false ? '2126-01-01T00:00:00Z' : null,
+          ]
+        );
+
+        await client.query(
           `UPDATE profiles
            SET full_name = COALESCE($2, full_name),
-               role = COALESCE($3, role),
-               department_id = CASE WHEN $4::boolean THEN $5::uuid ELSE department_id END,
-               department_slug = CASE WHEN $4::boolean THEN $6 ELSE department_slug END,
-               title = COALESCE($7, title),
-               gender = COALESCE($8, gender),
-               division = COALESCE($8, division),
-               is_active = COALESCE($9, is_active),
-               eb_rank = COALESCE($10, eb_rank),
-               eb_permissions = COALESCE($11::jsonb, eb_permissions),
-               permissions = COALESCE($12::jsonb, permissions),
+               email = CASE WHEN $3::boolean THEN $4 ELSE email END,
+               role = COALESCE($5, role),
+               department_id = CASE WHEN $6::boolean THEN $7::uuid ELSE department_id END,
+               department_slug = CASE WHEN $6::boolean THEN $8 ELSE department_slug END,
+               title = CASE WHEN $9::boolean THEN $10 ELSE title END,
+               gender = CASE WHEN $11::boolean THEN $12 ELSE gender END,
+               division = CASE WHEN $11::boolean THEN $12 ELSE division END,
+               is_active = COALESCE($13, is_active),
+               eb_rank = CASE WHEN $14::boolean THEN $15 ELSE eb_rank END,
+               eb_permissions = CASE WHEN $16::boolean THEN $17::jsonb ELSE eb_permissions END,
+               permissions = CASE WHEN $18::boolean THEN $19::jsonb ELSE permissions END,
                updated_at = now()
            WHERE user_id = $1`,
           [
             userId,
-            req.body?.full_name ?? null,
+            fullName,
+            nextEmail !== undefined,
+            nextEmail ?? null,
             req.body?.role ?? null,
             deptSlug !== undefined,
             deptId ?? null,
             deptSlug ?? null,
-            req.body?.title ?? null,
-            req.body?.gender ?? req.body?.division ?? null,
-            typeof req.body?.is_active === 'boolean' ? req.body.is_active : null,
-            req.body?.eb_rank ?? null,
-            req.body?.eb_permissions ? JSON.stringify(req.body.eb_permissions) : null,
-            sanitizedPerms ? JSON.stringify(sanitizedPerms) : null,
+            hasTitle,
+            title,
+            genderWasProvided,
+            nextGender ?? null,
+            isActive,
+            hasEbRank,
+            ebRank,
+            hasEbPermissions,
+            hasEbPermissions ? JSON.stringify(sanitizedEbPermissions) : null,
+            hasPermissions,
+            hasPermissions ? JSON.stringify(sanitizedPerms) : null,
           ]
         );
 
-        if (typeof req.body?.is_active === 'boolean') {
-          await client.query(
-            `UPDATE users SET banned_until = $2, updated_at = now() WHERE id = $1`,
-            [userId, req.body.is_active ? null : '2126-01-01T00:00:00Z']
-          );
+        if (isActive !== null) {
           await client.query(
             `UPDATE qr_passes SET active = $2, updated_at = now() WHERE user_id = $1`,
-            [userId, req.body.is_active]
+            [userId, isActive]
           );
-          if (!req.body.is_active) {
-            await client.query(`UPDATE sessions SET revoked_at = now() WHERE user_id = $1`, [
-              userId,
-            ]);
+          if (!isActive) {
+            await client.query(
+              `UPDATE sessions SET revoked_at = now() WHERE user_id = $1`,
+              [userId]
+            );
           }
         }
       });
