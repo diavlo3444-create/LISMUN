@@ -775,7 +775,1001 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
                   description="Submitted applications from the public portal and Registration modal will appear here."
                 />
               ) : (
-                <AccountManagementPanel
+                <div className="portal-surface overflow-x-auto">
+                  <table className="w-full text-left font-sans text-xs">
+                    <thead className="border-b border-[#263D59]/75 bg-[#040B18]/90 font-mono text-[10px] tracking-[0.16em] text-[#B89A62] uppercase">
+                      <tr>
+                        <th className="px-4 py-3">Batch</th>
+                        <th className="px-4 py-3">Applicant</th>
+                        <th className="px-4 py-3">Track</th>
+                        <th className="px-4 py-3">Head Rec</th>
+                        <th className="px-4 py-3">Status &amp; Decision Maker</th>
+                        <th className="px-4 py-3 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#263D59]/45">
+                      {tableRows.map((a) => (
+                        <tr key={a.id} className="transition-colors hover:bg-[#040B18]/70">
+                          <td className="px-4 py-3 align-top">
+                            {a.status === 'accepted' && !['delegate', 'chair'].includes(a.application_type) && (
+                              <input
+                                type="checkbox"
+                                checked={batchSelectedIds.includes(a.id)}
+                                onChange={(e) =>
+                                  setBatchSelectedIds((p) =>
+                                    e.target.checked ? [...p, a.id] : p.filter((x) => x !== a.id)
+                                  )
+                                }
+                                className="mt-1 h-3.5 w-3.5 accent-[#D5BD8B]"
+                              />
+                            )}
+                          </td>
+                          <td className="px-4 py-3">
+                            <p className="font-medium text-[#F3EDE0]">{a.applicant_name}</p>
+                            <p className="mt-0.5 font-mono text-[11px] tabular-nums text-[#E8E1D2]/58">
+                              {a.application_code} · {a.email}
+                            </p>
+                            {a.medical_has_conditions && (
+                              <p className="mt-1 inline-flex items-center gap-1.5 font-mono text-[9px] tracking-[0.14em] text-[#FCA5A5] uppercase">
+                                <span aria-hidden="true" className="inline-block h-1.5 w-1.5 bg-[#FCA5A5]" />
+                                <span>Confidential Medical Flag</span>
+                              </p>
+                            )}
+                          </td>
+                          <td className="px-4 py-3">
+                            <StatusLabel
+                              status={`${a.application_type}${a.gender ? ` · ${a.gender}` : ''}`}
+                              tone="gold"
+                            />
+                          </td>
+                          <td className="px-4 py-3">
+                            {a.head_recommendation ? (
+                              <div>
+                                <StatusLabel status={a.head_recommendation} />
+                                {a.recommended_by_name && (
+                                  <p className="mt-1 font-mono text-[10px] text-[#E8E1D2]/55">
+                                    by {a.recommended_by_name}
+                                  </p>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="font-mono text-[10px] text-[#E8E1D2]/38">None yet</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3">
+                            <StatusLabel status={a.status} />
+                            {a.decision_by_name && (
+                              <p className="mt-1 font-mono text-[10px] text-[#E8E1D2]/60">
+                                {formatDecisionByLabel(a.status, a.decision_by_name)}
+                              </p>
+                            )}
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex flex-nowrap items-center justify-end gap-1.5 whitespace-nowrap">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedApp(a)}
+                                className="portal-btn-secondary px-2.5 py-1 text-[10px]"
+                              >
+                                Inspect
+                              </button>
+                              {isSuper && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setOverrideTarget(a);
+                                      setOverrideStatus(a.status);
+                                    }}
+                                    className="inline-flex items-center border border-[#D97706]/55 bg-[#161006] px-2.5 py-1 font-mono text-[10px] tracking-[0.12em] text-[#FCD34D] uppercase whitespace-nowrap shrink-0 transition-colors hover:border-[#FCD34D]"
+                                  >
+                                    Override
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setSpoofTarget(a);
+                                      setSpoofStatus(a.status);
+                                      setSpoofAdminId(spoofAdmins[0]?.user_id || '');
+                                    }}
+                                    className="portal-btn-primary px-2.5 py-1 text-[10px]"
+                                  >
+                                    Spoof
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setDeleteAppTarget(a)}
+                                    className="portal-btn-danger px-2.5 py-1 text-[10px]"
+                                  >
+                                    Del
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'app_toggles' && (
+            <div className="space-y-6">
+              <PortalPageHeader
+                kicker="Intake Gateways"
+                title="Public Registration Toggles"
+                subtitle="Open or close live submission forms on the public portal for each track and department."
+              />
+
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {publicDepts
+                  .filter((d) => d.has_public_intake || d.slug === 'dcc')
+                  .map((d) => (
+                    <div
+                      key={d.id}
+                      className="portal-surface flex items-center justify-between gap-4 p-5"
+                    >
+                      <div className="min-w-0">
+                        <p className="font-display text-2xl font-medium text-[#F3EDE0]">{d.name}</p>
+                        <div className="mt-1.5 flex items-center gap-3">
+                          <span className="font-mono text-[10px] tracking-[0.16em] text-[#B89A62] uppercase">
+                            {d.slug}
+                          </span>
+                          <StatusLabel
+                            status={d.registration_open ? 'Open' : 'Closed'}
+                            tone={d.registration_open ? 'green' : 'red'}
+                          />
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          await apiRequest(`/api/departments/${d.slug}/registration`, {
+                            method: 'PATCH',
+                            body: { registration_open: !d.registration_open },
+                          });
+                          addToast(`Toggled ${d.name} registration.`, 'success');
+                          await loadAll();
+                        }}
+                        className={d.registration_open ? 'portal-btn-secondary' : 'portal-btn-primary'}
+                      >
+                        {d.registration_open ? 'Close Track' : 'Open Track'}
+                      </button>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'emails' && <EmailsDashboardView />}
+          {activeTab === 'inquiries' && <InquiriesManagerView />}
+          {activeTab === 'notifications' && <NotificationsCenterView />}
+          {activeTab === 'scanner' && <LiveQrScannerWorkspace />}
+
+          {activeTab === 'qr_registry' && (
+            <div className="space-y-6">
+              <PortalPageHeader
+                kicker="Attendance Audit & Overrides"
+                title="QR Attendance Registry & Corrections"
+                subtitle="Apply audited status corrections across individual passes or perform a Super Admin conference-day reset."
+              />
+
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  try {
+                    await apiRequest('/api/qr/manual-correct', {
+                      method: 'POST',
+                      body: { pass_id: corrPassId, action: corrAction, reason: corrReason },
+                    });
+                    setCorrReason('');
+                    addToast('Manual QR correction applied & logged.', 'success');
+                    await loadAll();
+                  } catch (err) {
+                    addToast(err instanceof Error ? err.message : 'Correction failed.', 'error');
+                  }
+                }}
+                className="portal-surface grid gap-3 p-5 sm:grid-cols-4"
+              >
+                <select
+                  required
+                  value={corrPassId}
+                  onChange={(e) => setCorrPassId(e.target.value)}
+                  className="portal-select"
+                >
+                  <option value="">Select Badge Holder...</option>
+                  {qrPasses.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.full_name} ({p.pass_code})
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={corrAction}
+                  onChange={(e) => setCorrAction(e.target.value)}
+                  className="portal-select"
+                >
+                  <option value="mark_checked_in">Mark Checked In</option>
+                  <option value="mark_checked_out">Mark Checked Out</option>
+                  <option value="clear_checkin">Clear Check-In Stamp</option>
+                  <option value="toggle_active">Toggle Active / Revoked</option>
+                </select>
+                <input
+                  required
+                  minLength={4}
+                  placeholder="Audit Rationale (min 4 chars) *"
+                  value={corrReason}
+                  onChange={(e) => setCorrReason(e.target.value)}
+                  className="portal-input"
+                />
+                <button type="submit" className="portal-btn-primary">
+                  Apply Correction
+                </button>
+              </form>
+
+              {isSuper && (
+                <div className="border border-[#DC2626]/45 bg-[#12070B]/90 p-5">
+                  <p className="font-mono text-[10px] tracking-[0.2em] text-[#FCA5A5] uppercase">
+                    Destructive Operation · Super Admin Exclusive
+                  </p>
+                  <h3 className="mt-1 font-display text-2xl font-medium text-[#FCA5A5]">
+                    Global Attendance Reset
+                  </h3>
+                  <p className="mt-1.5 font-sans text-xs leading-relaxed text-[#E8E1D2]/75">
+                    Clears all active venue check-in/check-out stamps across every pass and deletes scan check-in history. Type exact word{' '}
+                    <code className="bg-[#030914] px-1.5 py-0.5 font-mono text-[#FCA5A5]">RESET</code> to confirm.
+                  </p>
+                  <div className="mt-4 flex flex-wrap items-center gap-3">
+                    <input
+                      placeholder='Type "RESET"'
+                      value={resetConfirmText}
+                      onChange={(e) => setResetConfirmText(e.target.value)}
+                      className="portal-input w-56 border-[#DC2626]/55 font-mono"
+                    />
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          await apiRequest('/api/qr/reset-all', {
+                            method: 'POST',
+                            body: { confirmation: resetConfirmText },
+                          });
+                          setResetConfirmText('');
+                          addToast('Global QR attendance reset complete.', 'info');
+                          await loadAll();
+                        } catch (err) {
+                          addToast(err instanceof Error ? err.message : 'Reset failed.', 'error');
+                        }
+                      }}
+                      className="portal-btn-danger"
+                    >
+                      Execute Global Reset
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {qrCorrections.length > 0 && (
+                <div className="portal-surface">
+                  <div className="border-b border-[#263D59]/55 px-5 py-3">
+                    <p className="font-mono text-[10px] tracking-[0.18em] text-[#B89A62] uppercase">
+                      Recent Manual Corrections ({qrCorrections.length})
+                    </p>
+                  </div>
+                  <div className="divide-y divide-[#263D59]/45">
+                    {qrCorrections.slice(0, 10).map((c) => (
+                      <div
+                        key={c.id}
+                        className="flex flex-wrap items-center justify-between gap-2 px-5 py-3 text-xs"
+                      >
+                        <div className="flex flex-wrap items-center gap-3">
+                          <StatusLabel status={c.action} tone="amber" />
+                          <span className="font-medium text-[#F3EDE0]">{c.actor_name}</span>
+                          <span className="text-[#E8E1D2]/70">{c.reason}</span>
+                        </div>
+                        <span className="font-mono text-[10px] tabular-nums text-[#E8E1D2]/50">
+                          {new Date(c.created_at).toLocaleString()}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'ops_workspace' && <DepartmentWorkspaceView />}
+          {activeTab === 'ops_roles' && <OrgChartAndRolesView />}
+          {activeTab === 'ops_groups' && <GroupManagementView />}
+          {activeTab === 'ops_shifts' && <ShiftManagementView />}
+          {activeTab === 'committees' && <CommitteesManagerView />}
+          {activeTab === 'sponsors' && <SponsorsManagerView />}
+
+          {activeTab === 'cms_editor' && (
+            <div className="space-y-6">
+              <PortalPageHeader
+                kicker="Editorial & Public Assets"
+                title="Website Content & Dynamic Form Builder"
+                subtitle="Publish official dispatches, frequently asked questions, Secretariat rosters, reference briefings, and custom intake forms."
+              />
+
+              <div className="grid gap-6 lg:grid-cols-2">
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    await apiRequest('/api/cms/announcements', {
+                      method: 'POST',
+                      body: { title: annTitle, body: annBody, published: true },
+                    });
+                    setAnnTitle('');
+                    setAnnBody('');
+                    addToast('Announcement published.', 'success');
+                    await loadAll();
+                  }}
+                  className="portal-surface space-y-3 p-5"
+                >
+                  <h3 className="font-display text-2xl font-medium text-[#D5BD8B]">Announcements</h3>
+                  <input
+                    required
+                    placeholder="Title"
+                    value={annTitle}
+                    onChange={(e) => setAnnTitle(e.target.value)}
+                    className="portal-input"
+                  />
+                  <textarea
+                    required
+                    rows={2}
+                    placeholder="Announcement Body"
+                    value={annBody}
+                    onChange={(e) => setAnnBody(e.target.value)}
+                    className="portal-textarea"
+                  />
+                  <button type="submit" className="portal-btn-primary">
+                    Publish Announcement
+                  </button>
+                  {cmsBundle.announcements.length > 0 && (
+                    <div className="divide-y divide-[#263D59]/45 border border-[#263D59]/55 bg-[#030914]">
+                      {cmsBundle.announcements.map((a) => (
+                        <div key={a.id} className="flex items-center justify-between gap-3 px-3 py-2.5 text-xs">
+                          <span className="truncate text-[#E8E1D2]">{a.title}</span>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              await apiRequest(`/api/cms/announcements/${a.id}`, { method: 'DELETE' });
+                              await loadAll();
+                            }}
+                            aria-label={`Delete ${a.title}`}
+                            className="text-[#FCA5A5] transition-opacity hover:opacity-80"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </form>
+
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    await apiRequest('/api/cms/faqs', {
+                      method: 'POST',
+                      body: { question: faqQ, answer: faqA, published: true },
+                    });
+                    setFaqQ('');
+                    setFaqA('');
+                    addToast('FAQ published.', 'success');
+                    await loadAll();
+                  }}
+                  className="portal-surface space-y-3 p-5"
+                >
+                  <h3 className="font-display text-2xl font-medium text-[#D5BD8B]">FAQs</h3>
+                  <input
+                    required
+                    placeholder="Question"
+                    value={faqQ}
+                    onChange={(e) => setFaqQ(e.target.value)}
+                    className="portal-input"
+                  />
+                  <textarea
+                    required
+                    rows={2}
+                    placeholder="Answer"
+                    value={faqA}
+                    onChange={(e) => setFaqA(e.target.value)}
+                    className="portal-textarea"
+                  />
+                  <button type="submit" className="portal-btn-primary">
+                    Add FAQ
+                  </button>
+                  {cmsBundle.faqs.length > 0 && (
+                    <div className="divide-y divide-[#263D59]/45 border border-[#263D59]/55 bg-[#030914]">
+                      {cmsBundle.faqs.map((f) => (
+                        <div key={f.id} className="flex items-center justify-between gap-3 px-3 py-2.5 text-xs">
+                          <span className="truncate text-[#E8E1D2]">{f.question}</span>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              await apiRequest(`/api/cms/faqs/${f.id}`, { method: 'DELETE' });
+                              await loadAll();
+                            }}
+                            aria-label={`Delete ${f.question}`}
+                            className="text-[#FCA5A5] transition-opacity hover:opacity-80"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </form>
+
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    await apiRequest('/api/cms/secretariat', {
+                      method: 'POST',
+                      body: { full_name: secName, title: secTitle },
+                    });
+                    setSecName('');
+                    setSecTitle('');
+                    addToast('Secretariat member saved.', 'success');
+                    await loadAll();
+                  }}
+                  className="portal-surface space-y-3 p-5"
+                >
+                  <h3 className="font-display text-2xl font-medium text-[#D5BD8B]">
+                    Secretariat Profiles ({cmsBundle.secretariat.length})
+                  </h3>
+                  <input
+                    required
+                    placeholder="Full Name"
+                    value={secName}
+                    onChange={(e) => setSecName(e.target.value)}
+                    className="portal-input"
+                  />
+                  <input
+                    required
+                    placeholder="Official Secretariat Title"
+                    value={secTitle}
+                    onChange={(e) => setSecTitle(e.target.value)}
+                    className="portal-input"
+                  />
+                  <button type="submit" className="portal-btn-primary">
+                    Add Member
+                  </button>
+                </form>
+
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    await apiRequest('/api/cms/documents', {
+                      method: 'POST',
+                      body: { title: docTitle, url: docUrl },
+                    });
+                    setDocTitle('');
+                    setDocUrl('');
+                    addToast('Document published.', 'success');
+                    await loadAll();
+                  }}
+                  className="portal-surface space-y-3 p-5"
+                >
+                  <h3 className="font-display text-2xl font-medium text-[#D5BD8B]">
+                    Conference Documents ({cmsBundle.documents.length})
+                  </h3>
+                  <input
+                    required
+                    placeholder="Document Title"
+                    value={docTitle}
+                    onChange={(e) => setDocTitle(e.target.value)}
+                    className="portal-input"
+                  />
+                  <input
+                    required
+                    type="url"
+                    placeholder="https://..."
+                    value={docUrl}
+                    onChange={(e) => setDocUrl(e.target.value)}
+                    className="portal-input font-mono"
+                  />
+                  <button type="submit" className="portal-btn-primary">
+                    Publish Document
+                  </button>
+                </form>
+              </div>
+
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  await apiRequest('/api/cms/forms', {
+                    method: 'POST',
+                    body: {
+                      slug: formSlug,
+                      title: formTitle,
+                      fields: [
+                        { id: 'full_name', label: 'Full Name', type: 'text', required: true },
+                        { id: 'response', label: 'Details', type: 'textarea', required: true },
+                      ],
+                    },
+                  });
+                  setFormSlug('');
+                  setFormTitle('');
+                  addToast('Dynamic form published.', 'success');
+                  await loadAll();
+                }}
+                className="portal-surface space-y-3 p-5"
+              >
+                <p className="font-mono text-[10px] tracking-[0.18em] text-[#B89A62] uppercase">
+                  Dynamic Form Builder ({cmsBundle.customForms.length} Published)
+                </p>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <input
+                    required
+                    placeholder="Form Title (e.g. Position Paper Portal)"
+                    value={formTitle}
+                    onChange={(e) => setFormTitle(e.target.value)}
+                    className="portal-input"
+                  />
+                  <input
+                    required
+                    placeholder="slug (e.g. position-papers)"
+                    value={formSlug}
+                    onChange={(e) => setFormSlug(e.target.value)}
+                    className="portal-input font-mono"
+                  />
+                  <button type="submit" className="portal-btn-primary">
+                    Create Custom Form
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {activeTab === 'accounts' && (
+            <div className="space-y-6">
+              <PortalPageHeader
+                kicker={isSuper ? 'Identity & Access Control' : 'Authorized Personnel'}
+                title={
+                  isSuper ? 'Accounts, RBAC Permissions & EB Onboarding' : 'Authorized Staff Directory'
+                }
+                subtitle={
+                  isSuper
+                    ? `Provision institutional accounts with ${ALL_PERMISSION_KEYS.length}-key permission scoping, manage EB allowlists, and audit access violations.`
+                    : 'Directory of verified Secretariat officers, Department Heads, Executive Board members, and floor staff.'
+                }
+              />
+
+              {isSuper && (
+                <>
+                  <form
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      try {
+                        const res = await apiRequest<{ setupLink?: string | null }>(
+                          '/api/super-admin/accounts',
+                          {
+                            method: 'POST',
+                            body: {
+                              email: newAccEmail,
+                              full_name: newAccName,
+                              role: newAccRole,
+                              department_slug: newAccRole === 'admin' ? null : newAccDept,
+                              gender: isSectionedDepartment(newAccDept) ? newAccGender : null,
+                              password: newAccPassword || undefined,
+                              permissions: newAccPerms,
+                            },
+                          }
+                        );
+                        setNewAccEmail('');
+                        setNewAccName('');
+                        setNewAccPassword('');
+                        if (res.setupLink) {
+                          setLastSetupLink(`${window.location.origin}${res.setupLink}`);
+                        }
+                        addToast('Account provisioned successfully.', 'success');
+                        await loadAll();
+                      } catch (err) {
+                        addToast(err instanceof Error ? err.message : 'Account creation failed.', 'error');
+                      }
+                    }}
+                    className="portal-surface space-y-4 p-5"
+                  >
+                    <p className="flex items-center gap-2 font-mono text-[11px] tracking-[0.16em] text-[#B89A62] uppercase">
+                      <UserPlus className="h-4 w-4" />
+                      <span>Provision New Account ({ALL_PERMISSION_KEYS.length}-Key Permissions Matrix)</span>
+                    </p>
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                      <input
+                        required
+                        type="email"
+                        placeholder="Email *"
+                        value={newAccEmail}
+                        onChange={(e) => setNewAccEmail(e.target.value)}
+                        className="portal-input"
+                      />
+                      <input
+                        required
+                        placeholder="Full Name *"
+                        value={newAccName}
+                        onChange={(e) => setNewAccName(e.target.value)}
+                        className="portal-input"
+                      />
+                      <select
+                        value={newAccRole}
+                        onChange={(e) => setNewAccRole(e.target.value as UserRole)}
+                        className="portal-select"
+                      >
+                        <option value="admin">Admin</option>
+                        <option value="department_head">Department Head</option>
+                        <option value="executive_board">Executive Board</option>
+                        <option value="staff">Staff Member</option>
+                      </select>
+                      {newAccRole !== 'admin' && (
+                        <select
+                          value={newAccDept}
+                          onChange={(e) => setNewAccDept(e.target.value)}
+                          className="portal-select"
+                        >
+                          {CORE_DEPARTMENTS.map((d) => (
+                            <option key={d.slug} value={d.slug}>
+                              {d.name}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                      {isSectionedDepartment(newAccDept) && newAccRole !== 'admin' && (
+                        <select
+                          value={newAccGender}
+                          onChange={(e) => setNewAccGender(e.target.value as GenderSection)}
+                          className="portal-select"
+                        >
+                          <option value="male">Male Division</option>
+                          <option value="female">Female Division</option>
+                        </select>
+                      )}
+                    </div>
+
+                    <input
+                      type="password"
+                      placeholder="Initial Password (leave empty to generate 7-day /head-setup link)"
+                      value={newAccPassword}
+                      onChange={(e) => setNewAccPassword(e.target.value)}
+                      className="portal-input"
+                    />
+
+                    <details className="portal-surface-subtle p-3.5">
+                      <summary className="cursor-pointer font-mono text-[11px] tracking-[0.14em] text-[#D5BD8B] uppercase">
+                        Custom Permission Overrides ({ALL_PERMISSION_KEYS.length} Keys)
+                      </summary>
+                      <div className="mt-3 grid max-h-48 gap-2 overflow-y-auto pt-2 sm:grid-cols-3 lg:grid-cols-4">
+                        {ALL_PERMISSION_KEYS.map((pk) => (
+                          <label key={pk} className="flex items-center gap-2 font-mono text-[10px] text-[#E8E1D2]/80">
+                            <input
+                              type="checkbox"
+                              checked={Boolean(newAccPerms[pk])}
+                              onChange={(e) =>
+                                setNewAccPerms((p) => ({ ...p, [pk]: e.target.checked }))
+                              }
+                              className="h-3.5 w-3.5 accent-[#D5BD8B]"
+                            />
+                            <span className="truncate">{pk}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </details>
+
+                    <button type="submit" className="portal-btn-primary">
+                      Create Account
+                    </button>
+
+                    {lastSetupLink && (
+                      <div className="border border-[#16A34A]/50 bg-[#05130D] p-3 font-mono text-xs break-all text-[#86EFAC]">
+                        Setup Link Generated: {lastSetupLink}
+                      </div>
+                    )}
+                  </form>
+
+                  <section className="portal-surface space-y-4 p-5">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <p className="font-mono text-[10px] tracking-[0.18em] text-[#83b5ed] uppercase">Super Admin Only</p>
+                        <h3 className="mt-1 font-display text-2xl font-medium text-[#edf3fb]">Bulk Account Import</h3>
+                        <p className="mt-1 max-w-2xl text-sm text-[#b8c8dc]/75">
+                          Paste a CSV roster or upload a .csv file. Preview and validate the rows before creating accounts.
+                          Each new account receives its own secure, single-use setup link.
+                        </p>
+                      </div>
+                      <a
+                        href="data:text/csv;charset=utf-8,email%2Cfull_name%2Crole%2Cdepartment_slug%2Cgender%2Ctitle%2Ceb_rank%0Aname%40example.com%2CFull%20Name%2Cdepartment_head%2Cvolunteers%2Cmale%2CHead%2C"
+                        download="lismun-account-import-template.csv"
+                        className="portal-btn-secondary"
+                      >
+                        <Download className="h-3.5 w-3.5" /> Download CSV Template
+                      </a>
+                    </div>
+                    <input
+                      type="file"
+                      accept=".csv,text/csv"
+                      className="portal-input"
+                      onChange={async (event) => {
+                        const file = event.target.files?.[0];
+                        if (!file) return;
+                        const content = await file.text();
+                        setBulkRosterText(content);
+                        setBulkRosterRows(parseBulkRosterCsv(content));
+                        setBulkImportResults([]);
+                      }}
+                    />
+                    <textarea
+                      rows={7}
+                      value={bulkRosterText}
+                      onChange={(event) => {
+                        setBulkRosterText(event.target.value);
+                        setBulkRosterRows(parseBulkRosterCsv(event.target.value));
+                        setBulkImportResults([]);
+                      }}
+                      placeholder={'email,full_name,role,department_slug,gender,title,eb_rank\\nmember@example.com,Full Name,department_head,volunteers,male,Head,'}
+                      className="portal-textarea font-mono text-xs"
+                    />
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <p className="font-mono text-xs text-[#b8c8dc]/70">{bulkRosterRows.length} rows detected · maximum 100 per import</p>
+                      <button
+                        type="button"
+                        onClick={() => setBulkRosterRows(parseBulkRosterCsv(bulkRosterText))}
+                        className="portal-btn-secondary"
+                      >
+                        Preview Import
+                      </button>
+                    </div>
+                    {bulkRosterRows.length > 0 && (
+                      <div className="max-h-64 overflow-auto border border-[#263D59]">
+                        <table className="w-full text-left text-xs">
+                          <thead className="sticky top-0 bg-[#0b1b30] text-[#9fc5ee]">
+                            <tr><th className="p-2">Name</th><th className="p-2">Email</th><th className="p-2">Role</th><th className="p-2">Department</th></tr>
+                          </thead>
+                          <tbody>
+                            {bulkRosterRows.map((item, index) => (
+                              <tr key={index} className="border-t border-[#263D59]/70 text-[#dce7f5]">
+                                <td className="p-2">{item.full_name || '—'}</td>
+                                <td className="p-2">{item.email || '—'}</td>
+                                <td className="p-2">{item.role}</td>
+                                <td className="p-2">{item.department_slug || '—'}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      disabled={bulkImporting || !bulkRosterRows.length || bulkRosterRows.length > 100}
+                      onClick={async () => {
+                        setBulkImporting(true);
+                        setBulkImportResults([]);
+                        try {
+                          const response = await apiRequest<{
+                            summary: { created: number; skipped: number; failed: number };
+                            results: typeof bulkImportResults;
+                          }>('/api/super-admin/bulk', {
+                            method: 'POST',
+                            body: { rows: bulkRosterRows },
+                          });
+                          setBulkImportResults(response.results || []);
+                          addToast(
+                            'Bulk import complete: ' + response.summary.created + ' created, ' +
+                            response.summary.skipped + ' skipped, ' + response.summary.failed + ' failed.',
+                            response.summary.failed ? 'error' : 'success'
+                          );
+                          await loadAll();
+                        } catch (err) {
+                          addToast(err instanceof Error ? err.message : 'Bulk import failed.', 'error');
+                        } finally {
+                          setBulkImporting(false);
+                        }
+                      }}
+                      className="portal-btn-primary disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      {bulkImporting ? 'Creating Accounts…' : 'Create Accounts from Preview'}
+                    </button>
+                    {bulkImportResults.length > 0 && (
+                      <div className="space-y-3 border-t border-[#263D59] pt-4">
+                        <div className="flex flex-wrap items-center gap-4 font-mono text-xs text-[#c8d8eb]">
+                          <span>Created: {bulkImportResults.filter((item) => item.status === 'created').length}</span>
+                          <span>Skipped: {bulkImportResults.filter((item) => item.status === 'skipped').length}</span>
+                          <span>Failed: {bulkImportResults.filter((item) => item.status === 'failed').length}</span>
+                        </div>
+                        <div className="max-h-64 space-y-2 overflow-auto">
+                          {bulkImportResults.map((item) => (
+                            <div key={item.row} className="border border-[#263D59] p-3 text-xs">
+                              <div className="flex flex-wrap justify-between gap-2">
+                                <span className="text-[#edf3fb]">{item.full_name} · {item.email}</span>
+                                <span className={item.status === 'created' ? 'text-emerald-300' : item.status === 'failed' ? 'text-rose-300' : 'text-amber-200'}>{item.status}</span>
+                              </div>
+                              {item.reason && <p className="mt-1 text-[#b8c8dc]/70">{item.reason}</p>}
+                              {item.setupLink && (
+                                <div className="mt-2 break-all text-[#9fc5ee]">
+                                  {window.location.origin}{item.setupLink}
+                                  <button
+                                    type="button"
+                                    className="ml-2 underline"
+                                    onClick={() => void navigator.clipboard.writeText(window.location.origin + item.setupLink)}
+                                  >Copy setup link</button>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                        <button
+                          type="button"
+                          className="portal-btn-secondary"
+                          onClick={() => {
+                            const rows = [
+                              ['row', 'name', 'email', 'status', 'setup_link', 'reason'],
+                              ...bulkImportResults.map((item) => [
+                                String(item.row), item.full_name, item.email, item.status,
+                                item.setupLink ? window.location.origin + item.setupLink : '', item.reason || '',
+                              ]),
+                            ];
+                            const csv = rows.map((values) => values.map((value) => '"' + value.replace(/"/g, '""') + '"').join(',')).join('\\n');
+                            const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+                            const link = document.createElement('a');
+                            link.href = url; link.download = 'lismun-bulk-import-results.csv'; link.click();
+                            URL.revokeObjectURL(url);
+                          }}
+                        >
+                          <Download className="h-3.5 w-3.5" /> Export Results
+                        </button>
+                      </div>
+                    )}
+                  </section>
+
+                  {/* EB Allowlist & Invite Links */}
+                  <div className="grid gap-5 lg:grid-cols-2">
+                    <form
+                      onSubmit={async (e) => {
+                        e.preventDefault();
+                        await apiRequest('/api/super-admin/eb-allowlist', {
+                          method: 'POST',
+                          body: {
+                            email: allowEmail,
+                            full_name: allowName,
+                            department_slug: allowDept,
+                            eb_rank: allowRank,
+                          },
+                        });
+                        setAllowEmail('');
+                        setAllowName('');
+                        addToast('EB allowlist entry saved (/eb-signup).', 'success');
+                        await loadAll();
+                      }}
+                      className="portal-surface space-y-3 p-5"
+                    >
+                      <h3 className="font-display text-2xl font-medium text-[#D5BD8B]">
+                        EB Signup Allowlist ({ebAllowlist.length})
+                      </h3>
+                      <div className="grid gap-2.5 sm:grid-cols-2">
+                        <input
+                          required
+                          type="email"
+                          placeholder="EB Email *"
+                          value={allowEmail}
+                          onChange={(e) => setAllowEmail(e.target.value)}
+                          className="portal-input"
+                        />
+                        <input
+                          required
+                          placeholder="Full Name *"
+                          value={allowName}
+                          onChange={(e) => setAllowName(e.target.value)}
+                          className="portal-input"
+                        />
+                        <select
+                          value={allowDept}
+                          onChange={(e) => setAllowDept(e.target.value)}
+                          className="portal-select"
+                        >
+                          {CORE_DEPARTMENTS.map((d) => (
+                            <option key={`al-${d.slug}`} value={d.slug}>
+                              {d.name}
+                            </option>
+                          ))}
+                        </select>
+                        <select
+                          value={allowRank}
+                          onChange={(e) => setAllowRank(e.target.value)}
+                          className="portal-select"
+                        >
+                          <option value="co_head">Co-Head</option>
+                          <option value="designer">Designer</option>
+                          <option value="marketing">Marketing</option>
+                          <option value="member">Member</option>
+                        </select>
+                      </div>
+                      <button type="submit" className="portal-btn-primary">
+                        Add to Allowlist
+                      </button>
+                    </form>
+
+                    <div className="portal-surface space-y-3 p-5">
+                      <h3 className="font-display text-2xl font-medium text-[#D5BD8B]">
+                        EB Invite &amp; Reusable Link Generator
+                      </h3>
+                      <div className="grid gap-2.5 sm:grid-cols-3">
+                        <input
+                          type="email"
+                          placeholder="EB Email (7-day lock)"
+                          value={ebInvEmail}
+                          onChange={(e) => setEbInvEmail(e.target.value)}
+                          className="portal-input"
+                        />
+                        <select
+                          value={ebInvDept}
+                          onChange={(e) => setEbInvDept(e.target.value)}
+                          className="portal-select"
+                        >
+                          {CORE_DEPARTMENTS.map((d) => (
+                            <option key={`ei-${d.slug}`} value={d.slug}>
+                              {d.name}
+                            </option>
+                          ))}
+                        </select>
+                        <select
+                          value={ebInvRole}
+                          onChange={(e) => setEbInvRole(e.target.value)}
+                          className="portal-select"
+                        >
+                          <option value="co_head">Co-Head</option>
+                          <option value="designer">Designer</option>
+                          <option value="marketing">Marketing</option>
+                        </select>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            const r = await apiRequest<{ inviteUrl: string }>('/api/invites/eb/admin-create', {
+                              method: 'POST',
+                              body: {
+                                mode: 'personal',
+                                email: ebInvEmail,
+                                department_slug: ebInvDept,
+                                eb_role: ebInvRole,
+                              },
+                            });
+                            setEbGeneratedUrl(`${window.location.origin}${r.inviteUrl}`);
+                          }}
+                          className="portal-btn-primary"
+                        >
+                          Issue 7-Day Invite
+                        </button>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            const r = await apiRequest<{ signupUrl: string }>('/api/invites/eb/admin-create', {
+                              method: 'POST',
+                              body: { mode: 'reusable_link' },
+                            });
+                            setEbGeneratedUrl(`${window.location.origin}${r.signupUrl}`);
+                          }}
+                          className="portal-btn-secondary"
+                        >
+                          Generate Reusable #token Link
+                        </button>
+                      </div>
+                      {ebGeneratedUrl && (
+                        <p className="break-all border border-[#B89A62]/45 bg-[#030914] p-2.5 font-mono text-[11px] text-[#D5BD8B]">
+                          {ebGeneratedUrl}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              <AccountManagementPanel
                 accounts={accounts}
                 departments={departments}
                 isSuperAdmin={isSuper}
