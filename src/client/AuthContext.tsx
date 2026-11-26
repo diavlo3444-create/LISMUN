@@ -190,7 +190,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (testSession) {
         await apiRequest('/api/super-admin/test-mode/terminate', {
           method: 'POST',
-          body: { department_slug: testSession.departmentSlug, section: testSession.section },
+          body: {
+            department_slug: testSession.departmentSlug,
+            section: testSession.section,
+            target_user_id: testSession.targetUserId ?? null,
+          },
         });
       }
     } catch {
