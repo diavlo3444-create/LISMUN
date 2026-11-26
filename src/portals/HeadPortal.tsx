@@ -110,7 +110,7 @@ export const HeadPortal: React.FC = () => {
   const loadApps = useCallback(async () => {
     setLoading(true);
     try {
-      const q = isHr ? '?scope=hr_accepted' : '';
+      const q = isHr ? '?scope=hr_roster' : '';
       const res = await apiRequest<{ applications: ConferenceApplication[] }>(
         `/api/applications${q}`
       );
@@ -448,17 +448,29 @@ export const HeadPortal: React.FC = () => {
         <div className="space-y-6">
           <PortalPageHeader
             kicker="Personnel Onboarding"
-            title="Accepted Applicants Roster & Onboarding Links"
-            subtitle="Generate personal non-expiring portal activation links for Secretariat-accepted staff."
+            title="Personnel Applicant Roster"
+            subtitle="Track pending, accepted, rejected and waitlisted team applicants across departments. Signup links are available for accepted staff only."
           />
-          {apps.length === 0 ? (
+          <div className="flex flex-wrap gap-2 border-b border-[#263D59]/50 pb-3">
+            {statusTabs.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setApplicantStatusTab(tab.id)}
+                className={`border px-4 py-2 font-mono text-[10px] tracking-[0.12em] uppercase transition-colors ${applicantStatusTab === tab.id ? 'border-[#D5BD8B] bg-[#D5BD8B]/10 text-[#F3EDE0]' : 'border-[#263D59] text-[#B9C6D8] hover:border-[#8CA2BD]'}`}
+              >
+                {tab.label} ({tab.count})
+              </button>
+            ))}
+          </div>
+          {headFilteredApps.length === 0 ? (
             <EmptyState
-              title="No Accepted Applicants Yet"
-              description="Secretariat-accepted applicants appear here for HR onboarding link generation."
+              title={`No ${applicantStatusTab} Applicants`}
+              description={`There are no ${applicantStatusTab} personnel applications across the conference.`}
             />
           ) : (
             <div className="divide-y divide-[#263D59]/55 border border-[#263D59]/65 bg-[#050E1C]/85">
-              {apps.map((a) => (
+              {headFilteredApps.map((a) => (
                 <div key={a.id} className="p-5">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
