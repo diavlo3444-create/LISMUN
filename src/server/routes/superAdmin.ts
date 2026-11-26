@@ -77,7 +77,7 @@ superAdminRouter.get(
 // POST /api/super-admin/accounts/bulk — Super Admin only
 // Uses the same password hashing, profile, QR pass, and one-time setup-link flow as single-account provisioning.
 superAdminRouter.post(
-  '/accounts/bulk',
+  '/bulk',
   requireSuperAdmin,
   async (req: AuthenticatedRequest, res, next) => {
     try {
