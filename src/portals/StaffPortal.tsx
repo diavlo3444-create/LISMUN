@@ -8,7 +8,6 @@ import {
 import { useAuth } from '../client/AuthContext';
 import { DashboardShell, type ShellNavItem } from '../client/components/DashboardShell';
 import {
-  DepartmentWorkspaceView,
   NotificationsCenterView,
 } from './OperationalHubComponents';
 import { LiveQrScannerWorkspace, MyQrPassView } from './ScannerAndPassPages';
@@ -44,7 +43,6 @@ export const StaffPortal: React.FC<{ routeDepartment?: string }> = ({
       ]
     : [
         { id: 'my_qr', label: 'My QR Credential', group: 'Overview', icon: QrCode },
-        { id: 'workspace', label: 'Department Workspace', group: 'Workspace', icon: Building2 },
         { id: 'notifications', label: 'Notifications', group: 'Updates', icon: Bell },
       ];
 
@@ -59,7 +57,6 @@ export const StaffPortal: React.FC<{ routeDepartment?: string }> = ({
     >
       {activeTab === 'scanner' && isSecurity && <LiveQrScannerWorkspace />}
       {activeTab === 'my_qr' && <MyQrPassView />}
-      {activeTab === 'workspace' && <DepartmentWorkspaceView departmentSlug={deptSlug} />}
       {activeTab === 'notifications' && <NotificationsCenterView />}
     </DashboardShell>
   );
