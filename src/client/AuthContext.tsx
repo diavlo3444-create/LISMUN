@@ -33,6 +33,7 @@ interface AuthContextValue {
   }) => Promise<{ user: UserProfile }>;
   signOut: () => Promise<void>;
   launchAndEnterTestMode: (departmentSlug: string, section?: GenderSection | null) => Promise<void>;
+  launchAndEnterAccountTestMode: (userId: string) => Promise<void>;
   consumeTestTicket: (ticket: string) => Promise<void>;
   exitTestMode: () => Promise<void>;
 }
@@ -172,6 +173,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     [consumeTestTicket]
   );
 
+  const launchAndEnterAccountTestMode = useCallback(
+    async (userId: string) => {
+      const resp = await apiRequest<{ launchTicket: string }>('/api/super-admin/test-mode/launch', {
+        method: 'POST',
+        body: { user_id: userId },
+      });
+      await consumeTestTicket(resp.launchTicket);
+      navigate('/head');
+    },
+    [consumeTestTicket]
+  );
+
   const exitTestMode = useCallback(async () => {
     try {
       if (testSession) {
@@ -203,6 +216,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         claimSuperAdmin,
         signOut,
         launchAndEnterTestMode,
+        launchAndEnterAccountTestMode,
         consumeTestTicket,
         exitTestMode,
       }}
