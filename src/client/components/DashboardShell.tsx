@@ -203,16 +203,22 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
             <div className="flex items-center gap-2 font-mono text-[11px] text-[#D5BD8B]">
               <ShieldAlert className="h-4 w-4 shrink-0" />
               <span>
-                SUPER IT TEST MODE · Scoped strictly to{' '}
+                SUPER ADMIN PREVIEW ·{' '}
                 <strong>
-                  {testSession.departmentSlug}
-                  {testSession.section ? ` (${testSession.section})` : ''}
+                  {testSession.impersonatedName || 'Department Preview'}
                 </strong>
+                <span className="text-[#D5BD8B]/65">
+                  {' '}· {testSession.departmentSlug}
+                  {testSession.section ? ' (' + testSession.section + ')' : ''}
+                </span>
+              </span>
+              <span className="hidden text-[10px] text-[#D5BD8B]/60 md:inline">
+                Original Super Admin session remains active · permissions are previewed as this account
               </span>
             </div>
             <button
               type="button"
-              onClick={() => void exitTestMode()}
+              onClick={() => void exitTestMode()
               className="portal-btn-primary py-1 text-[10px]"
             >
               Exit Test Mode
