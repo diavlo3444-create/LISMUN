@@ -481,7 +481,7 @@ export const HeadPortal: React.FC = () => {
                         {a.application_type} · {a.department_slug} {a.gender ? `· ${a.gender}` : ''}
                       </p>
                     </div>
-                    {!['delegate', 'chair'].includes(a.application_type) && (
+                    {a.status === 'accepted' && !['delegate', 'chair'].includes(a.application_type) && (
                       <button
                         type="button"
                         onClick={() => void handleHrInvite(a.id)}
