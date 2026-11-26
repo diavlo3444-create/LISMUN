@@ -786,6 +786,7 @@ superAdminRouter.post(
       let targetUserId: string | null = null;
       let targetName: string | null = null;
       let targetEmail: string | null = null;
+      let targetRole: UserRole | null = null;
       let departmentSlug = '';
       let section: GenderSection | null = null;
 
@@ -832,6 +833,7 @@ superAdminRouter.post(
         targetUserId = target.user_id;
         targetName = target.full_name;
         targetEmail = target.email;
+        targetRole = target.role;
       } else {
         departmentSlug = canonicalDepartmentForStorage(String(req.body?.department_slug ?? ''));
         section = (req.body?.section || null) as GenderSection | null;
@@ -904,6 +906,7 @@ superAdminRouter.post(
         launchUrl: '/head?test_ticket=' + encodeURIComponent(launchTicket),
         targetUserId,
         targetName,
+        targetRole,
       });
     } catch (err) {
       next(err);
