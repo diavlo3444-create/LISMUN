@@ -13,12 +13,11 @@ import {
 import { useAuth } from '../client/AuthContext';
 import { navigate } from '../client/router';
 import type { PortalKey, UserProfile } from '../shared/types';
-import { isSecurityAccount } from '../shared/permissions';
 import { StatusLabel } from '../client/components/UiPrimitives';
 
 function resolveDefaultRouteForUser(
   user: UserProfile,
-  departments: Array<{
+  _departments: Array<{
     id: string;
     slug: string;
     name: string;
