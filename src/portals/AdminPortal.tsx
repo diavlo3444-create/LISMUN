@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import {
   Activity,
   BarChart3,
-  Bell,
+
   Building2,
   ClipboardCheck,
   Download,
@@ -42,7 +42,7 @@ import { EmailsDashboardView } from './EmailsDashboardView';
 import {
   CommitteesManagerView,
   InquiriesManagerView,
-  NotificationsCenterView,
+
   SponsorsManagerView,
 } from './OperationalHubComponents';
 import { LiveQrScannerWorkspace } from './ScannerAndPassPages';
@@ -342,7 +342,7 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
     { id: 'app_toggles', label: 'Registration Toggles', group: 'Admissions', icon: Sliders },
     { id: 'emails', label: 'Email Management', group: 'Communications', icon: Mail },
     { id: 'inquiries', label: 'Inquiries Inbox', group: 'Communications', icon: MessageSquare },
-    { id: 'notifications', label: 'Notifications Center', group: 'Communications', icon: Bell },
+
     { id: 'scanner', label: 'Live QR Scanner', group: 'Attendance & QR', icon: QrCode },
     { id: 'qr_registry', label: 'QR Attendance Registry', group: 'Attendance & QR', icon: Activity },
     { id: 'cms_editor', label: 'Website & Form CMS', group: 'Content & CMS', icon: Globe },
@@ -938,7 +938,7 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
 
           {activeTab === 'emails' && <EmailsDashboardView />}
           {activeTab === 'inquiries' && <InquiriesManagerView />}
-          {activeTab === 'notifications' && <NotificationsCenterView />}
+    
           {activeTab === 'scanner' && <LiveQrScannerWorkspace />}
 
           {activeTab === 'qr_registry' && (
