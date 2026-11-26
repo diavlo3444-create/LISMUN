@@ -94,13 +94,11 @@ applicationsRouter.get('/', async (req: AuthenticatedRequest, res, next) => {
       return;
     }
 
-    // 4. Operational Department Heads (media_press / security / volunteers) -> STRICT PENDING-ONLY ZERO DECISION VISIBILITY
+    // 4. Operational Department Heads (media_press / security / volunteers) -> scoped status visibility.
+    // Heads can view all statuses in their own department/section; recommendations remain pending-only.
     if (isEbHeadActor(actor)) {
       const visible = allRows
-        .filter((a) => {
-          const check = canHeadAccessApplication(actor, a);
-          return check.scopeMatch && check.editable;
-        })
+        .filter((a) => canHeadAccessApplication(actor, a).scopeMatch)
         .map((a) => redactApplicationForHead(a));
       res.json({ applications: visible });
       return;
