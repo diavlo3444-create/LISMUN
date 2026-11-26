@@ -612,19 +612,19 @@
    Scoped to portal shell only; public Living Atlas website is unaffected.
    ========================================================================== */
 .portal-app-shell.wm-admin {
-  --wm-canvas: #07130e;
-  --wm-rail: #091a12;
-  --wm-surface: #0d2017;
-  --wm-inset: #11291e;
-  --wm-overlay: #173326;
-  --wm-hairline: rgba(160, 194, 169, .15);
-  --wm-hairline-strong: rgba(160, 194, 169, .29);
-  --wm-ink: #edf3ed;
-  --wm-ink-secondary: #b8cbbd;
-  --wm-ink-muted: #829d8b;
-  --wm-accent: #8fc7a4;
-  --wm-focal: #a8d8b8;
-  --wm-emerald: #326b50;
+  --wm-canvas: #07111f;
+  --wm-rail: #09182b;
+  --wm-surface: #0e2037;
+  --wm-inset: #142b49;
+  --wm-overlay: #1b385d;
+  --wm-hairline: rgba(158, 184, 218, .15);
+  --wm-hairline-strong: rgba(158, 184, 218, .30);
+  --wm-ink: #edf3fb;
+  --wm-ink-secondary: #bdcce0;
+  --wm-ink-muted: #8da5c3;
+  --wm-accent: #83b5ed;
+  --wm-focal: #b3d5ff;
+  --wm-emerald: #315d91;
   min-height: 100vh;
   background: var(--wm-canvas);
   color: var(--wm-ink);
@@ -674,17 +674,17 @@
   min-height: 35px;
   border-left: 2px solid transparent;
   border-radius: 4px;
-  color: #b7c8bc;
+  color: #bdcce0;
   font-size: 12px;
   letter-spacing: 0;
   transition: background .18s ease, color .18s ease, border-color .18s ease;
 }
 .portal-app-shell.wm-admin .portal-nav-item:hover {
-  background: rgba(143,199,164,.07);
+  background: rgba(131,181,237,.08);
   color: #f0f5f0;
 }
 .portal-app-shell.wm-admin .portal-nav-item-active {
-  background: rgba(116,178,139,.12);
+  background: rgba(105,157,218,.15);
   border-left-color: var(--wm-accent);
   color: var(--wm-focal);
 }
@@ -696,7 +696,7 @@
 .portal-app-shell.wm-admin .portal-sidebar-inner > div:last-child p:first-child { color: var(--wm-ink) !important; }
 .portal-app-shell.wm-admin .portal-topbar {
   height: 60px;
-  background: rgba(7,19,14,.94);
+  background: rgba(7,17,31,.95);
   border-color: var(--wm-hairline) !important;
   backdrop-filter: blur(16px);
 }
@@ -707,7 +707,7 @@
   max-width: 1560px;
   min-height: calc(100vh - 60px);
   background: var(--wm-canvas);
-  background-image: radial-gradient(760px 340px at 12% 0%, rgba(45,106,79,.13), transparent 66%);
+  background-image: radial-gradient(760px 340px at 12% 0%, rgba(48,91,145,.18), transparent 66%);
 }
 .portal-app-shell.wm-admin .portal-main-stage::before { display:none; }
 .portal-app-shell.wm-admin .portal-main-stage h1,
@@ -717,16 +717,16 @@
   letter-spacing: -.018em;
 }
 .portal-app-shell.wm-admin .portal-btn-primary {
-  border: 1px solid rgba(143,199,164,.42);
+  border: 1px solid rgba(131,181,237,.45);
   border-radius: 4px;
-  background: #28583f;
+  background: #244b78;
   color: #f0f7f1;
   font-family: "Plus Jakarta Sans", sans-serif;
   font-size: 10px;
   font-weight: 700;
   letter-spacing: .08em;
 }
-.portal-app-shell.wm-admin .portal-btn-primary:hover:not(:disabled) { background:#34704f; border-color:#a8d8b8; color:white; }
+.portal-app-shell.wm-admin .portal-btn-primary:hover:not(:disabled) { background:#315f96; border-color:#b3d5ff; color:white; }
 .portal-app-shell.wm-admin .portal-btn-secondary {
   border: 1px solid var(--wm-hairline-strong);
   border-radius: 4px;
@@ -737,8 +737,8 @@
   letter-spacing: .06em;
 }
 .portal-app-shell.wm-admin .portal-btn-secondary:hover:not(:disabled) {
-  border-color: rgba(143,199,164,.55);
-  background: rgba(143,199,164,.08);
+  border-color: rgba(131,181,237,.58);
+  background: rgba(131,181,237,.09);
   color: var(--wm-ink);
 }
 .portal-app-shell.wm-admin .portal-surface,
@@ -761,7 +761,7 @@
 .portal-app-shell.wm-admin .portal-textarea {
   border-color: var(--wm-hairline-strong);
   border-radius: 4px;
-  background: #08170f;
+  background: #09182b;
   color: var(--wm-ink);
 }
 .portal-app-shell.wm-admin input:focus,
@@ -783,7 +783,7 @@
 }
 .portal-app-shell.wm-admin td,
 .portal-app-shell.wm-admin th { border-color:var(--wm-hairline) !important; }
-.portal-app-shell.wm-admin tr:hover td { background:rgba(143,199,164,.035); }
+.portal-app-shell.wm-admin tr:hover td { background:rgba(131,181,237,.045); }
 .portal-app-shell.wm-admin [role="dialog"] > div {
   border-color:var(--wm-hairline-strong) !important;
   border-radius:8px;
