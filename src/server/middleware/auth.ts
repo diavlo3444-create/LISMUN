@@ -6,7 +6,9 @@ import {
   verifyHmacPayload,
 } from '../services/crypto.ts';
 import {
+  getActorGenderScope,
   hasPermission,
+  isSectionedDepartment,
   sanitizePermissionsMap,
 } from '../../shared/permissions.ts';
 import type {
@@ -200,7 +202,9 @@ export async function attachAuthOptional(
       ) {
         if (payload.targetUserId) {
           const target = await resolveProfileByUserId(payload.targetUserId);
-          const targetSection = target?.gender ?? target?.division ?? null;
+          const targetSection = target && isSectionedDepartment(payload.departmentSlug)
+            ? getActorGenderScope(target)
+            : null;
           const validTarget =
             Boolean(target) &&
             target!.is_active === true &&
