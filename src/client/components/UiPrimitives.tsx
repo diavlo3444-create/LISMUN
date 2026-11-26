@@ -238,7 +238,7 @@ export const PortalPageHeader: React.FC<{
   subtitle?: string;
   actions?: React.ReactNode;
 }> = ({ kicker, title, subtitle, actions }) => (
-  <header className="flex flex-wrap items-end justify-between gap-5 border-b border-[#263D59]/60 pb-6">
+  <header className="wm-page-header flex flex-wrap items-end justify-between gap-5 border-b border-[#263D59]/60 pb-6">
     <div className="min-w-0 max-w-3xl">
       {kicker && (
         <p
@@ -278,7 +278,7 @@ export const MetricLedger: React.FC<{ items: MetricLedgerItem[] }> = ({ items })
 
   return (
     <div
-      className={`grid divide-y divide-[#263D59]/50 border border-[#263D59]/65 bg-[#050E1C]/80 md:divide-x md:divide-y-0 ${colsClass}`}
+      className={`wm-metric-ledger grid divide-y divide-[#263D59]/50 border border-[#263D59]/65 bg-[#050E1C]/80 md:divide-x md:divide-y-0 ${colsClass}`}
     >
       {items.map((item) => {
         const valColor =
@@ -324,7 +324,7 @@ export const ProportionalDistributionBar: React.FC<{
 }> = ({ title, segments, emptyText = 'No recorded entries yet' }) => {
   const total = segments.reduce((sum, seg) => sum + seg.value, 0);
   return (
-    <div className="border border-[#263D59]/60 bg-[#050E1C]/75 px-5 py-4">
+    <div className="wm-distribution border border-[#263D59]/60 bg-[#050E1C]/75 px-5 py-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <p className="font-mono text-[10px] tracking-[0.18em] text-[#B89A62] uppercase">{title}</p>
         <p className="font-mono text-[11px] tabular-nums text-[#E8E1D2]/60">
@@ -384,7 +384,7 @@ export const EmptyState: React.FC<{
   actionLabel?: string;
   onAction?: () => void;
 }> = ({ title, description, actionLabel, onAction }) => (
-  <div className="border border-[#263D59]/55 bg-[#050E1C]/65 px-6 py-10 text-center">
+  <div className="wm-empty-state border border-[#263D59]/55 bg-[#050E1C]/65 px-6 py-10 text-center">
     <p className="font-display text-2xl font-medium text-[#F3EDE0]">{title}</p>
     <p className="mx-auto mt-2 max-w-md font-sans text-xs leading-relaxed text-[#E8E1D2]/60 md:text-sm">
       {description}
@@ -428,7 +428,7 @@ export const ConfirmDialog: React.FC<{
       onClick={onCancel}
     >
       <div
-        className="portal-modal-enter w-full max-w-md border border-[#B89A62]/45 bg-[#061020] p-6 shadow-2xl shadow-black/60"
+        className="wm-confirm-panel portal-modal-enter w-full max-w-md border border-[#B89A62]/45 bg-[#061020] p-6 shadow-2xl shadow-black/60"
         onClick={(e) => e.stopPropagation()}
       >
         <p className="font-mono text-[10px] tracking-[0.2em] text-[#B89A62] uppercase">
