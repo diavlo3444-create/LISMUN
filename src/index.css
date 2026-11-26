@@ -604,3 +604,202 @@
   }
 }
 
+
+
+
+/* ==========================================================================
+   LIS MUN internal portals — WILLOW MUN-inspired visual system
+   Scoped to portal shell only; public Living Atlas website is unaffected.
+   ========================================================================== */
+.portal-app-shell.wm-admin {
+  --wm-canvas: #07130e;
+  --wm-rail: #091a12;
+  --wm-surface: #0d2017;
+  --wm-inset: #11291e;
+  --wm-overlay: #173326;
+  --wm-hairline: rgba(160, 194, 169, .15);
+  --wm-hairline-strong: rgba(160, 194, 169, .29);
+  --wm-ink: #edf3ed;
+  --wm-ink-secondary: #b8cbbd;
+  --wm-ink-muted: #829d8b;
+  --wm-accent: #8fc7a4;
+  --wm-focal: #a8d8b8;
+  --wm-emerald: #326b50;
+  min-height: 100vh;
+  background: var(--wm-canvas);
+  color: var(--wm-ink);
+  font-family: "Plus Jakarta Sans", Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 13px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+.portal-app-shell.wm-admin .portal-sidebar,
+.portal-app-shell.wm-admin .portal-sidebar-inner {
+  background: var(--wm-rail);
+  box-shadow: none;
+}
+.portal-app-shell.wm-admin .portal-sidebar {
+  border-right: 1px solid var(--wm-hairline) !important;
+}
+.portal-app-shell.wm-admin .portal-brand-block {
+  padding: 26px 22px 22px;
+  border-color: var(--wm-hairline) !important;
+}
+.portal-app-shell.wm-admin .portal-brand-block::after { display:none; }
+.portal-app-shell.wm-admin .portal-wordmark p:first-child {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 29px;
+  font-weight: 600;
+  letter-spacing: .035em;
+  color: var(--wm-ink) !important;
+}
+.portal-app-shell.wm-admin .portal-wordmark p:nth-child(2) {
+  color: var(--wm-ink-muted) !important;
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: .16em;
+}
+.portal-app-shell.wm-admin nav { padding: 18px 13px; }
+.portal-app-shell.wm-admin nav > div { margin-top: 17px; padding-top: 13px; border-color: var(--wm-hairline) !important; }
+.portal-app-shell.wm-admin nav > div:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+.portal-app-shell.wm-admin nav p {
+  color: var(--wm-ink-muted) !important;
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .15em;
+}
+.portal-app-shell.wm-admin .portal-nav-item {
+  min-height: 35px;
+  border-left: 2px solid transparent;
+  border-radius: 4px;
+  color: #b7c8bc;
+  font-size: 12px;
+  letter-spacing: 0;
+  transition: background .18s ease, color .18s ease, border-color .18s ease;
+}
+.portal-app-shell.wm-admin .portal-nav-item:hover {
+  background: rgba(143,199,164,.07);
+  color: #f0f5f0;
+}
+.portal-app-shell.wm-admin .portal-nav-item-active {
+  background: rgba(116,178,139,.12);
+  border-left-color: var(--wm-accent);
+  color: var(--wm-focal);
+}
+.portal-app-shell.wm-admin .portal-nav-item-active::after { display:none; }
+.portal-app-shell.wm-admin .portal-sidebar-inner > div:last-child {
+  background: transparent !important;
+  border-color: var(--wm-hairline) !important;
+}
+.portal-app-shell.wm-admin .portal-sidebar-inner > div:last-child p:first-child { color: var(--wm-ink) !important; }
+.portal-app-shell.wm-admin .portal-topbar {
+  height: 60px;
+  background: rgba(7,19,14,.94);
+  border-color: var(--wm-hairline) !important;
+  backdrop-filter: blur(16px);
+}
+.portal-app-shell.wm-admin .portal-topbar,
+.portal-app-shell.wm-admin .portal-topbar span { color: var(--wm-ink-secondary); }
+.portal-app-shell.wm-admin .portal-topbar span:last-child { color: var(--wm-ink) !important; }
+.portal-app-shell.wm-admin .portal-main-stage {
+  max-width: 1560px;
+  min-height: calc(100vh - 60px);
+  background: var(--wm-canvas);
+  background-image: radial-gradient(760px 340px at 12% 0%, rgba(45,106,79,.13), transparent 66%);
+}
+.portal-app-shell.wm-admin .portal-main-stage::before { display:none; }
+.portal-app-shell.wm-admin .portal-main-stage h1,
+.portal-app-shell.wm-admin .portal-main-stage h2,
+.portal-app-shell.wm-admin .portal-main-stage h3 {
+  color: var(--wm-ink);
+  letter-spacing: -.018em;
+}
+.portal-app-shell.wm-admin .portal-btn-primary {
+  border: 1px solid rgba(143,199,164,.42);
+  border-radius: 4px;
+  background: #28583f;
+  color: #f0f7f1;
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+}
+.portal-app-shell.wm-admin .portal-btn-primary:hover:not(:disabled) { background:#34704f; border-color:#a8d8b8; color:white; }
+.portal-app-shell.wm-admin .portal-btn-secondary {
+  border: 1px solid var(--wm-hairline-strong);
+  border-radius: 4px;
+  background: rgba(255,255,255,.025);
+  color: var(--wm-ink-secondary);
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-size: 10px;
+  letter-spacing: .06em;
+}
+.portal-app-shell.wm-admin .portal-btn-secondary:hover:not(:disabled) {
+  border-color: rgba(143,199,164,.55);
+  background: rgba(143,199,164,.08);
+  color: var(--wm-ink);
+}
+.portal-app-shell.wm-admin .portal-surface,
+.portal-app-shell.wm-admin .portal-surface-editorial {
+  border: 1px solid var(--wm-hairline);
+  border-radius: 7px;
+  background: var(--wm-surface);
+  box-shadow: 0 8px 24px -20px rgba(0,0,0,.65);
+}
+.portal-app-shell.wm-admin .portal-surface-subtle {
+  border: 1px solid var(--wm-hairline);
+  border-radius: 6px;
+  background: var(--wm-inset);
+}
+.portal-app-shell.wm-admin input,
+.portal-app-shell.wm-admin select,
+.portal-app-shell.wm-admin textarea,
+.portal-app-shell.wm-admin .portal-input,
+.portal-app-shell.wm-admin .portal-select,
+.portal-app-shell.wm-admin .portal-textarea {
+  border-color: var(--wm-hairline-strong);
+  border-radius: 4px;
+  background: #08170f;
+  color: var(--wm-ink);
+}
+.portal-app-shell.wm-admin input:focus,
+.portal-app-shell.wm-admin select:focus,
+.portal-app-shell.wm-admin textarea:focus { border-color:var(--wm-accent); outline:none; }
+.portal-app-shell.wm-admin button:focus-visible,
+.portal-app-shell.wm-admin a:focus-visible {
+  outline: 2px solid var(--wm-focal);
+  outline-offset: 2px;
+}
+.portal-app-shell.wm-admin table { border-collapse:separate; border-spacing:0; }
+.portal-app-shell.wm-admin th {
+  color: var(--wm-ink-muted);
+  background: rgba(255,255,255,.025);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+.portal-app-shell.wm-admin td,
+.portal-app-shell.wm-admin th { border-color:var(--wm-hairline) !important; }
+.portal-app-shell.wm-admin tr:hover td { background:rgba(143,199,164,.035); }
+.portal-app-shell.wm-admin [role="dialog"] > div {
+  border-color:var(--wm-hairline-strong) !important;
+  border-radius:8px;
+  background:var(--wm-surface) !important;
+}
+.portal-app-shell.wm-admin .portal-panel-enter { animation: willow-dashboard-page-in .24s cubic-bezier(.22,1,.36,1) both; }
+@keyframes willow-dashboard-page-in {
+  from { opacity:0; transform:translateY(6px); }
+  to { opacity:1; transform:translateY(0); }
+}
+@media (max-width: 1023px) {
+  .portal-app-shell.wm-admin .portal-main-stage { padding:20px 15px 28px; }
+  .portal-app-shell.wm-admin .portal-topbar { padding-inline:14px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .portal-app-shell.wm-admin *,
+  .portal-app-shell.wm-admin *::before,
+  .portal-app-shell.wm-admin *::after { animation:none !important; transition:none !important; }
+}
