@@ -70,6 +70,58 @@ import type {
   UserRole,
 } from '../shared/types';
 
+type BulkRosterRow = {
+  email: string;
+  full_name: string;
+  role: string;
+  department_slug: string;
+  gender: string;
+  title: string;
+  eb_rank: string;
+};
+
+function parseBulkRosterCsv(source: string): BulkRosterRow[] {
+  const records: string[][] = [];
+  let row: string[] = [];
+  let cell = '';
+  let quoted = false;
+  for (let i = 0; i < source.length; i += 1) {
+    const char = source[i];
+    if (char === '"' && quoted && source[i + 1] === '"') {
+      cell += '"'; i += 1;
+    } else if (char === '"') {
+      quoted = !quoted;
+    } else if (char === ',' && !quoted) {
+      row.push(cell.trim()); cell = '';
+    } else if ((char === '\\n' || char === '\\r') && !quoted) {
+      if (char === '\\r' && source[i + 1] === '\\n') i += 1;
+      row.push(cell.trim()); cell = '';
+      if (row.some((value) => value)) records.push(row);
+      row = [];
+    } else {
+      cell += char;
+    }
+  }
+  row.push(cell.trim());
+  if (row.some((value) => value)) records.push(row);
+  if (records.length < 2) return [];
+
+  const headers = records[0].map((value) => value.toLowerCase().replace(/[\\s-]+/g, '_'));
+  const pick = (record: string[], keys: string[]) => {
+    const index = headers.findIndex((header) => keys.includes(header));
+    return index >= 0 ? (record[index] ?? '').trim() : '';
+  };
+  return records.slice(1).map((record) => ({
+    email: pick(record, ['email', 'email_address']),
+    full_name: pick(record, ['full_name', 'name', 'full name']),
+    role: pick(record, ['role', 'account_role']) || 'staff',
+    department_slug: pick(record, ['department_slug', 'department']),
+    gender: pick(record, ['gender', 'division']),
+    title: pick(record, ['title', 'position']),
+    eb_rank: pick(record, ['eb_rank', 'rank']),
+  }));
+}
+
 export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
   isSuperAdminRoute,
 }) => {
@@ -181,6 +233,13 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
   const [newAccPassword, setNewAccPassword] = useState('');
   const [newAccPerms, setNewAccPerms] = useState<Partial<Record<PermissionKey, boolean>>>({});
   const [lastSetupLink, setLastSetupLink] = useState('');
+  const [bulkRosterText, setBulkRosterText] = useState('');
+  const [bulkRosterRows, setBulkRosterRows] = useState<BulkRosterRow[]>([]);
+  const [bulkImportResults, setBulkImportResults] = useState<Array<{
+    row: number; email: string; full_name: string; status: 'created' | 'skipped' | 'failed';
+    setupLink?: string; reason?: string;
+  }>>([]);
+  const [bulkImporting, setBulkImporting] = useState(false);
 
   // EB Invite / Allowlist forms
   const [allowEmail, setAllowEmail] = useState('');
@@ -1411,6 +1470,160 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
                       </div>
                     )}
                   </form>
+
+                  <section className="portal-surface space-y-4 p-5">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <p className="font-mono text-[10px] tracking-[0.18em] text-[#83b5ed] uppercase">Super Admin Only</p>
+                        <h3 className="mt-1 font-display text-2xl font-medium text-[#edf3fb]">Bulk Account Import</h3>
+                        <p className="mt-1 max-w-2xl text-sm text-[#b8c8dc]/75">
+                          Paste a CSV roster or upload a .csv file. Preview and validate the rows before creating accounts.
+                          Each new account receives its own secure, single-use setup link.
+                        </p>
+                      </div>
+                      <a
+                        href="data:text/csv;charset=utf-8,email%2Cfull_name%2Crole%2Cdepartment_slug%2Cgender%2Ctitle%2Ceb_rank%0Aname%40example.com%2CFull%20Name%2Cdepartment_head%2Cvolunteers%2Cmale%2CHead%2C"
+                        download="lismun-account-import-template.csv"
+                        className="portal-btn-secondary"
+                      >
+                        <Download className="h-3.5 w-3.5" /> Download CSV Template
+                      </a>
+                    </div>
+                    <input
+                      type="file"
+                      accept=".csv,text/csv"
+                      className="portal-input"
+                      onChange={async (event) => {
+                        const file = event.target.files?.[0];
+                        if (!file) return;
+                        const content = await file.text();
+                        setBulkRosterText(content);
+                        setBulkRosterRows(parseBulkRosterCsv(content));
+                        setBulkImportResults([]);
+                      }}
+                    />
+                    <textarea
+                      rows={7}
+                      value={bulkRosterText}
+                      onChange={(event) => {
+                        setBulkRosterText(event.target.value);
+                        setBulkRosterRows(parseBulkRosterCsv(event.target.value));
+                        setBulkImportResults([]);
+                      }}
+                      placeholder={'email,full_name,role,department_slug,gender,title,eb_rank\\nmember@example.com,Full Name,department_head,volunteers,male,Head,'}
+                      className="portal-textarea font-mono text-xs"
+                    />
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <p className="font-mono text-xs text-[#b8c8dc]/70">{bulkRosterRows.length} rows detected · maximum 100 per import</p>
+                      <button
+                        type="button"
+                        onClick={() => setBulkRosterRows(parseBulkRosterCsv(bulkRosterText))}
+                        className="portal-btn-secondary"
+                      >
+                        Preview Import
+                      </button>
+                    </div>
+                    {bulkRosterRows.length > 0 && (
+                      <div className="max-h-64 overflow-auto border border-[#263D59]">
+                        <table className="w-full text-left text-xs">
+                          <thead className="sticky top-0 bg-[#0b1b30] text-[#9fc5ee]">
+                            <tr><th className="p-2">Name</th><th className="p-2">Email</th><th className="p-2">Role</th><th className="p-2">Department</th></tr>
+                          </thead>
+                          <tbody>
+                            {bulkRosterRows.map((item, index) => (
+                              <tr key={index} className="border-t border-[#263D59]/70 text-[#dce7f5]">
+                                <td className="p-2">{item.full_name || '—'}</td>
+                                <td className="p-2">{item.email || '—'}</td>
+                                <td className="p-2">{item.role}</td>
+                                <td className="p-2">{item.department_slug || '—'}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      disabled={bulkImporting || !bulkRosterRows.length || bulkRosterRows.length > 100}
+                      onClick={async () => {
+                        setBulkImporting(true);
+                        setBulkImportResults([]);
+                        try {
+                          const response = await apiRequest<{
+                            summary: { created: number; skipped: number; failed: number };
+                            results: typeof bulkImportResults;
+                          }>('/api/super-admin/accounts/bulk', {
+                            method: 'POST',
+                            body: { rows: bulkRosterRows },
+                          });
+                          setBulkImportResults(response.results || []);
+                          addToast(
+                            'Bulk import complete: ' + response.summary.created + ' created, ' +
+                            response.summary.skipped + ' skipped, ' + response.summary.failed + ' failed.',
+                            response.summary.failed ? 'error' : 'success'
+                          );
+                          await loadAll();
+                        } catch (err) {
+                          addToast(err instanceof Error ? err.message : 'Bulk import failed.', 'error');
+                        } finally {
+                          setBulkImporting(false);
+                        }
+                      }}
+                      className="portal-btn-primary disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      {bulkImporting ? 'Creating Accounts…' : 'Create Accounts from Preview'}
+                    </button>
+                    {bulkImportResults.length > 0 && (
+                      <div className="space-y-3 border-t border-[#263D59] pt-4">
+                        <div className="flex flex-wrap items-center gap-4 font-mono text-xs text-[#c8d8eb]">
+                          <span>Created: {bulkImportResults.filter((item) => item.status === 'created').length}</span>
+                          <span>Skipped: {bulkImportResults.filter((item) => item.status === 'skipped').length}</span>
+                          <span>Failed: {bulkImportResults.filter((item) => item.status === 'failed').length}</span>
+                        </div>
+                        <div className="max-h-64 space-y-2 overflow-auto">
+                          {bulkImportResults.map((item) => (
+                            <div key={item.row} className="border border-[#263D59] p-3 text-xs">
+                              <div className="flex flex-wrap justify-between gap-2">
+                                <span className="text-[#edf3fb]">{item.full_name} · {item.email}</span>
+                                <span className={item.status === 'created' ? 'text-emerald-300' : item.status === 'failed' ? 'text-rose-300' : 'text-amber-200'}>{item.status}</span>
+                              </div>
+                              {item.reason && <p className="mt-1 text-[#b8c8dc]/70">{item.reason}</p>}
+                              {item.setupLink && (
+                                <div className="mt-2 break-all text-[#9fc5ee]">
+                                  {window.location.origin}{item.setupLink}
+                                  <button
+                                    type="button"
+                                    className="ml-2 underline"
+                                    onClick={() => void navigator.clipboard.writeText(window.location.origin + item.setupLink)}
+                                  >Copy setup link</button>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                        <button
+                          type="button"
+                          className="portal-btn-secondary"
+                          onClick={() => {
+                            const rows = [
+                              ['row', 'name', 'email', 'status', 'setup_link', 'reason'],
+                              ...bulkImportResults.map((item) => [
+                                String(item.row), item.full_name, item.email, item.status,
+                                item.setupLink ? window.location.origin + item.setupLink : '', item.reason || '',
+                              ]),
+                            ];
+                            const csv = rows.map((values) => values.map((value) => '"' + value.replace(/"/g, '""') + '"').join(',')).join('\\n');
+                            const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+                            const link = document.createElement('a');
+                            link.href = url; link.download = 'lismun-bulk-import-results.csv'; link.click();
+                            URL.revokeObjectURL(url);
+                          }}
+                        >
+                          <Download className="h-3.5 w-3.5" /> Export Results
+                        </button>
+                      </div>
+                    )}
+                  </section>
 
                   {/* EB Allowlist & Invite Links */}
                   <div className="grid gap-5 lg:grid-cols-2">
