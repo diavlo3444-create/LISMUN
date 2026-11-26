@@ -97,6 +97,7 @@ export const HeadPortal: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState('overview');
   const [apps, setApps] = useState<ConferenceApplication[]>([]);
+  const [applicantStatusTab, setApplicantStatusTab] = useState<'pending' | 'accepted' | 'rejected' | 'waitlisted'>('pending');
   const [headNotes, setHeadNotes] = useState<Record<string, string>>({});
   const [issuedUrls, setIssuedUrls] = useState<Record<string, string>>({});
   const [certPreview, setCertPreview] = useState<{
@@ -193,6 +194,15 @@ export const HeadPortal: React.FC = () => {
   const recAcceptCount = apps.filter((a) => a.head_recommendation === 'recommend_accept').length;
   const recRejectCount = apps.filter((a) => a.head_recommendation === 'recommend_reject').length;
   const unreviewedCount = apps.length - recAcceptCount - recRejectCount;
+  const statusTabs = [
+    { id: 'pending' as const, label: 'Pending', count: apps.filter((a) => ['pending', 'received', 'under_review'].includes(a.status)).length },
+    { id: 'accepted' as const, label: 'Accepted', count: apps.filter((a) => a.status === 'accepted').length },
+    { id: 'rejected' as const, label: 'Rejected', count: apps.filter((a) => a.status === 'rejected').length },
+    { id: 'waitlisted' as const, label: 'Waitlisted', count: apps.filter((a) => a.status === 'waitlisted').length },
+  ];
+  const headFilteredApps = apps.filter((a) => applicantStatusTab === 'pending'
+    ? ['pending', 'received', 'under_review'].includes(a.status)
+    : a.status === applicantStatusTab);
 
   return (
     <DashboardShell
@@ -255,16 +265,28 @@ export const HeadPortal: React.FC = () => {
             subtitle="Showing pending applications within your scope only. Final admission status and medical disclosures are isolated to Secretariat Admins."
           />
 
+          <div className="flex flex-wrap gap-2 border-b border-[#263D59]/50 pb-3">
+            {statusTabs.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setApplicantStatusTab(tab.id)}
+                className={`border px-4 py-2 font-mono text-[10px] tracking-[0.12em] uppercase transition-colors ${applicantStatusTab === tab.id ? 'border-[#D5BD8B] bg-[#D5BD8B]/10 text-[#F3EDE0]' : 'border-[#263D59] text-[#B9C6D8] hover:border-[#8CA2BD]'}`}
+              >
+                {tab.label} ({tab.count})
+              </button>
+            ))}
+          </div>
           {loading ? (
             <LoadingSkeleton rows={4} />
-          ) : apps.length === 0 ? (
+          ) : headFilteredApps.length === 0 ? (
             <EmptyState
-              title="No Pending Applications"
-              description="All scoped applications have already been processed or none are pending review."
+              title={`No ${applicantStatusTab} Applicants`}
+              description={`There are currently no ${applicantStatusTab} applications in your department and section.`}
             />
           ) : (
             <div className="divide-y divide-[#263D59]/60 border border-[#263D59]/65 bg-[#050E1C]/85">
-              {apps.map((a) => (
+              {headFilteredApps.map((a) => (
                 <div key={a.id} className="space-y-4 p-6">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
@@ -384,29 +406,37 @@ export const HeadPortal: React.FC = () => {
                     </div>
                   )}
 
-                  <textarea
-                    rows={2}
-                    placeholder="Head review notes..."
-                    value={headNotes[a.id] ?? a.head_notes ?? ''}
-                    onChange={(e) => setHeadNotes((p) => ({ ...p, [a.id]: e.target.value }))}
-                    className="portal-textarea"
-                  />
-                  <div className="flex flex-wrap gap-2.5">
-                    <button
-                      type="button"
-                      onClick={() => void handleRecommend(a.id, 'recommend_accept')}
-                      className="inline-flex items-center border border-[#16A34A]/70 bg-[#05140E] px-4 py-2 font-mono text-[11px] tracking-[0.13em] text-[#86EFAC] uppercase whitespace-nowrap hover:border-[#22C55E]"
-                    >
-                      Recommend Accept
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => void handleRecommend(a.id, 'recommend_reject')}
-                      className="portal-btn-danger"
-                    >
-                      Recommend Reject
-                    </button>
-                  </div>
+                  {['pending', 'received', 'under_review'].includes(a.status) ? (
+                    <>
+                      <textarea
+                        rows={2}
+                        placeholder="Head review notes..."
+                        value={headNotes[a.id] ?? a.head_notes ?? ''}
+                        onChange={(e) => setHeadNotes((p) => ({ ...p, [a.id]: e.target.value }))}
+                        className="portal-textarea"
+                      />
+                      <div className="flex flex-wrap gap-2.5">
+                        <button
+                          type="button"
+                          onClick={() => void handleRecommend(a.id, 'recommend_accept')}
+                          className="inline-flex items-center border border-[#16A34A]/70 bg-[#05140E] px-4 py-2 font-mono text-[11px] tracking-[0.13em] text-[#86EFAC] uppercase whitespace-nowrap hover:border-[#22C55E]"
+                        >
+                          Recommend Accept
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void handleRecommend(a.id, 'recommend_reject')}
+                          className="portal-btn-danger"
+                        >
+                          Recommend Reject
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <p className="border border-[#263D59]/45 bg-[#030914]/70 px-3 py-2 font-mono text-[10px] tracking-[0.08em] text-[#B9C6D8] uppercase">
+                      Final status: {a.status.replace(/_/g, ' ')} · Read-only
+                    </p>
+                  )}
                 </div>
               ))}
             </div>
@@ -468,14 +498,26 @@ export const HeadPortal: React.FC = () => {
             title="Delegate & Chair Applications"
             subtitle="Review delegate and chair submissions scoped to the Delegate & Chair Councils directorate."
           />
-          {apps.length === 0 ? (
+          <div className="flex flex-wrap gap-2 border-b border-[#263D59]/50 pb-3">
+            {statusTabs.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setApplicantStatusTab(tab.id)}
+                className={`border px-4 py-2 font-mono text-[10px] tracking-[0.12em] uppercase transition-colors ${applicantStatusTab === tab.id ? 'border-[#D5BD8B] bg-[#D5BD8B]/10 text-[#F3EDE0]' : 'border-[#263D59] text-[#B9C6D8] hover:border-[#8CA2BD]'}`}
+              >
+                {tab.label} ({tab.count})
+              </button>
+            ))}
+          </div>
+          {headFilteredApps.length === 0 ? (
             <EmptyState
-              title="No Delegate or Chair Records"
-              description="Delegate and Chair applications will appear here."
+              title={`No ${applicantStatusTab} Applicants`}
+              description={`There are no ${applicantStatusTab} delegate or chair applications.`}
             />
           ) : (
             <div className="divide-y divide-[#263D59]/55 border border-[#263D59]/65 bg-[#050E1C]/85">
-              {apps.map((a) => (
+              {headFilteredApps.map((a) => (
                 <div
                   key={a.id}
                   className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 transition-colors hover:bg-[#071426]/65"
@@ -490,7 +532,7 @@ export const HeadPortal: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-3">
                     <StatusLabel status={a.status} />
-                    {a.application_type === 'delegate' && (
+                    {a.application_type === 'delegate' && ['pending', 'received', 'under_review'].includes(a.status) && (
                       <button
                         type="button"
                         onClick={async () => {
