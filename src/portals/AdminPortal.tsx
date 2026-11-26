@@ -200,7 +200,7 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
   const [loading, setLoading] = useState(true);
 
   // Filters & Modals
-  const [appFilterStatus, setAppFilterStatus] = useState('all');
+  const [appFilterStatus, setAppFilterStatus] = useState<'all' | 'pending' | 'accepted' | 'rejected' | 'waitlisted'>('all');
   const [appFilterType, setAppFilterType] = useState('all');
   const [appSearch, setAppSearch] = useState('');
   const [selectedApp, setSelectedApp] = useState<ConferenceApplication | null>(null);
@@ -523,7 +523,8 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
   };
 
   const filteredApps = apps.filter((a) => {
-    if (appFilterStatus !== 'all' && a.status !== appFilterStatus) return false;
+    if (appFilterStatus === 'pending' && !['pending', 'received', 'under_review'].includes(a.status)) return false;
+    if (appFilterStatus !== 'all' && appFilterStatus !== 'pending' && a.status !== appFilterStatus) return false;
     if (appFilterType !== 'all' && a.application_type !== appFilterType) return false;
     if (appSearch) {
       const q = appSearch.toLowerCase();
@@ -726,17 +727,24 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
                     <option value="security">Security</option>
                     <option value="volunteers">Volunteers</option>
                   </select>
-                  <select
-                    value={appFilterStatus}
-                    onChange={(e) => setAppFilterStatus(e.target.value)}
-                    className="portal-select"
-                  >
-                    <option value="all">All Statuses</option>
-                    <option value="pending">Pending</option>
-                    <option value="accepted">Accepted</option>
-                    <option value="waitlisted">Waitlisted</option>
-                    <option value="rejected">Rejected</option>
-                  </select>
+                  <div className="flex flex-wrap gap-2 sm:col-span-3">
+                    {[
+                      { id: 'all' as const, label: 'All', count: apps.length },
+                      { id: 'pending' as const, label: 'Pending', count: apps.filter((a) => ['pending', 'received', 'under_review'].includes(a.status)).length },
+                      { id: 'accepted' as const, label: 'Accepted', count: acceptedCount },
+                      { id: 'rejected' as const, label: 'Rejected', count: rejectedCount },
+                      { id: 'waitlisted' as const, label: 'Waitlisted', count: waitlistedCount },
+                    ].map((tab) => (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        onClick={() => setAppFilterStatus(tab.id)}
+                        className={`border px-4 py-2 font-mono text-[10px] tracking-[0.12em] uppercase transition-colors ${appFilterStatus === tab.id ? 'border-[#D5BD8B] bg-[#D5BD8B]/10 text-[#F3EDE0]' : 'border-[#263D59] text-[#B9C6D8] hover:border-[#8CA2BD]'}`}
+                      >
+                        {tab.label} ({tab.count})
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
 
