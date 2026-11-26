@@ -74,6 +74,136 @@ superAdminRouter.get(
   }
 );
 
+// POST /api/super-admin/accounts/bulk — Super Admin only
+// Uses the same password hashing, profile, QR pass, and one-time setup-link flow as single-account provisioning.
+superAdminRouter.post(
+  '/accounts/bulk',
+  requireSuperAdmin,
+  async (req: AuthenticatedRequest, res, next) => {
+    try {
+      const rows = Array.isArray(req.body?.rows) ? req.body.rows : [];
+      if (!rows.length || rows.length > 100) {
+        res.status(400).json({ error: 'INVALID_BATCH', message: 'Provide between 1 and 100 roster rows.' });
+        return;
+      }
+
+      const pool = getPool();
+      const seen = new Set<string>();
+      const results: Array<{ row: number; email: string; full_name: string; status: 'created' | 'skipped' | 'failed'; setupLink?: string; reason?: string }> = [];
+
+      for (let index = 0; index < rows.length; index += 1) {
+        const raw = rows[index] ?? {};
+        const email = String(raw.email ?? '').trim().toLowerCase();
+        const fullName = String(raw.full_name ?? raw.name ?? '').trim();
+        const role = String(raw.role ?? 'staff').trim() as UserRole;
+        const rawDept = String(raw.department_slug ?? raw.department ?? '').trim();
+        const departmentSlug = rawDept ? canonicalDepartmentForStorage(rawDept) : null;
+        const gender = (raw.gender || raw.division || null) as GenderSection | null;
+        const title = String(raw.title ?? '').trim();
+        const ebRank = raw.eb_rank ?? null;
+
+        const fail = (reason: string) => results.push({
+          row: index + 1, email, full_name: fullName, status: 'failed' as const, reason,
+        });
+
+        if (!email || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) {
+          fail('A valid email address is required.');
+          continue;
+        }
+        if (fullName.length < 2) {
+          fail('Full name must contain at least 2 characters.');
+          continue;
+        }
+        if (!['admin', 'department_head', 'executive_board', 'staff'].includes(role)) {
+          fail('Role must be admin, department_head, executive_board, or staff.');
+          continue;
+        }
+        if (seen.has(email)) {
+          results.push({ row: index + 1, email, full_name: fullName, status: 'skipped', reason: 'Duplicate email in this import.' });
+          continue;
+        }
+        seen.add(email);
+
+        if (role === 'department_head' && departmentSlug && isSectionedDepartment(departmentSlug) && !gender) {
+          fail(`Select male or female division for ${departmentSlug}.`);
+          continue;
+        }
+
+        try {
+          const deptRow = departmentSlug
+            ? (await pool.query<{ id: string; slug: string }>(
+                'SELECT id, slug FROM departments WHERE slug = $1 LIMIT 1',
+                [departmentSlug]
+              )).rows[0]
+            : null;
+          if (departmentSlug && !deptRow) {
+            fail(`Unknown department: ${departmentSlug}.`);
+            continue;
+          }
+
+          const created = await withTransaction(async (client) => {
+            const existing = await client.query<{ id: string }>(
+              'SELECT id FROM users WHERE lower(email) = $1 LIMIT 1',
+              [email]
+            );
+            if (existing.rows[0]) return { conflict: true as const };
+
+            const userId = (await client.query<{ id: string }>(
+              'INSERT INTO users (email, password_hash, full_name) VALUES ($1, $2, $3) RETURNING id',
+              [email, hashPassword(generateOpaqueToken(24)), fullName]
+            )).rows[0].id;
+
+            const permissions = sanitizePermissionsMap(role, {});
+            await client.query(
+              `INSERT INTO profiles (
+                user_id, email, full_name, role, department_id, department_slug,
+                title, division, gender, is_active, eb_rank, eb_permissions, permissions
+              ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$8,true,$9,'{}'::jsonb,$10::jsonb)`,
+              [userId, email, fullName, role, deptRow?.id ?? null, deptRow?.slug ?? null,
+                title || role.replace(/_/g, ' '), gender, ebRank, JSON.stringify(permissions)]
+            );
+
+            await ensureQrPassForUser(client, {
+              userId, fullName, email, roleLabel: ebRank || role,
+              departmentSlug: deptRow?.slug ?? 'general', section: gender,
+              holderType: role === 'executive_board' ? 'eb_member' : 'staff',
+              phone: null, active: true,
+            });
+
+            const rawToken = generateOpaqueToken(32);
+            await client.query(
+              `INSERT INTO password_setup_tokens (user_id, token_hash, purpose, expires_at, created_by)
+               VALUES ($1, $2, 'head_setup', now() + interval '7 days', $3)`,
+              [userId, hashOpaqueToken(rawToken), req.authUser!.user_id]
+            );
+            return { conflict: false as const, setupLink: `/head-setup?token=${rawToken}` };
+          });
+
+          if (created.conflict) {
+            results.push({ row: index + 1, email, full_name: fullName, status: 'skipped', reason: 'An account with this email already exists.' });
+          } else {
+            results.push({ row: index + 1, email, full_name: fullName, status: 'created', setupLink: created.setupLink });
+          }
+        } catch {
+          fail('Account could not be created. Check the row and try again.');
+        }
+      }
+
+      res.status(200).json({
+        ok: true,
+        summary: {
+          created: results.filter((item) => item.status === 'created').length,
+          skipped: results.filter((item) => item.status === 'skipped').length,
+          failed: results.filter((item) => item.status === 'failed').length,
+        },
+        results,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
 // POST /api/super-admin/accounts (create admin / department_head / executive_board / staff)
 superAdminRouter.post(
   '/accounts',
