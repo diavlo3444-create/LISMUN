@@ -175,12 +175,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const launchAndEnterAccountTestMode = useCallback(
     async (userId: string) => {
-      const resp = await apiRequest<{ launchTicket: string }>('/api/super-admin/test-mode/launch', {
+      const resp = await apiRequest<{
+        launchTicket: string;
+        targetRole?: string;
+      }>('/api/super-admin/test-mode/launch', {
         method: 'POST',
         body: { user_id: userId },
       });
       await consumeTestTicket(resp.launchTicket);
-      navigate('/head');
+      navigate(resp.targetRole === 'executive_board' ? '/eb' : '/head');
     },
     [consumeTestTicket]
   );
