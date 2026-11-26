@@ -610,6 +610,20 @@ superAdminRouter.post(
       }
 
       const pool = getPool();
+      const target = (
+        await pool.query<{ role: UserRole }>(
+          `SELECT role FROM profiles WHERE user_id = $1 LIMIT 1`,
+          [userId]
+        )
+      ).rows[0];
+      if (!target) {
+        res.status(404).json({ error: 'NOT_FOUND', message: 'Account not found.' });
+        return;
+      }
+      if (target.role === 'super_admin') {
+        res.status(403).json({ error: 'PROTECTED_ACCOUNT', message: 'Super Admin accounts cannot be reset here.' });
+        return;
+      }
       if (issueSetupLink) {
         const rawTok = generateOpaqueToken(32);
         await pool.query(
@@ -653,6 +667,7 @@ superAdminRouter.delete(
       }
       const primaryEmail = getPrimarySuperAdminEmail();
       if (
+        target.role === 'super_admin' ||
         (primaryEmail && target.email.toLowerCase() === primaryEmail) ||
         userId === req.authUser!.user_id
       ) {
