@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
 import {
-
-  Building2,
   QrCode,
   Shield,
 } from 'lucide-react';
@@ -15,15 +13,12 @@ import {
 } from '../shared/permissions';
 
 export const StaffPortal: React.FC<{ routeDepartment?: string }> = ({
-  routeDepartment,
+  routeDepartment: _routeDepartment,
 }) => {
   const { effectiveActor, departments } = useAuth();
-  const deptSlug = canonicalDepartmentForStorage(
-    routeDepartment || effectiveActor?.department_slug || 'general'
-  );
+  const deptSlug = canonicalDepartmentForStorage(effectiveActor?.department_slug || 'general');
   const isSecurity =
-    (effectiveActor ? isSecurityAccount(effectiveActor, departments) : false) ||
-    deptSlug === 'security';
+    effectiveActor ? isSecurityAccount(effectiveActor, departments) : false;
   const isSimplifiedOperational = ['volunteers', 'media_press', 'media', 'press'].includes(deptSlug);
 
   const [activeTab, setActiveTab] = useState(isSecurity ? 'scanner' : 'my_qr');
