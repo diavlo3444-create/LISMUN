@@ -605,7 +605,7 @@ export const PublicApplicationPage: React.FC<{
               )}
               <button
                 type="button"
-                onClick={() => navigate('/portal')}
+                onClick={() => navigate('/staff-login')}
                 className="border border-[#263D59] bg-[#071426] px-4 py-2 font-sans text-xs font-semibold tracking-[0.08em] text-[#D5BD8B] uppercase transition-colors hover:border-[#B89A62] hover:text-[#E8E1D2]"
               >
                 Staff Portal
@@ -643,7 +643,7 @@ export const PublicApplicationPage: React.FC<{
               )}
               <button
                 type="button"
-                onClick={() => navigate('/portal')}
+                onClick={() => navigate('/staff-login')}
                 className="border border-[#9eb8da]/30 bg-[#0e2037] px-4 py-2 font-sans text-xs font-semibold tracking-[0.08em] text-[#b3d5ff] uppercase transition-colors hover:border-[#83b5ed]"
               >
                 Staff Portal
