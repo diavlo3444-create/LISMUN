@@ -27,11 +27,8 @@ import { EmailsDashboardView } from './EmailsDashboardView';
 import {
   CommitteesManagerView,
   DepartmentWorkspaceView,
-  GroupManagementView,
   InquiriesManagerView,
   NotificationsCenterView,
-  OrgChartAndRolesView,
-  ShiftManagementView,
   SponsorsManagerView,
 } from './OperationalHubComponents';
 import { DepartmentQrSectionView, LiveQrScannerWorkspace } from './ScannerAndPassPages';
@@ -139,9 +136,6 @@ export const HeadPortal: React.FC = () => {
             group: 'Registrations',
             icon: ClipboardCheck,
           },
-          { id: 'roles', label: 'Roles & Org Chart', group: 'Operations', icon: Users },
-          { id: 'groups', label: 'Custom Groups', group: 'Operations', icon: Users },
-          { id: 'shifts', label: 'Shifts & Schedule', group: 'Operations', icon: FileText },
           { id: 'dept_qr', label: 'Department QR Passes', group: 'Operations', icon: QrCode },
         ]
       : []),
@@ -522,9 +516,6 @@ export const HeadPortal: React.FC = () => {
         </div>
       )}
 
-      {activeTab === 'roles' && <OrgChartAndRolesView departmentSlug={deptSlug} />}
-      {activeTab === 'groups' && <GroupManagementView departmentSlug={deptSlug} />}
-      {activeTab === 'shifts' && <ShiftManagementView departmentSlug={deptSlug} />}
       {activeTab === 'dept_qr' && <DepartmentQrSectionView departmentSlug={deptSlug} />}
       {activeTab === 'scanner' && canScan && <LiveQrScannerWorkspace />}
       {activeTab === 'emails' && <EmailsDashboardView />}
