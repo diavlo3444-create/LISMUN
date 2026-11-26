@@ -1,15 +1,13 @@
 import React, { useState } from 'react';
 import {
-  Bell,
+
   Building2,
   QrCode,
   Shield,
 } from 'lucide-react';
 import { useAuth } from '../client/AuthContext';
 import { DashboardShell, type ShellNavItem } from '../client/components/DashboardShell';
-import {
-  NotificationsCenterView,
-} from './OperationalHubComponents';
+
 import { LiveQrScannerWorkspace, MyQrPassView } from './ScannerAndPassPages';
 import {
   canonicalDepartmentForStorage,
@@ -34,16 +32,16 @@ export const StaffPortal: React.FC<{ routeDepartment?: string }> = ({
     ? [
         { id: 'scanner', label: 'Security QR Scanner', group: 'Security Desk', icon: Shield },
         { id: 'my_qr', label: 'My QR Credential', group: 'Security Desk', icon: QrCode },
-        { id: 'notifications', label: 'Notifications', group: 'Duty', icon: Bell },
+
       ]
     : isSimplifiedOperational
     ? [
         { id: 'my_qr', label: 'My QR Credential', group: 'Pass & Duty', icon: QrCode },
-        { id: 'notifications', label: 'Notifications', group: 'Pass & Duty', icon: Bell },
+
       ]
     : [
         { id: 'my_qr', label: 'My QR Credential', group: 'Overview', icon: QrCode },
-        { id: 'notifications', label: 'Notifications', group: 'Updates', icon: Bell },
+
       ];
 
   return (
@@ -57,7 +55,7 @@ export const StaffPortal: React.FC<{ routeDepartment?: string }> = ({
     >
       {activeTab === 'scanner' && isSecurity && <LiveQrScannerWorkspace />}
       {activeTab === 'my_qr' && <MyQrPassView />}
-      {activeTab === 'notifications' && <NotificationsCenterView />}
+
     </DashboardShell>
   );
 };
