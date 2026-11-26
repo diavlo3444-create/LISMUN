@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { ArrowLeft, ArrowRight, X } from 'lucide-react';
 import { SECRETARIAT_OFFICES } from '../data/conferenceData';
 import type { SecretariatOffice } from '../types/atlas';
@@ -9,7 +10,7 @@ import {
 } from '../utils/atlasAnimations';
 import { SecretariatPlinthPlate } from './CartographicPlates';
 
-const ROMAN_INDICES = ['I', 'II', 'III', 'IV', 'V'];
+const ROMAN_INDICES = ['I', 'II', 'III', 'IV', 'V', 'VI'];
 
 export const SecretariatSection: React.FC = () => {
   const sectionRef = useRef<HTMLElement>(null);
@@ -24,16 +25,16 @@ export const SecretariatSection: React.FC = () => {
     const stopCtx = createAtlasScrollContext(section, () => {
       gsap.fromTo(
         '[data-secretariat-header]',
-        { y: 20, opacity: 0 },
+        { y: 16, opacity: 0 },
         {
           y: 0,
           opacity: 1,
-          duration: 0.65,
-          stagger: 0.1,
+          duration: 0.45,
+          stagger: 0.06,
           ease: 'power3.out',
           scrollTrigger: {
             trigger: section,
-            start: 'top 80%',
+            start: 'top 92%',
             once: true,
           },
         }
@@ -41,16 +42,16 @@ export const SecretariatSection: React.FC = () => {
 
       gsap.fromTo(
         '[data-secretariat-card]',
-        { y: 28, opacity: 0 },
+        { y: 20, opacity: 0 },
         {
           y: 0,
           opacity: 1,
-          duration: 0.7,
-          stagger: 0.1,
+          duration: 0.5,
+          stagger: 0.06,
           ease: 'power3.out',
           scrollTrigger: {
             trigger: section,
-            start: 'top 72%',
+            start: 'top 88%',
             once: true,
           },
         }
@@ -99,26 +100,18 @@ export const SecretariatSection: React.FC = () => {
             </h2>
           </div>
           <p className="max-w-md font-sans text-sm leading-relaxed text-[#E8E1D2]/72">
-            An archival index of the executive offices stewarding Leadership
-            International School MUN. Inspect any plate to read its constitutional
-            portfolio and Session I appointment status.
+            Meet the executive Secretariat stewarding Leadership International
+            School MUN Session I. Inspect any plate to read their constitutional
+            portfolio and mandate.
           </p>
         </div>
 
-        {/* Asymmetrical Archive Grid */}
+        {/* Balanced 6-Member Editorial Secretariat Grid */}
         <div className="mt-14 grid gap-x-8 gap-y-14 md:grid-cols-2 lg:grid-cols-12">
           {SECRETARIAT_OFFICES.map((office, idx) => {
             const isHovered = hoveredId === office.id;
             const spanClass =
-              idx === 0
-                ? 'lg:col-span-4'
-                : idx === 1
-                ? 'lg:col-span-4 lg:mt-14'
-                : idx === 2
-                ? 'lg:col-span-4 lg:mt-6'
-                : idx === 3
-                ? 'lg:col-span-5 lg:col-start-2'
-                : 'lg:col-span-5 lg:mt-10';
+              idx % 3 === 1 ? 'lg:col-span-4 lg:mt-10' : 'lg:col-span-4';
 
             return (
               <article
@@ -164,13 +157,13 @@ export const SecretariatSection: React.FC = () => {
                   {/* Editorial Label */}
                   <div className="mt-5">
                     <p className="font-mono text-[11px] tracking-[0.18em] text-[#B89A62] uppercase">
-                      {office.division}
-                    </p>
-                    <h3 className="mt-1.5 font-display text-2xl font-medium text-[#E8E1D2] transition-colors group-hover:text-[#D5BD8B] md:text-3xl">
                       {office.title}
+                    </p>
+                    <h3 className="mt-1.5 font-display text-2xl font-medium text-[#E8E1D2] transition-colors group-hover:text-[#D5BD8B] md:text-[1.75rem]">
+                      {office.appointees}
                     </h3>
                     <p className="mt-2 font-sans text-xs tracking-wide text-[#E8E1D2]/60">
-                      {office.appointmentStatus}
+                      {office.division}
                     </p>
                   </div>
                 </button>
@@ -181,12 +174,14 @@ export const SecretariatSection: React.FC = () => {
       </div>
 
       {/* Archival Dossier Detail Slide-Over */}
-      {activeOffice && (
+      {activeOffice &&
+        typeof document !== 'undefined' &&
+        createPortal(
         <div
           role="dialog"
           aria-modal="true"
           aria-labelledby="secretariat-dossier-title"
-          className="fixed inset-0 z-50 flex justify-end bg-[#030914]/90"
+          className="fixed inset-0 z-[95] flex justify-end bg-[#030914]/90"
           onClick={() => setActiveOffice(null)}
         >
           <div
@@ -209,18 +204,18 @@ export const SecretariatSection: React.FC = () => {
               </div>
 
               <p className="mt-8 font-mono text-[11px] tracking-[0.2em] text-[#D5BD8B] uppercase">
-                {activeOffice.division} · {activeOffice.coordinates}
+                {activeOffice.title} · {activeOffice.coordinates}
               </p>
 
               <h3
                 id="secretariat-dossier-title"
                 className="mt-3 font-display text-4xl leading-tight font-medium text-[#E8E1D2]"
               >
-                {activeOffice.title}
+                {activeOffice.appointees}
               </h3>
 
               <p className="mt-2 font-display text-lg italic text-[#B89A62]">
-                “{activeOffice.motto}”
+                {activeOffice.division} — “{activeOffice.motto}”
               </p>
 
               <p className="mt-6 border-t border-[#263D59]/60 pt-6 font-sans text-base leading-relaxed text-[#E8E1D2]/85">
@@ -245,12 +240,10 @@ export const SecretariatSection: React.FC = () => {
 
               <div className="mt-8 border border-[#B89A62]/30 bg-[#030914] p-5">
                 <p className="font-mono text-[10px] tracking-[0.2em] text-[#D5BD8B] uppercase">
-                  Registry Status
+                  Appointed Officeholder
                 </p>
-                <p className="mt-1.5 font-sans text-sm text-[#E8E1D2]/80">
-                  {activeOffice.appointmentStatus}. Verified officeholder portrait
-                  and biography will be inscribed into this folio upon official
-                  Secretariat announcement.
+                <p className="mt-1.5 font-sans text-sm text-[#E8E1D2]/90">
+                  {activeOffice.appointees} · {activeOffice.appointmentStatus}
                 </p>
               </div>
             </div>
@@ -275,8 +268,9 @@ export const SecretariatSection: React.FC = () => {
               </button>
             </div>
           </div>
-        </div>
-      )}
+        </div>,
+          document.body
+        )}
     </section>
   );
 };

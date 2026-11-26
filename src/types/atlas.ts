@@ -5,7 +5,8 @@ export type AtlasSectionId =
   | 'committees'
   | 'secretariat'
   | 'numbers'
-  | 'registration';
+  | 'registration'
+  | 'apply';
 
 export interface AtlasNavItem {
   id: AtlasSectionId;
@@ -63,6 +64,7 @@ export interface SecretariatOffice {
   id: string;
   accessionCode: string;
   title: string;
+  appointees: string;
   division: string;
   appointmentStatus: string;
   coordinates: string;

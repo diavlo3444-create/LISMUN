@@ -25,6 +25,7 @@ interface RegistrationSectionProps {
   preselectedCommitteeId: string;
   onOpenModal: () => void;
   onCloseModal: () => void;
+  onApplyNavigate?: () => void;
 }
 
 const STORAGE_KEY = 'lismun_living_atlas_registration_v1';
@@ -35,6 +36,7 @@ export const RegistrationSection: React.FC<RegistrationSectionProps> = ({
   preselectedCommitteeId,
   onOpenModal,
   onCloseModal,
+  onApplyNavigate,
 }) => {
   const sectionRef = useRef<HTMLElement>(null);
   const bookLeftPageRef = useRef<SVGGElement>(null);
@@ -353,10 +355,10 @@ export const RegistrationSection: React.FC<RegistrationSectionProps> = ({
 
             <button
               type="button"
-              onClick={() => navigate('/apply')}
+              onClick={() => (onApplyNavigate ? onApplyNavigate() : navigate('/apply'))}
               className="font-mono text-[11px] tracking-[0.2em] text-[#B89A62] uppercase underline-offset-4 hover:text-[#D5BD8B] hover:underline"
             >
-              Apply as Chair, Security, Media/Press, or Volunteers →
+              Apply for Media, Volunteers, Press, or Security Teams ↓
             </button>
 
             {receipt && (

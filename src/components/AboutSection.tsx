@@ -10,10 +10,22 @@ import { MeridianOceanCanvas } from './MeridianOceanCanvas';
 export const AboutSection: React.FC = () => {
   const sectionRef = useRef<HTMLElement>(null);
   const [activeChapterIdx, setActiveChapterIdx] = useState(0);
+  const [isSectionVisible, setIsSectionVisible] = useState(true);
 
   useEffect(() => {
     const section = sectionRef.current;
     if (!section) return;
+
+    const visibilityObserver = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (entry) {
+          setIsSectionVisible(entry.isIntersecting);
+        }
+      },
+      { rootMargin: '140px 0px 140px 0px', threshold: 0.01 }
+    );
+    visibilityObserver.observe(section);
 
     const stopCtx = createAtlasScrollContext(section, () => {
       // Section header kinetic reveal
@@ -87,6 +99,7 @@ export const AboutSection: React.FC = () => {
     });
 
     return () => {
+      visibilityObserver.disconnect();
       stopCtx();
     };
   }, []);
@@ -101,8 +114,14 @@ export const AboutSection: React.FC = () => {
       className="relative border-t border-[#263D59]/45 bg-[#040D1B]/25"
     >
       {/* Sticky Procedural Golden Meridian Currents & Ocean Waves Stage */}
-      <div className="sticky top-16 h-[calc(100vh-4rem)] w-full overflow-hidden">
-        <MeridianOceanCanvas activeChapterIdx={activeChapterIdx} />
+      <div
+        className="sticky top-16 h-[calc(100vh-4rem)] w-full overflow-hidden"
+        style={{ transform: 'translateZ(0)', contain: 'layout paint' }}
+      >
+        <MeridianOceanCanvas
+          activeChapterIdx={activeChapterIdx}
+          isSectionVisible={isSectionVisible}
+        />
 
         {/* Readability vignette over flowing meridian currents */}
         <div

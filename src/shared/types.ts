@@ -179,6 +179,7 @@ export interface ConferenceApplication {
   gender: GenderSection | null;
   institution: string | null;
   grade_or_year: string | null;
+  birth_date?: string | null;
   age: number | null;
   position: string | null;
   delegation_type: 'single_delegate' | 'school_delegation' | null;

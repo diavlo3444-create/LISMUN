@@ -50,6 +50,14 @@ applicationsRouter.get('/', async (req: AuthenticatedRequest, res, next) => {
         : `SELECT a.* FROM applications a ORDER BY a.created_at DESC`
     );
 
+    const stripMediaMedical = (row: ConferenceApplication): ConferenceApplication => {
+      if (includeMedical || !row.answers || typeof row.answers !== 'object' || !('media_medical_concerns' in row.answers)) {
+        return row;
+      }
+      const { media_medical_concerns: _m, ...safeAnswers } = row.answers;
+      return { ...row, answers: safeAnswers };
+    };
+
     const allRows = rowsRes.rows;
 
     // 1. Admin / Super Admin (except when impersonating via Test Mode, because effectiveActor becomes department_head!)
@@ -66,21 +74,22 @@ applicationsRouter.get('/', async (req: AuthenticatedRequest, res, next) => {
 
     // 2. HR Head / HR EB -> Accepted roster (cross-dept & cross-gender), strictly zero medical data
     if (isHrActor(actor, req.departments)) {
-      const hrRows =
+      const hrRows = (
         scopeMode === 'hr_accepted'
           ? allRows.filter((a) => a.status === 'accepted')
           : allRows.filter((a) =>
               ['accepted', 'rejected', 'waitlisted'].includes(a.status)
-            );
+            )
+      ).map(stripMediaMedical);
       res.json({ applications: hrRows });
       return;
     }
 
     // 3. DCC Head -> Delegates & Chairs ONLY (zero team registrations)
     if (isDccActor(actor, req.departments)) {
-      const dccRows = allRows.filter(
-        (a) => a.application_type === 'delegate' || a.application_type === 'chair'
-      );
+      const dccRows = allRows
+        .filter((a) => a.application_type === 'delegate' || a.application_type === 'chair')
+        .map(stripMediaMedical);
       res.json({ applications: dccRows });
       return;
     }

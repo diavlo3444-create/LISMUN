@@ -93,6 +93,7 @@ CREATE TABLE IF NOT EXISTS applications (
   gender TEXT CHECK (gender IN ('male', 'female') OR gender IS NULL),
   institution TEXT,
   grade_or_year TEXT,
+  birth_date DATE,
   age INT,
   position TEXT,
   delegation_type TEXT CHECK (delegation_type IN ('single_delegate', 'school_delegation') OR delegation_type IS NULL),
@@ -122,6 +123,8 @@ CREATE TABLE IF NOT EXISTS applications (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+ALTER TABLE applications ADD COLUMN IF NOT EXISTS birth_date DATE;
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_applications_unique_pending_track_email
   ON applications (lower(application_type), lower(email))

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AboutSection } from './components/AboutSection';
+import { ApplySection } from './components/ApplySection';
 import { CartographicCursor } from './components/CartographicCursor';
 import { CommitteesSection } from './components/CommitteesSection';
 import { ExperienceSection } from './components/ExperienceSection';
@@ -25,6 +26,7 @@ const SECTION_ORDER: AtlasSectionId[] = [
   'secretariat',
   'numbers',
   'registration',
+  'apply',
 ];
 
 function shouldBypassIntroOnLoad(): boolean {
@@ -144,7 +146,10 @@ export default function App() {
           preselectedCommitteeId="tba"
           onOpenModal={() => setRegistrationModalOpen(true)}
           onCloseModal={() => setRegistrationModalOpen(false)}
+          onApplyNavigate={() => navigateToSection('apply')}
         />
+
+        <ApplySection />
       </main>
 
       <FooterSection

@@ -139,6 +139,18 @@ export const FooterSection: React.FC<FooterSectionProps> = ({
                   VI. Delegate Registration
                 </button>
               </li>
+              <li>
+                <a
+                  href="#apply"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onNavigate('apply');
+                  }}
+                  className="font-sans text-[#D5BD8B] transition-colors hover:text-[#E8E1D2]"
+                >
+                  VII. Team Member Applications
+                </a>
+              </li>
             </ul>
           </div>
 
@@ -189,14 +201,14 @@ export const FooterSection: React.FC<FooterSectionProps> = ({
           <p>© {new Date().getFullYear()} Leadership International School MUN.</p>
           <div className="flex flex-wrap items-center justify-center gap-5">
             <a
-              href="/apply"
+              href="#apply"
               onClick={(e) => {
                 e.preventDefault();
-                navigate('/apply');
+                onNavigate('apply');
               }}
               className="hover:text-[#D5BD8B]"
             >
-              Staff &amp; Chair Intake
+              Team Member Applications
             </a>
             <a
               href="/portal"

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Bell,
   Building2,
@@ -34,6 +35,7 @@ import {
   SponsorsManagerView,
 } from './OperationalHubComponents';
 import { DepartmentQrSectionView, LiveQrScannerWorkspace } from './ScannerAndPassPages';
+import { formatApplicationAnswersForReview } from '../shared/intake';
 import { canonicalDepartmentForStorage, hasPermission } from '../shared/permissions';
 import type { ConferenceApplication } from '../shared/types';
 
@@ -101,6 +103,11 @@ export const HeadPortal: React.FC = () => {
   const [apps, setApps] = useState<ConferenceApplication[]>([]);
   const [headNotes, setHeadNotes] = useState<Record<string, string>>({});
   const [issuedUrls, setIssuedUrls] = useState<Record<string, string>>({});
+  const [certPreview, setCertPreview] = useState<{
+    fileName: string;
+    mimeType: string;
+    url: string;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
 
   const loadApps = useCallback(async () => {
@@ -277,11 +284,81 @@ export const HeadPortal: React.FC = () => {
                     <StatusLabel status={a.head_recommendation || 'Needs Stage 1 Review'} />
                   </div>
 
+                  <div className="grid gap-3 border border-[#263D59]/50 bg-[#030914]/80 p-3.5 text-xs sm:grid-cols-2">
+                    <div className="space-y-1">
+                      <p>
+                        <span className="font-mono text-[10px] text-[#B89A62] uppercase">Gender: </span>
+                        <span className="capitalize">{a.gender || 'N/A'}</span>
+                      </p>
+                      <p>
+                        <span className="font-mono text-[10px] text-[#B89A62] uppercase">Birth Date / Age: </span>
+                        <span className="font-mono">
+                          {a.birth_date ? String(a.birth_date).slice(0, 10) : 'N/A'}
+                          {a.age ? ` (${a.age})` : ''}
+                        </span>
+                      </p>
+                      <p>
+                        <span className="font-mono text-[10px] text-[#B89A62] uppercase">Grade: </span>
+                        {a.grade_or_year || 'N/A'}
+                      </p>
+                    </div>
+                    <div className="space-y-1">
+                      <p>
+                        <span className="font-mono text-[10px] text-[#B89A62] uppercase">Phone: </span>
+                        <span className="font-mono">{a.phone || 'N/A'}</span>
+                      </p>
+                      <p>
+                        <span className="font-mono text-[10px] text-[#B89A62] uppercase">Emergency Contact: </span>
+                        {a.emergency_phone || 'N/A'}
+                      </p>
+                      <p>
+                        <span className="font-mono text-[10px] text-[#B89A62] uppercase">Role: </span>
+                        {a.position || a.application_type}
+                      </p>
+                    </div>
+                  </div>
+
+                  {a.experience && (
+                    <div className="border border-[#263D59]/50 bg-[#030914]/80 p-3.5 font-sans text-xs">
+                      <p className="font-mono text-[10px] tracking-[0.14em] text-[#B89A62] uppercase">
+                        Previous Experiences
+                      </p>
+                      <p className="mt-1 whitespace-pre-wrap leading-relaxed text-[#E8E1D2]/85">
+                        {a.experience}
+                      </p>
+                    </div>
+                  )}
+
                   {a.statement && (
                     <div className="border border-[#263D59]/50 bg-[#030914]/80 p-3.5 font-sans text-xs leading-relaxed text-[#E8E1D2]/80">
                       {a.statement}
                     </div>
                   )}
+
+                  {(() => {
+                    const formatted = formatApplicationAnswersForReview(a, { includeMedical: false });
+                    if (formatted.length === 0) return null;
+                    return (
+                      <div className="space-y-2.5 border border-[#263D59]/50 bg-[#030914]/80 p-3.5 text-xs">
+                        <p className="font-mono text-[10px] tracking-[0.14em] text-[#B89A62] uppercase">
+                          Department Responses ({formatted.length})
+                        </p>
+                        <div className="divide-y divide-[#263D59]/40">
+                          {formatted.map((item) => (
+                            <div key={item.id} className="py-2 first:pt-0 last:pb-0">
+                              <p className="font-medium text-[#D5BD8B]">
+                                {item.numberLabel ? `${item.numberLabel}. ` : ''}
+                                {item.questionLabel}
+                              </p>
+                              <p className="mt-1 whitespace-pre-wrap leading-relaxed text-[#E8E1D2]/90">
+                                {item.answerText}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   {Array.isArray(a.attachments) && a.attachments.length > 0 && (
                     <div className="flex flex-wrap gap-2">
@@ -290,15 +367,26 @@ export const HeadPortal: React.FC = () => {
                           key={att.id}
                           type="button"
                           onClick={async () => {
-                            const r = await apiRequest<{ signedUrl: string }>(
-                              `/api/applications/${a.id}/sign-attachment`,
-                              { method: 'POST', body: { storage_key: att.storage_key } }
-                            );
-                            window.location.assign(r.signedUrl);
+                            try {
+                              const r = await apiRequest<{ signedUrl: string }>(
+                                `/api/applications/${a.id}/sign-attachment`,
+                                { method: 'POST', body: { storage_key: att.storage_key } }
+                              );
+                              setCertPreview({
+                                fileName: att.file_name,
+                                mimeType: att.mime_type,
+                                url: r.signedUrl,
+                              });
+                            } catch (err) {
+                              addToast(
+                                err instanceof Error ? err.message : 'Unable to preview attachment.',
+                                'error'
+                              );
+                            }
                           }}
                           className="portal-btn-secondary py-1.5 text-[10px]"
                         >
-                          Signed Attachment: {att.file_name}
+                          Certificate: {att.file_name} ({Math.max(1, Math.round((att.size_bytes || 0) / 1024))} KB)
                         </button>
                       ))}
                     </div>
@@ -445,6 +533,62 @@ export const HeadPortal: React.FC = () => {
       {activeTab === 'committees' && <CommitteesManagerView />}
       {activeTab === 'workspace' && <DepartmentWorkspaceView departmentSlug={deptSlug} />}
       {activeTab === 'notifications' && <NotificationsCenterView />}
+
+      {certPreview &&
+        createPortal(
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="portal-app-shell wm-admin fixed inset-0 z-[90] flex items-center justify-center !bg-[#02060E]/90 p-4 backdrop-blur-sm"
+            onClick={() => setCertPreview(null)}
+          >
+            <div
+              className="portal-modal-enter flex max-h-[90vh] w-full max-w-3xl flex-col border border-[#9eb8da]/35 bg-[#09182b] p-5"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between gap-3 border-b border-[#9eb8da]/20 pb-3">
+                <div>
+                  <p className="font-mono text-[10px] tracking-[0.14em] text-[#83b5ed] uppercase">
+                    Certificate Preview
+                  </p>
+                  <p className="font-sans text-sm font-semibold text-[#edf3fb]">{certPreview.fileName}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <a
+                    href={certPreview.url}
+                    download={certPreview.fileName}
+                    className="portal-btn-primary py-1.5 text-[10px]"
+                  >
+                    Download
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => setCertPreview(null)}
+                    className="portal-btn-secondary py-1.5 text-[10px]"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+              <div className="mt-4 flex-1 overflow-auto bg-[#07111f] p-2">
+                {certPreview.mimeType.startsWith('image/') ? (
+                  <img
+                    src={certPreview.url}
+                    alt={certPreview.fileName}
+                    className="mx-auto max-h-[70vh] object-contain"
+                  />
+                ) : (
+                  <iframe
+                    title={certPreview.fileName}
+                    src={certPreview.url}
+                    className="h-[70vh] w-full border-0"
+                  />
+                )}
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
     </DashboardShell>
   );
 };

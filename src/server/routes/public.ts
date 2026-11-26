@@ -13,6 +13,9 @@ import {
 } from '../middleware/auth.ts';
 import {
   LEGAL_CONSENT_VERSION,
+  computeAgeFromBirthDate,
+  isNAValue,
+  validateChairIntakePayload,
   validateTeamIntakePayload,
 } from '../../shared/intake.ts';
 import {
@@ -27,8 +30,8 @@ publicRouter.use(attachAuthOptional);
 
 const ALLOWED_MIME_TYPES = new Set([
   'image/jpeg',
+  'image/jpg',
   'image/png',
-  'image/webp',
   'application/pdf',
 ]);
 const MAX_UPLOAD_BYTES = 15 * 1024 * 1024; // 15 MiB practical Postgres BYTEA cap
@@ -135,14 +138,15 @@ publicRouter.post('/files/init-upload', requireDbMiddleware, async (req, res, ne
     const mimeType = String(req.body?.mime_type ?? '').trim().toLowerCase();
     const sizeBytes = Number(req.body?.size_bytes ?? 0);
 
-    if (!['media', 'press', 'volunteers', 'security'].includes(appType)) {
+    if (!['media', 'press', 'volunteers', 'security', 'chair'].includes(appType)) {
       res.status(400).json({ error: 'INVALID_TRACK', message: 'Invalid application track.' });
       return;
     }
-    if (!ALLOWED_MIME_TYPES.has(mimeType)) {
+    const normalizedMime = mimeType === 'image/jpg' ? 'image/jpeg' : mimeType;
+    if (!ALLOWED_MIME_TYPES.has(normalizedMime)) {
       res.status(400).json({
         error: 'UNSUPPORTED_FILE_TYPE',
-        message: 'Only JPEG, PNG, WebP, or PDF attachments are accepted.',
+        message: 'Only PDF, JPG, JPEG, or PNG certificates are accepted.',
       });
       return;
     }
@@ -155,19 +159,34 @@ publicRouter.post('/files/init-upload', requireDbMiddleware, async (req, res, ne
     }
 
     const pool = getPool();
-    const deptSlug = canonicalDepartmentForStorage(appType);
-    const dept = (
-      await pool.query<{ registration_open: boolean }>(
-        `SELECT registration_open FROM departments WHERE slug = $1 LIMIT 1`,
-        [deptSlug]
-      )
-    ).rows[0];
-    if (!dept || !dept.registration_open) {
-      res.status(403).json({
-        error: 'REGISTRATION_CLOSED',
-        message: 'Applications for this department are currently closed.',
-      });
-      return;
+    if (appType === 'chair') {
+      const chairSwitch = (
+        await pool.query<{ value: unknown }>(
+          `SELECT value FROM settings WHERE key = 'chair_registration_open' LIMIT 1`
+        )
+      ).rows[0];
+      if (chairSwitch && (chairSwitch.value === false || chairSwitch.value === 'false')) {
+        res.status(403).json({
+          error: 'REGISTRATION_CLOSED',
+          message: 'Chair applications are currently closed.',
+        });
+        return;
+      }
+    } else {
+      const deptSlug = canonicalDepartmentForStorage(appType);
+      const dept = (
+        await pool.query<{ registration_open: boolean }>(
+          `SELECT registration_open FROM departments WHERE slug = $1 LIMIT 1`,
+          [deptSlug]
+        )
+      ).rows[0];
+      if (!dept || !dept.registration_open) {
+        res.status(403).json({
+          error: 'REGISTRATION_CLOSED',
+          message: 'Applications for this department are currently closed.',
+        });
+        return;
+      }
     }
 
     const storageKey = `${appType}/${new Date().toISOString().slice(0, 7)}/${generateOpaqueToken(8)}-${fileName}`;
@@ -177,7 +196,7 @@ publicRouter.post('/files/init-upload', requireDbMiddleware, async (req, res, ne
         storageKey,
         appType,
         fileName,
-        mimeType,
+        mimeType: normalizedMime,
         maxBytes: MAX_UPLOAD_BYTES,
       },
       600
@@ -346,8 +365,29 @@ publicRouter.post('/applications/team', requireDbMiddleware, async (req, res, ne
     const email = String(req.body.email).trim().toLowerCase();
     const code = generateApplicationCode('LM');
     const attachments: ApplicationAttachmentRef[] = Array.isArray(req.body.attachments)
-      ? req.body.attachments.slice(0, 8)
+      ? req.body.attachments.slice(0, 12)
       : [];
+    const birthDateRaw = String(req.body.birth_date ?? '').trim() || null;
+    const computedAge =
+      computeAgeFromBirthDate(birthDateRaw) ??
+      (Number.isFinite(Number(req.body.age)) ? Number(req.body.age) : null);
+
+    const submittedAnswers =
+      req.body.answers && typeof req.body.answers === 'object' ? { ...req.body.answers } : {};
+    if (req.body.portfolio_url) {
+      submittedAnswers.portfolio_url = String(req.body.portfolio_url).trim();
+    }
+    if (req.body.intake_version) {
+      submittedAnswers.intake_version = req.body.intake_version;
+    }
+
+    const rawMediaMed = String(submittedAnswers.media_medical_concerns ?? '').trim();
+    const hasMedConditions =
+      Boolean(req.body.medical_has_conditions) ||
+      (track === 'media' && Boolean(rawMediaMed) && !isNAValue(rawMediaMed));
+    const medDetailsText =
+      String(req.body.medical_details ?? '').trim() ||
+      (track === 'media' && Boolean(rawMediaMed) && !isNAValue(rawMediaMed) ? rawMediaMed : '');
 
     const inserted = await withTransaction(async (client) => {
       const dup = await client.query<{ id: string }>(
@@ -366,9 +406,9 @@ publicRouter.post('/applications/team', requireDbMiddleware, async (req, res, ne
         `INSERT INTO applications (
           application_code, application_type, department_id, department_slug,
           applicant_name, email, phone, emergency_phone, gender, institution,
-          grade_or_year, age, position, experience, statement, answers, attachments,
+          grade_or_year, birth_date, age, position, experience, statement, answers, attachments,
           status, privacy_policy_accepted, terms_accepted, legal_consent_version
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16::jsonb,$17::jsonb,'pending',true,true,$18)
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17::jsonb,$18::jsonb,'pending',true,true,$19)
         RETURNING id, application_code, application_type, department_slug, status, created_at`,
         [
           code,
@@ -382,14 +422,12 @@ publicRouter.post('/applications/team', requireDbMiddleware, async (req, res, ne
           req.body.gender,
           String(req.body.institution).trim(),
           String(req.body.grade_or_year ?? '').trim() || null,
-          Number(req.body.age),
-          req.body.position ? String(req.body.position).trim() : null,
+          birthDateRaw,
+          computedAge,
+          req.body.position ? String(req.body.position).trim() : 'Team Member',
           String(req.body.experience ?? '').trim() || null,
           String(req.body.statement ?? '').trim() || null,
-          JSON.stringify({
-            ...(req.body.answers ?? {}),
-            portfolio_url: req.body.portfolio_url ?? null,
-          }),
+          JSON.stringify(submittedAnswers),
           JSON.stringify(attachments),
           LEGAL_CONSENT_VERSION,
         ]
@@ -399,13 +437,7 @@ publicRouter.post('/applications/team', requireDbMiddleware, async (req, res, ne
       await client.query(
         `INSERT INTO application_medical (application_id, medical_has_conditions, medical_details)
          VALUES ($1, $2, $3)`,
-        [
-          appId,
-          Boolean(req.body.medical_has_conditions),
-          Boolean(req.body.medical_has_conditions)
-            ? String(req.body.medical_details ?? '').trim()
-            : '',
-        ]
+        [appId, hasMedConditions, hasMedConditions ? medDetailsText : '']
       );
 
       return { duplicate: false as const, application: appRes.rows[0] };
@@ -556,33 +588,34 @@ publicRouter.post('/applications/chair', requireDbMiddleware, async (req, res, n
       res.status(201).json({ ok: true, application_code: 'LMC-VERIFIED' });
       return;
     }
+
+    const check = validateChairIntakePayload(req.body ?? {});
+    if (!check.valid) {
+      res.status(400).json({
+        error: 'VALIDATION_FAILED',
+        message: Object.values(check.errors).join(' '),
+        errors: check.errors,
+      });
+      return;
+    }
+
     const fullName = String(req.body?.full_name ?? '').trim();
     const email = String(req.body?.email ?? '').trim().toLowerCase();
+    const gender = req.body?.gender === 'female' ? 'female' : req.body?.gender === 'male' ? 'male' : null;
+    const birthDateRaw = String(req.body?.birth_date ?? '').trim() || null;
+    const computedAge =
+      computeAgeFromBirthDate(birthDateRaw) ??
+      (req.body?.age ? Number(req.body.age) : null);
+    const gradeOrYear = String(req.body?.grade_or_year ?? '').trim() || null;
     const institution = String(req.body?.institution ?? '').trim();
+    const phone = req.body?.phone ? String(req.body.phone).trim() : null;
+    const emergencyPhone = req.body?.emergency_phone ? String(req.body.emergency_phone).trim() : null;
     const experience = String(req.body?.experience ?? '').trim();
     const statement = String(req.body?.statement ?? '').trim();
     const committees = String(req.body?.committee_preferences ?? '').trim();
-
-    if (
-      fullName.length < 2 ||
-      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ||
-      !institution ||
-      !experience ||
-      !statement
-    ) {
-      res.status(400).json({
-        error: 'VALIDATION_FAILED',
-        message: 'Name, email, institution, chairing experience, and statement are required.',
-      });
-      return;
-    }
-    if (req.body?.privacy_policy_accepted !== true || req.body?.terms_accepted !== true) {
-      res.status(400).json({
-        error: 'CONSENT_REQUIRED',
-        message: 'Privacy Policy and Terms & Conditions acceptance is required.',
-      });
-      return;
-    }
+    const attachments: ApplicationAttachmentRef[] = Array.isArray(req.body?.attachments)
+      ? req.body.attachments.slice(0, 12)
+      : [];
 
     const pool = getPool();
     const chairSwitch = (
@@ -621,27 +654,33 @@ publicRouter.post('/applications/chair', requireDbMiddleware, async (req, res, n
       await pool.query(
         `INSERT INTO applications (
           application_code, application_type, department_id, department_slug,
-          applicant_name, email, phone, institution, age, experience, statement,
-          answers, status, privacy_policy_accepted, terms_accepted, legal_consent_version
-        ) VALUES ($1,'chair',$2,'dcc',$3,$4,$5,$6,$7,$8,$9,$10::jsonb,'pending',true,true,$11)
+          applicant_name, email, phone, emergency_phone, gender, institution,
+          grade_or_year, birth_date, age, experience, statement,
+          answers, attachments, status, privacy_policy_accepted, terms_accepted, legal_consent_version
+        ) VALUES ($1,'chair',$2,'dcc',$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14::jsonb,$15::jsonb,'pending',true,true,$16)
         RETURNING id, application_code, status, created_at`,
         [
           generateApplicationCode('LMC'),
           dccDept?.id ?? null,
           fullName,
           email,
-          req.body?.phone ? String(req.body.phone).trim() : null,
+          phone,
+          emergencyPhone,
+          gender,
           institution,
-          req.body?.age ? Number(req.body.age) : null,
+          gradeOrYear,
+          birthDateRaw,
+          computedAge,
           experience,
           statement,
-          JSON.stringify({ committee_preferences: committees }),
+          JSON.stringify({ committee_preferences: committees, intake_version: req.body?.intake_version ?? 2 }),
+          JSON.stringify(attachments),
           LEGAL_CONSENT_VERSION,
         ]
       )
     ).rows[0];
 
-    res.status(201).json({ ok: true, application: inserted });
+    res.status(201).json({ ok: true, application: inserted, application_code: inserted.application_code });
   } catch (err) {
     next(err);
   }

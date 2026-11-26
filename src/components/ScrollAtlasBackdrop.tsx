@@ -113,6 +113,19 @@ const MOOD_PROFILES: Record<AtlasSectionId, SectionMoodProfile> = {
     gridOpacity: 0.35,
     tintColor: 'rgba(20, 26, 38, 0.16)',
   },
+  apply: {
+    brassX: 32,
+    brassY: 46,
+    brassOpacity: 0.18,
+    brassScale: 1.04,
+    lapisX: 74,
+    lapisY: 32,
+    lapisOpacity: 0.24,
+    lapisScale: 1.08,
+    ringOpacity: 0.16,
+    gridOpacity: 0.28,
+    tintColor: 'rgba(7, 18, 34, 0.22)',
+  },
 };
 
 const OUTER_TICKS = Array.from({ length: 72 }, (_, idx) => {

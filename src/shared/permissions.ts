@@ -581,8 +581,14 @@ export function redactApplicationForHead(app: ConferenceApplication): Conference
     medical_details: _medDetails,
     ...rest
   } = app;
+  let safeAnswers = rest.answers;
+  if (safeAnswers && typeof safeAnswers === 'object' && 'media_medical_concerns' in safeAnswers) {
+    const { media_medical_concerns: _mediaMed, ...otherAnswers } = safeAnswers;
+    safeAnswers = otherAnswers;
+  }
   return {
     ...rest,
+    answers: safeAnswers,
     decision_by: null,
     decision_by_name: null,
     decision_at: null,

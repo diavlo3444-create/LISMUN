@@ -16,7 +16,12 @@ import {
   validateSpoofRequest,
 } from './permissions.ts';
 import {
+  MEDIA_QUESTIONS,
+  PRESS_QUESTIONS,
   SECURITY_QUESTIONS,
+  VOLUNTEER_QUESTIONS,
+  formatApplicationAnswersForReview,
+  validateChairIntakePayload,
   validateTeamIntakePayload,
   wordCount,
 } from './intake.ts';
@@ -199,14 +204,48 @@ test('Head Stage 1 pending-only isolation, gender/department scoping, and media_
   );
 });
 
-test('redactApplicationForHead strips medical & admin Stage 2 attribution', () => {
-  const redacted = redactApplicationForHead(makeApplication());
+test('redactApplicationForHead strips medical & admin Stage 2 attribution including media_medical_concerns', () => {
+  const redacted = redactApplicationForHead(
+    makeApplication({
+      application_type: 'media',
+      answers: {
+        media_why_you: 'Answer text',
+        media_medical_concerns: 'Asthma inhaler required',
+      },
+    })
+  );
   assert.equal('medical_has_conditions' in redacted, false);
   assert.equal('medical_details' in redacted, false);
+  assert.equal('media_medical_concerns' in redacted.answers, false);
+  assert.equal(redacted.answers.media_why_you, 'Answer text');
   assert.equal(redacted.decision_by, null);
   assert.equal(redacted.decision_by_name, null);
   assert.equal(redacted.admin_decision_notes, null);
   assert.equal(redacted.review_notes, null);
+
+  const headFormatted = formatApplicationAnswersForReview(
+    makeApplication({
+      application_type: 'media',
+      answers: {
+        media_equipment: 'Sony A7 IV',
+        media_medical_concerns: 'Nut allergy',
+      },
+    }),
+    { includeMedical: false }
+  );
+  assert.equal(headFormatted.some((x) => x.id === 'media_medical_concerns'), false);
+
+  const adminFormatted = formatApplicationAnswersForReview(
+    makeApplication({
+      application_type: 'media',
+      answers: {
+        media_equipment: 'Sony A7 IV',
+        media_medical_concerns: 'Nut allergy',
+      },
+    }),
+    { includeMedical: true }
+  );
+  assert.equal(adminFormatted.some((x) => x.id === 'media_medical_concerns'), true);
 });
 
 test('Stealth spoof helpers, shift overlap detector, email sanitizer & template substitution', () => {
@@ -399,3 +438,110 @@ test('Failed email deduplication excludes sent/manually-confirmed items & builds
   assert.equal(parsed.searchParams.get('to'), 'two@example.com');
   assert.ok(parsed.searchParams.get('body')?.includes('https://lismun.org/team-signup?token=abcdef'));
 });
+
+test('Redesigned intake forms: Media Q11-Q18 rules, Volunteers Q11-Q13 isolation, Press separation, and Chair Q1-Q10', () => {
+  const words = (n: number) => Array.from({ length: n }, (_, i) => `word${i}`).join(' ');
+
+  assert.equal(MEDIA_QUESTIONS.length, 8);
+  assert.equal(VOLUNTEER_QUESTIONS.length, 3);
+  assert.ok(PRESS_QUESTIONS.every((q) => !q.id.startsWith('media_') && !q.id.startsWith('volunteer_')));
+
+  const baseGeneral = {
+    intake_version: 2,
+    gender: 'female' as const,
+    applicant_name: 'Layla Al-Mansour',
+    email: 'layla@example.com',
+    birth_date: '2009-05-14',
+    grade_or_year: '11th Grade',
+    institution: 'Leadership International School',
+    phone: '+966501234567',
+    emergency_phone: 'Mother - +966509876543',
+    experience: 'Served as delegate at two regional MUN conferences.',
+    privacy_policy_accepted: true,
+    terms_accepted: true,
+  };
+
+  // Media under 40 words + Q15=No with N/A in Q18 must fail
+  const invalidMedia = validateTeamIntakePayload({
+    ...baseGeneral,
+    track: 'media',
+    answers: {
+      media_why_you: words(25),
+      media_equipment: 'Sony A7 III + 24-70mm',
+      media_upload_device: 'Yes',
+      media_why_team: words(39),
+      media_attend_conference: 'No',
+      media_attend_orientation: 'Yes',
+      media_medical_concerns: 'N/A',
+      media_anything_else: 'N/A',
+    },
+  });
+  assert.equal(invalidMedia.valid, false);
+  assert.ok(invalidMedia.errors.media_why_you);
+  assert.ok(invalidMedia.errors.media_why_team);
+  assert.ok(invalidMedia.errors.media_anything_else);
+
+  // Valid Media with >= 40 words and real schedule explanation when Q15=No passes
+  const validMedia = validateTeamIntakePayload({
+    ...baseGeneral,
+    track: 'media',
+    answers: {
+      media_why_you: words(40),
+      media_equipment: 'Sony A7 III + 24-70mm + MacBook Pro SD adapter',
+      media_upload_device: 'Yes',
+      media_why_team: words(42),
+      media_attend_conference: 'No',
+      media_attend_orientation: 'Yes',
+      media_medical_concerns: 'N/A',
+      media_anything_else: 'I have a morning exam on Day 1 and arrive by 11:30 AM.',
+    },
+  });
+  assert.equal(validMedia.valid, true);
+
+  // Volunteers requires ONLY its 3 questions
+  const validVolunteers = validateTeamIntakePayload({
+    ...baseGeneral,
+    track: 'volunteers',
+    answers: {
+      volunteer_why_lismun: 'I want to support smooth delegate floor operations.',
+      volunteer_conflict_disrespect: 'Listen calmly, remain neutral, and escalate to supervisor.',
+      volunteer_medical_emergency: 'Clear the area and immediately notify the medical team and supervisor.',
+    },
+  });
+  assert.equal(validVolunteers.valid, true);
+
+  // Press uses Press-only questions without Media equipment or Volunteers scenarios
+  const validPress = validateTeamIntakePayload({
+    ...baseGeneral,
+    track: 'press',
+    answers: {
+      press_why_join: words(22),
+      press_editorial_experience: 'School newspaper editor and conference dispatches.',
+      press_fact_checking: 'Cross-verify direct quotes with delegate placards and resolution clauses.',
+      press_availability: 'Available across orientation and all conference days.',
+    },
+  });
+  assert.equal(validPress.valid, true);
+
+  // Chair validates shared Q1-Q10 when intake_version=2
+  const invalidChair = validateChairIntakePayload({
+    intake_version: 2,
+    full_name: 'L',
+    email: 'bad-email',
+    gender: 'male',
+    birth_date: '2028-01-01',
+    grade_or_year: 'Invalid Grade',
+    institution: 'L',
+    phone: '123',
+    emergency_phone: '12',
+    experience: '',
+    statement: '',
+    privacy_policy_accepted: false,
+    terms_accepted: false,
+  });
+  assert.equal(invalidChair.valid, false);
+  assert.ok(invalidChair.errors.birth_date);
+  assert.ok(invalidChair.errors.grade_or_year);
+  assert.ok(invalidChair.errors.statement);
+});
+
