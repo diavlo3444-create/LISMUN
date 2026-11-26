@@ -133,7 +133,7 @@ export const AccountManagementPanel: React.FC<AccountManagementPanelProps> = ({
 
   const startEdit = (account: UserProfile) => {
     if (account.role === 'super_admin' || account.is_primary_super_admin) return;
-    const permissions = resolveUserPermissions(account, departments);
+    const permissions = resolveUserPermissions({ ...account, is_active: true }, departments);
     setEditing(account);
     setDraft({
       fullName: account.full_name,
