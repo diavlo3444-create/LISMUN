@@ -18,6 +18,7 @@ import {
 } from '../middleware/auth.ts';
 import {
   canonicalDepartmentForStorage,
+  getActorGenderScope,
   isSectionedDepartment,
   sanitizePermissionsMap,
 } from '../../shared/permissions.ts';
@@ -798,12 +799,13 @@ superAdminRouter.post(
           role: UserRole;
           department_slug: string | null;
           gender: GenderSection | null;
+          title: string;
           is_active: boolean;
           banned_until: string | null;
         }>(
           `SELECT p.user_id, p.email, p.full_name, p.role,
                   COALESCE(d.slug, p.department_slug) AS department_slug,
-                  COALESCE(p.gender, p.division) AS gender,
+                  COALESCE(p.gender, p.division) AS gender, p.title,
                   p.is_active, u.banned_until
            FROM profiles p
            JOIN users u ON u.id = p.user_id
@@ -829,7 +831,13 @@ superAdminRouter.post(
           return;
         }
         departmentSlug = canonicalDepartmentForStorage(String(target.department_slug || ''));
-        section = target.gender ?? null;
+        section = isSectionedDepartment(departmentSlug)
+          ? getActorGenderScope({
+              gender: target.gender,
+              division: target.gender,
+              title: target.title,
+            })
+          : null;
         targetUserId = target.user_id;
         targetName = target.full_name;
         targetEmail = target.email;
@@ -977,10 +985,11 @@ superAdminRouter.post(
           is_active: boolean;
           department_slug: string | null;
           gender: GenderSection | null;
+          title: string;
           banned_until: string | null;
         }>(
           `SELECT p.role, p.is_active, COALESCE(d.slug, p.department_slug) AS department_slug,
-                  COALESCE(p.gender, p.division) AS gender, u.banned_until
+                  COALESCE(p.gender, p.division) AS gender, p.title, u.banned_until
            FROM profiles p
            JOIN users u ON u.id = p.user_id
            LEFT JOIN departments d ON d.id = p.department_id
@@ -992,13 +1001,20 @@ superAdminRouter.post(
         const banned = target?.banned_until
           ? new Date(target.banned_until).getTime() > Date.now()
           : false;
+        const targetSection = target && isSectionedDepartment(consumed.department_slug)
+          ? getActorGenderScope({
+              gender: target.gender,
+              division: target.gender,
+              title: target.title,
+            })
+          : null;
         if (
           !target ||
           !target.is_active ||
           banned ||
           (target.role !== 'department_head' && target.role !== 'executive_board') ||
           target.department_slug !== consumed.department_slug ||
-          (target.gender ?? null) !== (consumed.section ?? null)
+          targetSection !== (consumed.section ?? null)
         ) {
           res.status(409).json({
             error: 'ACCOUNT_CHANGED',
