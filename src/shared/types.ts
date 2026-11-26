@@ -131,6 +131,7 @@ export interface UserProfile {
 export interface TestSessionContext {
   active: boolean;
   sessionId: string;
+  targetUserId?: string | null;
   departmentSlug: string;
   section: GenderSection | null;
   impersonatedName: string;
