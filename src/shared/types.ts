@@ -126,6 +126,7 @@ export interface UserProfile {
   is_primary_super_admin?: boolean;
   created_at?: string;
   updated_at?: string;
+  setup_completed_at?: string | null;
 }
 
 export interface TestSessionContext {
