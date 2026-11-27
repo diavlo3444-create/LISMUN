@@ -52,6 +52,10 @@ superAdminRouter.get(
         pool.query(
           `SELECT * FROM security_violation_logs ORDER BY created_at DESC LIMIT 100`
         ),
+        pool.query(
+          `SELECT email, department, section, eb_role, claimed_at, redeemed_at, revoked_at, created_at
+           FROM eb_invites ORDER BY created_at DESC`
+        ),
       ]);
 
       const primaryEmail = getPrimarySuperAdminEmail();
@@ -60,9 +64,50 @@ superAdminRouter.get(
         is_primary_super_admin: Boolean(primaryEmail) && r.email.toLowerCase() === primaryEmail,
       }));
 
+      // Build the real EB roster from allowlist entries, invite records, and claimed profiles.
+      const rosterByEmail = new Map<string, Record<string, unknown>>();
+      for (const row of allowlistRes.rows) {
+        const key = String(row.email || '').trim().toLowerCase();
+        if (key) rosterByEmail.set(key, { ...row });
+        for (const alias of Array.isArray(row.email_aliases) ? row.email_aliases : []) {
+          const aliasKey = String(alias).trim().toLowerCase();
+          if (aliasKey && !rosterByEmail.has(aliasKey)) rosterByEmail.set(aliasKey, { ...row, email: alias });
+        }
+      }
+      for (const invite of ebInvitesRes.rows) {
+        const key = String(invite.email || '').trim().toLowerCase();
+        if (!key) continue;
+        const prior = rosterByEmail.get(key);
+        rosterByEmail.set(key, {
+          ...(prior || {}),
+          member_key: prior?.member_key || ('invite:' + key),
+          email: key,
+          full_name: prior?.full_name || key,
+          department_slug: prior?.department_slug || invite.department,
+          eb_rank: prior?.eb_rank || invite.eb_role,
+          claimed_at: prior?.claimed_at || invite.redeemed_at || invite.claimed_at || null,
+        });
+      }
+      for (const profile of profilesRes.rows) {
+        if (profile.role !== 'executive_board' || !profile.is_active) continue;
+        const key = String(profile.email || '').trim().toLowerCase();
+        if (!key) continue;
+        const prior = rosterByEmail.get(key);
+        rosterByEmail.set(key, {
+          ...(prior || {}),
+          member_key: prior?.member_key || ('account:' + profile.user_id),
+          email: key,
+          full_name: profile.full_name || prior?.full_name || key,
+          department_slug: profile.department_slug || prior?.department_slug || '',
+          eb_rank: profile.eb_rank || prior?.eb_rank || 'member',
+          claimed_at: prior?.claimed_at || profile.created_at || new Date().toISOString(),
+          claimed_user_id: profile.user_id,
+        });
+      }
+
       res.json({
         accounts,
-        ebAllowlist: allowlistRes.rows,
+        ebAllowlist: Array.from(rosterByEmail.values()),
         securityViolations: violationsRes.rows,
       });
     } catch (err) {
