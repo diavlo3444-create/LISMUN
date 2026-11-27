@@ -64,36 +64,62 @@ superAdminRouter.get(
         is_primary_super_admin: Boolean(primaryEmail) && r.email.toLowerCase() === primaryEmail,
       }));
 
-      // Keep the complete 40-member allowlist as the canonical EB roster.
-      // A member is signed up only when an actual active executive_board profile exists
-      // for the allowlisted email (or one of its aliases).
+      // Build the EB roster from every source used by Account Management:
+      // signup allowlist entries, issued EB invites, and existing EB accounts.
+      // This prevents the page becoming empty when one of the legacy sources is unused.
       const profilesByEmail = new Map<string, any>();
       for (const profile of profilesRes.rows) {
         if (profile.role !== 'executive_board' || !profile.is_active) continue;
         const email = String(profile.email || '').trim().toLowerCase();
         if (email) profilesByEmail.set(email, profile);
       }
-      const ebRoster = allowlistRes.rows.map((entry) => {
+
+      const rosterByEmail = new Map<string, any>();
+      const addRosterEntry = (entry: any, aliases: string[] = []) => {
         const email = String(entry.email || '').trim().toLowerCase();
-        const aliases = Array.isArray(entry.email_aliases)
-          ? entry.email_aliases.map((alias: unknown) => String(alias).trim().toLowerCase())
-          : [];
-        const matchedProfile = [email, ...aliases]
-          .map((key) => profilesByEmail.get(key))
-          .find(Boolean);
-        const claimedAt = matchedProfile
-          ? (entry.claimed_at || matchedProfile.updated_at || matchedProfile.created_at || null)
-          : null;
-        return {
-          member_key: entry.member_key,
+        if (!email) return;
+        const keys = [email, ...aliases.map((alias) => String(alias).trim().toLowerCase())].filter(Boolean);
+        const matchedProfile = keys.map((key) => profilesByEmail.get(key)).find(Boolean);
+        const existing = rosterByEmail.get(email);
+        rosterByEmail.set(email, {
+          member_key: entry.member_key || existing?.member_key || ('eb:' + email),
           user_id: matchedProfile?.user_id || null,
-          email: entry.email,
-          full_name: entry.full_name,
-          department_slug: entry.department_slug || '',
-          eb_rank: entry.eb_rank || 'member',
-          claimed_at: claimedAt,
-        };
-      });
+          email: entry.email || existing?.email || email,
+          full_name: entry.full_name || existing?.full_name || matchedProfile?.full_name || email,
+          department_slug: entry.department_slug || entry.department || existing?.department_slug || matchedProfile?.department_slug || '',
+          eb_rank: entry.eb_rank || entry.eb_role || existing?.eb_rank || matchedProfile?.eb_rank || 'member',
+          // Only an active EB account counts as signed up; timestamps alone do not.
+          claimed_at: matchedProfile
+            ? (entry.claimed_at || entry.redeemed_at || existing?.claimed_at || matchedProfile.created_at || new Date().toISOString())
+            : null,
+        });
+      };
+
+      for (const entry of allowlistRes.rows) {
+        addRosterEntry(entry, Array.isArray(entry.email_aliases) ? entry.email_aliases : []);
+      }
+      for (const invite of ebInvitesRes.rows) {
+        addRosterEntry({
+          member_key: 'invite:' + String(invite.email || '').trim().toLowerCase(),
+          email: invite.email,
+          full_name: invite.email,
+          department: invite.department,
+          eb_role: invite.eb_role,
+          claimed_at: invite.claimed_at,
+          redeemed_at: invite.redeemed_at,
+        });
+      }
+      for (const profile of profilesRes.rows) {
+        if (profile.role !== 'executive_board') continue;
+        addRosterEntry({
+          member_key: 'account:' + profile.user_id,
+          email: profile.email,
+          full_name: profile.full_name,
+          department_slug: profile.department_slug,
+          eb_rank: profile.eb_rank,
+        });
+      }
+      const ebRoster = Array.from(rosterByEmail.values());
 
       res.json({
         accounts,
