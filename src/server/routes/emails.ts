@@ -372,6 +372,10 @@ emailsRouter.post('/account-setup/complete', async (req, res, next) => {
         [account.id]
       );
       await client.query(
+        `UPDATE users SET setup_completed_at = COALESCE(setup_completed_at, now()), updated_at = now() WHERE id = $1`,
+        [account.id]
+      );
+      await client.query(
         `UPDATE account_setup_codes SET used_at = now() WHERE user_id = $1 AND used_at IS NULL`,
         [account.id]
       );
