@@ -32,6 +32,11 @@ const EbSignupPage = lazy(() =>
     default: m.EbSignupPage,
   }))
 );
+const AccountSetupPage = lazy(() =>
+  import('../portals/OnboardingPages').then((m) => ({
+    default: m.AccountSetupPage,
+  }))
+);
 const HeadSetupPage = lazy(() =>
   import('../portals/OnboardingPages').then((m) => ({
     default: m.HeadSetupPage,
@@ -234,6 +239,8 @@ const RouteRenderer: React.FC = () => {
           <TeamMemberSignupPage />
         ) : pathname === '/eb-signup' ? (
           <EbSignupPage />
+        ) : pathname === '/account-setup' ? (
+          <AccountSetupPage />
         ) : pathname === '/head-setup' ? (
           <HeadSetupPage />
         ) : pathname === '/privacy' ? (
