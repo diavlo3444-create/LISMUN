@@ -245,7 +245,7 @@ emailsRouter.get('/gmail/callback', async (req, res, next) => {
 emailsRouter.post('/account-setup/request-code', async (req, res, next) => {
   try {
     const email = String(req.body?.email ?? '').trim().toLowerCase();
-    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email) || email.length > 254) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) {
       res.status(200).json({ ok: true, message: 'If an eligible account exists, a verification code will be sent.' });
       return;
     }
@@ -324,7 +324,7 @@ emailsRouter.post('/account-setup/complete', async (req, res, next) => {
     const email = String(req.body?.email ?? '').trim().toLowerCase();
     const code = String(req.body?.code ?? '').trim();
     const password = String(req.body?.password ?? '');
-    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email) || !/^\\d{6}$/.test(code) || password.length < 10 || password.length > 128) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !/^\\d{6}$/.test(code) || password.length < 10 || password.length > 128) {
       res.status(400).json({ error: 'INVALID_INPUT', message: 'Enter your email, six-digit code, and a 10–128 character password.' });
       return;
     }
