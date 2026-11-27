@@ -1351,8 +1351,8 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
               <MetricLedger
                 items={[
                   { label: 'Team Accounts', value: accounts.filter((account) => account.role !== 'super_admin').length, detail: 'All non-Super-Admin accounts' },
-                  { label: 'Active Accounts', value: accounts.filter((account) => account.role !== 'super_admin' && account.is_active).length, detail: 'Currently active', accent: 'green' },
-                  { label: 'Inactive Accounts', value: accounts.filter((account) => account.role !== 'super_admin' && !account.is_active).length, detail: 'Currently inactive', accent: 'amber' },
+                  { label: 'Setup Completed', value: accounts.filter((account) => account.role !== 'super_admin' && Boolean(account.setup_completed_at)).length, detail: 'Completed through shared setup link', accent: 'green' },
+                  { label: 'Not Yet Recorded', value: accounts.filter((account) => account.role !== 'super_admin' && !account.setup_completed_at).length, detail: 'No completion record yet', accent: 'amber' },
                 ]}
               />
               {ebSignupLoadError && (
@@ -1385,7 +1385,7 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <h3 className="font-display text-2xl font-medium text-[#D5BD8B]">All Team Accounts</h3>
-                    <p className="text-sm text-[#b8c8dc]/70">Includes Executive Board, Department Heads, Admins, and Staff. Existing roles and permissions are preserved during password setup.</p>
+                    <p className="text-sm text-[#b8c8dc]/70">Includes Executive Board, Department Heads, Admins, and Staff. Completion is recorded from now on when a member finishes the shared setup flow. Accounts completed before tracking was added cannot be identified retroactively and will show Not recorded.</p>
                   </div>
                   <input
                     value={ebSignupSearch}
@@ -1412,7 +1412,7 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
                           <td className="p-3 capitalize">{String(account.role || '—').replace(/_/g, ' ')}</td>
                           <td className="p-3 capitalize">{String(account.department_slug || '—').replace(/_/g, ' ')}</td>
                           <td className="p-3 capitalize">{account.title || '—'}</td>
-                          <td className="p-3"><span className={account.setup_completed_at ? 'text-emerald-300' : 'text-amber-200'}>{account.setup_completed_at ? `Completed · ${new Date(account.setup_completed_at).toLocaleDateString()}` : 'Not completed'}</span></td>
+                          <td className="p-3"><span className={account.setup_completed_at ? 'text-emerald-300' : 'text-amber-200'}>{account.setup_completed_at ? `Completed · ${new Date(account.setup_completed_at).toLocaleDateString()}` : 'Not recorded'}</span></td>
                           <td className="p-3"><span className={account.is_active ? 'text-emerald-300' : 'text-amber-200'}>{account.is_active ? 'Active' : 'Inactive'}</span></td>
                         </tr>
                       ))}
