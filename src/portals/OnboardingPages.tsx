@@ -415,7 +415,7 @@ export const AccountSetupPage: React.FC = () => {
               <>
                 <div>
                   <label className="block font-mono text-[10px] tracking-[0.18em] text-[#B89A62] uppercase">6-Digit Email Code</label>
-                  <input required inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} value={code} onChange={(e) => setCode(e.target.value.replace(/\\D/g, '').slice(0, 6))} className="portal-input mt-1.5 font-mono tracking-[0.3em]" placeholder="000000" />
+                  <input required inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))} className="portal-input mt-1.5 font-mono tracking-[0.3em]" placeholder="000000" />
                 </div>
                 <div>
                   <label className="block font-mono text-[10px] tracking-[0.18em] text-[#B89A62] uppercase">New Password (10–128 characters)</label>
