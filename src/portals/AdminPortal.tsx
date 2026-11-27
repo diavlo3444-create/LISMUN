@@ -133,6 +133,7 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
   const isSuper = effectiveActor?.role === 'super_admin';
   const [activeTab, setActiveTab] = useState('overview');
   const [ebSignupSearch, setEbSignupSearch] = useState('');
+  const [ebSignupLoadError, setEbSignupLoadError] = useState<string | null>(null);
 
   // Core hydrated state
   const [apps, setApps] = useState<ConferenceApplication[]>([]);
@@ -288,13 +289,17 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
       setPublicDepts(ovRes.departments || []);
       setCmsBundle(bundleRes);
 
-      if (hasPermission(effectiveActor, 'accounts.view', departments)) {
+      if (isSuper || hasPermission(effectiveActor, 'accounts.view', departments)) {
         const accRes = await apiRequest<{
           accounts: UserProfile[];
           ebAllowlist: typeof ebAllowlist;
           securityViolations: typeof violations;
-        }>('/api/super-admin/accounts').catch(() => null);
+        }>('/api/super-admin/accounts').catch((err) => {
+          setEbSignupLoadError(err instanceof Error ? err.message : 'Failed to load EB roster.');
+          return null;
+        });
         if (accRes) {
+          setEbSignupLoadError(null);
           setAccounts(accRes.accounts || []);
           setEbAllowlist(accRes.ebAllowlist || []);
           setViolations(accRes.securityViolations || []);
@@ -1350,6 +1355,13 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
                   { label: 'Not Signed Up', value: ebAllowlist.filter((entry) => !entry.claimed_at).length, detail: 'Still pending', accent: 'amber' },
                 ]}
               />
+              {ebSignupLoadError && (
+                <div className="border border-red-500/40 bg-red-950/30 p-4 text-sm text-red-200">
+                  <strong>Roster data failed to load.</strong> The zero counts below are not confirmed real counts.
+                  <p className="mt-1 font-mono text-xs break-all">{ebSignupLoadError}</p>
+                  <p className="mt-2">Use Refresh Roster to retry. If it persists, the API or database query needs fixing.</p>
+                </div>
+              )}
               <section className="portal-surface space-y-3 p-5">
                 <div>
                   <h3 className="font-display text-2xl font-medium text-[#D5BD8B]">Shared EB Signup Link</h3>
