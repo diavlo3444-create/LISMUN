@@ -30,7 +30,7 @@ import {
 
   SponsorsManagerView,
 } from './OperationalHubComponents';
-import { DepartmentQrSectionView, LiveQrScannerWorkspace } from './ScannerAndPassPages';
+import { DepartmentQrSectionView, LiveQrScannerWorkspace, MyQrPassView } from './ScannerAndPassPages';
 import { formatApplicationAnswersForReview } from '../shared/intake';
 import { canonicalDepartmentForStorage, hasPermission } from '../shared/permissions';
 import type { ConferenceApplication } from '../shared/types';
@@ -93,9 +93,10 @@ export const HeadPortal: React.FC = () => {
   const isHr = deptSlug === 'hr';
   const isPr = deptSlug === 'pr';
   const isDcc = deptSlug === 'dcc';
-  const canScan = hasPermission(effectiveActor, 'qr.scan', departments);
+  const isCoHead = effectiveActor?.eb_rank === 'co_head';
+  const canScan = deptSlug === 'security' || hasPermission(effectiveActor, 'qr.scan', departments);
 
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState(isCoHead ? 'my_qr' : 'registrations');
   const [apps, setApps] = useState<ConferenceApplication[]>([]);
   const [applicantStatusTab, setApplicantStatusTab] = useState<'pending' | 'accepted' | 'rejected' | 'waitlisted'>('pending');
   const [headNotes, setHeadNotes] = useState<Record<string, string>>({});
@@ -126,43 +127,15 @@ export const HeadPortal: React.FC = () => {
     void loadApps();
   }, [loadApps]);
 
-  const navItems: ShellNavItem[] = [
-    { id: 'overview', label: 'Department Overview', group: 'Overview', icon: Building2 },
-    ...(isOperational
-      ? [
-          {
-            id: 'registrations',
-            label: `Pending Review (${apps.length})`,
-            group: 'Registrations',
-            icon: ClipboardCheck,
-          },
-          { id: 'dept_qr', label: 'Department QR Passes', group: 'Operations', icon: QrCode },
-        ]
-      : []),
-    ...(canScan
-      ? [{ id: 'scanner', label: 'Security QR Scanner', group: 'Security', icon: Shield }]
-      : []),
-    ...(isHr
-      ? [
-          { id: 'hr_accepted', label: `Accepted Roster (${apps.length})`, group: 'HR Hub', icon: Users },
-          { id: 'emails', label: 'Email Management', group: 'HR Hub', icon: Mail },
-          { id: 'inquiries', label: 'Inquiries Inbox', group: 'HR Hub', icon: MessageSquare },
-        ]
-      : []),
-    ...(isPr ? [{ id: 'sponsors', label: 'Sponsors & Partners', group: 'PR Hub', icon: Building2 }] : []),
-    ...(isDcc
-      ? [
-          {
-            id: 'dcc_apps',
-            label: `Delegates & Chairs (${apps.length})`,
-            group: 'DCC Hub',
-            icon: FileText,
-          },
-          { id: 'committees', label: 'Committees & Windows', group: 'DCC Hub', icon: Building2 },
-        ]
-      : []),
-
-  ];
+  const navItems: ShellNavItem[] = isCoHead
+    ? [{ id: 'my_qr', label: 'My QR Code', group: 'Credential', icon: QrCode }]
+    : [
+        { id: 'registrations', label: 'Applications & Decisions', group: 'Department', icon: ClipboardCheck },
+        { id: 'dept_qr', label: 'My Department QR Codes', group: 'Department', icon: QrCode },
+        ...(canScan && deptSlug === 'security'
+          ? [{ id: 'scanner', label: 'QR Scanner', group: 'Security', icon: Shield }]
+          : []),
+      ];
 
   const handleRecommend = async (appId: string, rec: 'recommend_accept' | 'recommend_reject') => {
     try {
@@ -213,7 +186,9 @@ export const HeadPortal: React.FC = () => {
       activeTab={activeTab}
       onSelectTab={setActiveTab}
     >
-      {activeTab === 'overview' && (
+      {activeTab === 'my_qr' && isCoHead && <MyQrPassView />}
+
+      {!isCoHead && activeTab === 'overview' && (
         <div className="space-y-6">
           <PortalPageHeader
             kicker={`${brief.kicker} · Scoped to ${deptSlug}${effectiveActor?.gender ? ` (${effectiveActor.gender})` : ''}`}
@@ -257,7 +232,7 @@ export const HeadPortal: React.FC = () => {
         </div>
       )}
 
-      {activeTab === 'registrations' && (
+      {!isCoHead && activeTab === 'registrations' && (
         <div className="space-y-6">
           <PortalPageHeader
             kicker="Stage 1 Departmental Screening"
@@ -295,8 +270,19 @@ export const HeadPortal: React.FC = () => {
                         {a.application_code} · {a.email} · {a.institution}
                       </p>
                     </div>
-                    <StatusLabel status={a.head_recommendation || 'Needs Stage 1 Review'} />
+                    <div className="flex flex-col items-end gap-1">
+                      <StatusLabel status={a.status} />
+                      <StatusLabel status={a.head_recommendation || 'Needs Stage 1 Review'} />
+                    </div>
                   </div>
+                  {['accepted', 'rejected', 'waitlisted'].includes(a.status) && (
+                    <div className="border border-[#263D59]/45 bg-[#030914]/70 px-3 py-2 font-mono text-[10px] text-[#B9C6D8]">
+                      <span className="text-[#B89A62]">ADMIN DECISION:</span> {a.status.toUpperCase()}
+                      {a.decision_by_name ? ` · BY ${a.decision_by_name}` : ''}
+                      {a.decision_at ? ` · ${new Date(a.decision_at).toLocaleString()}` : ''}
+                      {a.admin_decision_notes ? <p className="mt-1 whitespace-pre-wrap font-sans text-xs">{a.admin_decision_notes}</p> : null}
+                    </div>
+                  )}
 
                   <div className="grid gap-3 border border-[#263D59]/50 bg-[#030914]/80 p-3.5 text-xs sm:grid-cols-2">
                     <div className="space-y-1">
@@ -444,7 +430,7 @@ export const HeadPortal: React.FC = () => {
         </div>
       )}
 
-      {activeTab === 'hr_accepted' && (
+      {!isCoHead && activeTab === 'hr_accepted' && (
         <div className="space-y-6">
           <PortalPageHeader
             kicker="Personnel Onboarding"
@@ -503,7 +489,7 @@ export const HeadPortal: React.FC = () => {
         </div>
       )}
 
-      {activeTab === 'dcc_apps' && (
+      {!isCoHead && activeTab === 'dcc_apps' && (
         <div className="space-y-6">
           <PortalPageHeader
             kicker="Council Admissions"
@@ -568,12 +554,12 @@ export const HeadPortal: React.FC = () => {
         </div>
       )}
 
-      {activeTab === 'dept_qr' && <DepartmentQrSectionView departmentSlug={deptSlug} />}
-      {activeTab === 'scanner' && canScan && <LiveQrScannerWorkspace />}
-      {activeTab === 'emails' && <EmailsDashboardView />}
-      {activeTab === 'inquiries' && <InquiriesManagerView />}
-      {activeTab === 'sponsors' && <SponsorsManagerView />}
-      {activeTab === 'committees' && <CommitteesManagerView />}
+      {!isCoHead && activeTab === 'dept_qr' && <DepartmentQrSectionView departmentSlug={deptSlug} />}
+      {!isCoHead && activeTab === 'scanner' && canScan && deptSlug === 'security' && <LiveQrScannerWorkspace />}
+      {!isCoHead && activeTab === 'emails' && <EmailsDashboardView />}
+      {!isCoHead && activeTab === 'inquiries' && <InquiriesManagerView />}
+      {!isCoHead && activeTab === 'sponsors' && <SponsorsManagerView />}
+      {!isCoHead && activeTab === 'committees' && <CommitteesManagerView />}
 
 
       {certPreview &&
