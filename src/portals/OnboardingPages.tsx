@@ -325,6 +325,119 @@ export const EbSignupPage: React.FC = () => {
   );
 };
 
+export const AccountSetupPage: React.FC = () => {
+  const [email, setEmail] = useState('');
+  const [code, setCode] = useState('');
+  const [password, setPassword] = useState('');
+  const [codeSent, setCodeSent] = useState(false);
+  const [done, setDone] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
+
+  const requestCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setMessage('');
+    setLoading(true);
+    try {
+      const response = await apiRequest<{ message?: string }>('/api/emails/account-setup/request-code', {
+        method: 'POST',
+        skipAuth: true,
+        body: { email: email.trim().toLowerCase() },
+      });
+      setCodeSent(true);
+      setMessage(response.message || 'Check your email for a verification code.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not send a verification code.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const completeSetup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      await apiRequest('/api/emails/account-setup/complete', {
+        method: 'POST',
+        skipAuth: true,
+        body: { email: email.trim().toLowerCase(), code: code.trim(), password },
+      });
+      setDone(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Account setup failed.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="portal-app-shell portal-gateway flex min-h-screen items-center justify-center px-4 py-10 text-[#E8E1D2]">
+      <div className="portal-modal-enter w-full max-w-md border border-[#263D59]/75 bg-[#050E1C]/95 p-8 shadow-2xl shadow-black/50">
+        <button
+          type="button"
+          onClick={() => navigate('/portal')}
+          className="inline-flex items-center gap-2 font-mono text-[11px] tracking-[0.16em] text-[#B89A62] uppercase hover:text-[#D5BD8B] whitespace-nowrap"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          <span>Portal Directory</span>
+        </button>
+        <p className="mt-6 font-mono text-[10px] tracking-[0.22em] text-[#B89A62] uppercase">
+          Existing Account Activation
+        </p>
+        <h1 className="mt-1.5 font-display text-3xl text-[#F3EDE0]">Set Your Password</h1>
+        <p className="mt-2 font-sans text-xs leading-relaxed text-[#E8E1D2]/65">
+          Verify the email address already registered to your LIS MUN account. Your assigned role, department, permissions, and QR pass will remain unchanged.
+        </p>
+
+        {done ? (
+          <div className="mt-6 space-y-4 border border-[#16A34A]/50 bg-[#05140E] p-5">
+            <div className="flex items-center gap-2 text-[#86EFAC]">
+              <Check className="h-4 w-4" />
+              <span className="font-mono text-xs uppercase">Password Set Successfully</span>
+            </div>
+            <p className="font-sans text-xs text-[#E8E1D2]/80">Your existing account is ready. Sign in using your registered email and new password.</p>
+            <button type="button" onClick={() => navigate('/login')} className="portal-btn-primary w-full py-2.5">
+              Go to Sign In
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={codeSent ? completeSetup : requestCode} className="mt-6 space-y-4 border-t border-[#263D59]/55 pt-5">
+            {error && <div className="border border-[#DC2626]/55 bg-[#16080D] p-3 text-xs text-[#FCA5A5]">{error}</div>}
+            {message && <p className="text-xs text-[#86EFAC]">{message}</p>}
+            <div>
+              <label className="block font-mono text-[10px] tracking-[0.18em] text-[#B89A62] uppercase">Registered Email</label>
+              <input required type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} disabled={codeSent} className="portal-input mt-1.5" placeholder="your registered email" />
+            </div>
+            {codeSent && (
+              <>
+                <div>
+                  <label className="block font-mono text-[10px] tracking-[0.18em] text-[#B89A62] uppercase">6-Digit Email Code</label>
+                  <input required inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} value={code} onChange={(e) => setCode(e.target.value.replace(/\\D/g, '').slice(0, 6))} className="portal-input mt-1.5 font-mono tracking-[0.3em]" placeholder="000000" />
+                </div>
+                <div>
+                  <label className="block font-mono text-[10px] tracking-[0.18em] text-[#B89A62] uppercase">New Password (10–128 characters)</label>
+                  <input required type="password" autoComplete="new-password" minLength={10} maxLength={128} value={password} onChange={(e) => setPassword(e.target.value)} className="portal-input mt-1.5" placeholder="Create a strong password" />
+                </div>
+              </>
+            )}
+            <button type="submit" disabled={loading} className="portal-btn-primary w-full py-3">
+              {loading ? 'Please wait...' : codeSent ? 'Verify Code & Set Password' : 'Email Me a Verification Code'}
+            </button>
+            {codeSent && (
+              <button type="button" disabled={loading} onClick={() => { setCodeSent(false); setCode(''); setPassword(''); setMessage(''); setError(''); }} className="w-full text-xs text-[#B89A62] hover:text-[#D5BD8B]">
+                Use a different email address
+              </button>
+            )}
+          </form>
+        )}
+      </div>
+    </div>
+  );
+};
+
 export const HeadSetupPage: React.FC = () => {
   const [token] = useState(() => new URLSearchParams(window.location.search).get('token') || '');
   const [password, setPassword] = useState('');
