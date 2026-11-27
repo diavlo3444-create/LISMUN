@@ -133,7 +133,8 @@ export const EbPortal: React.FC = () => {
     Boolean(effectiveActor?.eb_permissions?.manage_department);
 
   const ebRank = effectiveActor?.eb_rank || 'co_head';
-  const [activeTab, setActiveTab] = useState('overview');
+  const isCoHead = ebRank === 'co_head';
+  const [activeTab, setActiveTab] = useState(isCoHead ? 'my_qr' : 'overview');
   const [data, setData] = useState<EbWorkspaceData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -184,20 +185,20 @@ export const EbPortal: React.FC = () => {
       ? 'Marketing Campaigns'
       : 'Co-Head Command';
 
-  const navItems: ShellNavItem[] = [
-    { id: 'overview', label: 'EB Overview', group: 'Workspace', icon: Compass },
-    { id: 'specialty', label: roleStudioLabel, group: 'Workspace', icon: Palette },
-    { id: 'tasks', label: 'Tasks & Checklists', group: 'Operations', icon: CheckSquare },
-    { id: 'schedule', label: 'Shifts & Swaps', group: 'Operations', icon: Calendar },
-    { id: 'stations', label: 'Stations & SOPs', group: 'Operations', icon: Building2 },
-    { id: 'hierarchy', label: 'Hierarchy', group: 'Coordination', icon: Users },
-    { id: 'announcements', label: 'Announcements', group: 'Coordination', icon: Megaphone },
-    { id: 'event_day', label: 'Event-Day Incidents', group: 'Coordination', icon: AlertOctagon },
-    { id: 'my_qr', label: 'My QR Credential', group: 'Credential', icon: QrCode },
-    ...(canScan
-      ? [{ id: 'scanner', label: 'Security QR Scanner', group: 'Security', icon: ShieldAlert }]
-      : []),
-  ];
+  const navItems: ShellNavItem[] = isCoHead
+    ? [{ id: 'my_qr', label: 'My QR Code', group: 'Credential', icon: QrCode }]
+    : [
+        { id: 'overview', label: 'EB Overview', group: 'Workspace', icon: Compass },
+        { id: 'specialty', label: roleStudioLabel, group: 'Workspace', icon: Palette },
+        { id: 'tasks', label: 'Tasks & Checklists', group: 'Operations', icon: CheckSquare },
+        { id: 'schedule', label: 'Shifts & Swaps', group: 'Operations', icon: Calendar },
+        { id: 'stations', label: 'Stations & SOPs', group: 'Operations', icon: Building2 },
+        { id: 'hierarchy', label: 'Hierarchy', group: 'Coordination', icon: Users },
+        { id: 'announcements', label: 'Announcements', group: 'Coordination', icon: Megaphone },
+        { id: 'event_day', label: 'Event-Day Incidents', group: 'Coordination', icon: AlertOctagon },
+        { id: 'my_qr', label: 'My QR Credential', group: 'Credential', icon: QrCode },
+        ...(canScan ? [{ id: 'scanner', label: 'Security QR Scanner', group: 'Security', icon: ShieldAlert }] : []),
+      ];
 
   const scheduleByDate = (data?.shifts || []).reduce<Record<string, EbWorkspaceData['shifts']>>(
     (acc, sh) => {
@@ -224,7 +225,7 @@ export const EbPortal: React.FC = () => {
         <LoadingSkeleton rows={5} />
       ) : (
         <>
-          {activeTab === 'overview' && (
+          {!isCoHead && activeTab === 'overview' && (
             <div className="space-y-6">
               <PortalPageHeader
                 kicker={`Executive Board · Rank: ${ebRank.replace(/_/g, ' ')} · Dept: ${effectiveActor?.department_slug || 'General'}`}
@@ -253,7 +254,7 @@ export const EbPortal: React.FC = () => {
             </div>
           )}
 
-          {activeTab === 'specialty' && (
+          {!isCoHead && activeTab === 'specialty' && (
             <div className="space-y-6">
               <PortalPageHeader
                 kicker="Specialized Rank Workspace"
@@ -317,7 +318,7 @@ export const EbPortal: React.FC = () => {
             </div>
           )}
 
-          {activeTab === 'tasks' && (
+          {!isCoHead && activeTab === 'tasks' && (
             <div className="space-y-6">
               <PortalPageHeader
                 kicker="Execution & Discussions"
@@ -476,7 +477,7 @@ export const EbPortal: React.FC = () => {
             </div>
           )}
 
-          {activeTab === 'schedule' && (
+          {!isCoHead && activeTab === 'schedule' && (
             <div className="space-y-6">
               <PortalPageHeader
                 kicker="Duty Schedule & Handover"
@@ -693,7 +694,7 @@ export const EbPortal: React.FC = () => {
             </div>
           )}
 
-          {activeTab === 'stations' && (
+          {!isCoHead && activeTab === 'stations' && (
             <div className="space-y-6">
               <PortalPageHeader
                 kicker="Floor Positions & Procedures"
@@ -746,7 +747,7 @@ export const EbPortal: React.FC = () => {
             </div>
           )}
 
-          {activeTab === 'hierarchy' && (
+          {!isCoHead && activeTab === 'hierarchy' && (
             <div className="space-y-6">
               <PortalPageHeader
                 kicker="Reporting Lines"
@@ -823,7 +824,7 @@ export const EbPortal: React.FC = () => {
             </div>
           )}
 
-          {activeTab === 'announcements' && (
+          {!isCoHead && activeTab === 'announcements' && (
             <div className="space-y-6">
               <PortalPageHeader
                 kicker="Executive Dispatches"
@@ -895,7 +896,7 @@ export const EbPortal: React.FC = () => {
             </div>
           )}
 
-          {activeTab === 'event_day' && (
+          {!isCoHead && activeTab === 'event_day' && (
             <div className="space-y-6">
               <PortalPageHeader
                 kicker="Floor Escalation & Resolution"
@@ -995,7 +996,7 @@ export const EbPortal: React.FC = () => {
           )}
 
           {activeTab === 'my_qr' && <MyQrPassView />}
-          {activeTab === 'scanner' && canScan && <LiveQrScannerWorkspace />}
+          {!isCoHead && activeTab === 'scanner' && canScan && <LiveQrScannerWorkspace />}
         </>
       )}
     </DashboardShell>
