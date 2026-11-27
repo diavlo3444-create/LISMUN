@@ -30,7 +30,7 @@ import {
 
   SponsorsManagerView,
 } from './OperationalHubComponents';
-import { DepartmentQrSectionView, LiveQrScannerWorkspace, MyQrPassView } from './ScannerAndPassPages';
+import { LiveQrScannerWorkspace, MyQrPassView } from './ScannerAndPassPages';
 import { formatApplicationAnswersForReview } from '../shared/intake';
 import { canonicalDepartmentForStorage, hasPermission } from '../shared/permissions';
 import type { ConferenceApplication } from '../shared/types';
@@ -131,7 +131,7 @@ export const HeadPortal: React.FC = () => {
     ? [{ id: 'my_qr', label: 'My QR Code', group: 'Credential', icon: QrCode }]
     : [
         { id: 'registrations', label: 'Applications & Decisions', group: 'Department', icon: ClipboardCheck },
-        { id: 'dept_qr', label: 'My Department QR Codes', group: 'Department', icon: QrCode },
+        { id: 'my_qr', label: 'My QR Code', group: 'Credential', icon: QrCode },
         ...(canScan && deptSlug === 'security'
           ? [{ id: 'scanner', label: 'QR Scanner', group: 'Security', icon: Shield }]
           : []),
@@ -554,7 +554,7 @@ export const HeadPortal: React.FC = () => {
         </div>
       )}
 
-      {!isCoHead && activeTab === 'dept_qr' && <DepartmentQrSectionView departmentSlug={deptSlug} />}
+      {activeTab === 'my_qr' && <MyQrPassView />}
       {!isCoHead && activeTab === 'scanner' && canScan && deptSlug === 'security' && <LiveQrScannerWorkspace />}
       {!isCoHead && activeTab === 'emails' && <EmailsDashboardView />}
       {!isCoHead && activeTab === 'inquiries' && <InquiriesManagerView />}
