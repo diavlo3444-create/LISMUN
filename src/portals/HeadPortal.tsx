@@ -128,7 +128,10 @@ export const HeadPortal: React.FC = () => {
   }, [loadApps]);
 
   const navItems: ShellNavItem[] = isCoHead
-    ? [{ id: 'my_qr', label: 'My QR Code', group: 'Credential', icon: QrCode }]
+    ? [
+        { id: 'registrations', label: 'Applications & Decisions', group: 'Department', icon: ClipboardCheck },
+        { id: 'my_qr', label: 'My QR Code', group: 'Credential', icon: QrCode },
+      ]
     : [
         { id: 'registrations', label: 'Applications & Decisions', group: 'Department', icon: ClipboardCheck },
         { id: 'my_qr', label: 'My QR Code', group: 'Credential', icon: QrCode },
@@ -232,7 +235,7 @@ export const HeadPortal: React.FC = () => {
         </div>
       )}
 
-      {!isCoHead && activeTab === 'registrations' && (
+      {activeTab === 'registrations' && (
         <div className="space-y-6">
           <PortalPageHeader
             kicker="Stage 1 Departmental Screening"
@@ -392,7 +395,13 @@ export const HeadPortal: React.FC = () => {
                     </div>
                   )}
 
-                  {['pending', 'received', 'under_review'].includes(a.status) ? (
+                  {isCoHead ? (
+                    <div className="border border-[#263D59]/45 bg-[#030914]/70 px-3 py-2 font-mono text-[10px] text-[#B9C6D8]">
+                      <span className="text-[#B89A62]">HEAD RECOMMENDATION:</span>{' '}
+                      {(a.head_recommendation || 'Not submitted').replace(/_/g, ' ').toUpperCase()}
+                      {a.head_notes ? <p className="mt-1 whitespace-pre-wrap font-sans text-xs">{a.head_notes}</p> : null}
+                    </div>
+                  ) : ['pending', 'received', 'under_review'].includes(a.status) ? (
                     <>
                       <textarea
                         rows={2}
