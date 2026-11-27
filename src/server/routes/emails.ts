@@ -241,6 +241,154 @@ emailsRouter.get('/gmail/callback', async (req, res, next) => {
   }
 });
 
+// Public existing-account password setup: email OTP is required before changing credentials.
+emailsRouter.post('/account-setup/request-code', async (req, res, next) => {
+  try {
+    const email = String(req.body?.email ?? '').trim().toLowerCase();
+    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email) || email.length > 254) {
+      res.status(200).json({ ok: true, message: 'If an eligible account exists, a verification code will be sent.' });
+      return;
+    }
+
+    const pool = getPool();
+    const account = (
+      await pool.query<{ id: string; full_name: string; role: string }>(
+        `SELECT u.id, COALESCE(p.full_name, u.full_name, '') AS full_name, p.role
+         FROM users u
+         JOIN profiles p ON p.user_id = u.id
+         WHERE lower(u.email) = $1 AND p.role <> 'super_admin'
+         LIMIT 1`,
+        [email]
+      )
+    ).rows[0];
+
+    if (!account) {
+      res.status(200).json({ ok: true, message: 'If an eligible account exists, a verification code will be sent.' });
+      return;
+    }
+
+    const recent = (
+      await pool.query(
+        `SELECT id FROM account_setup_codes
+         WHERE user_id = $1 AND created_at > now() - interval '60 seconds'
+           AND used_at IS NULL
+         ORDER BY created_at DESC LIMIT 1`,
+        [account.id]
+      )
+    ).rows[0];
+    if (recent) {
+      res.status(200).json({ ok: true, message: 'A code was recently sent. Please wait before requesting another.' });
+      return;
+    }
+
+    const rawCode = String(parseInt(generateOpaqueToken(4), 16) % 1000000).padStart(6, '0');
+    await pool.query(
+      `UPDATE account_setup_codes SET used_at = now()
+       WHERE user_id = $1 AND used_at IS NULL`,
+      [account.id]
+    );
+    await pool.query(
+      `INSERT INTO account_setup_codes (user_id, code_hash, expires_at)
+       VALUES ($1, $2, now() + interval '10 minutes')`,
+      [account.id, hashOpaqueToken(rawCode)]
+    );
+
+    const subject = 'LIS MUN — Account Setup Verification Code';
+    const bodyText =
+      `Hello ${account.full_name || 'LIS MUN team member'},\\n\\n` +
+      `Your verification code to set your LIS MUN account password is: ${rawCode}\\n\\n` +
+      'This code expires in 10 minutes and can only be used once. If you did not request this, ignore this email.';
+
+    const resend = await dispatchViaResend({ to: email, subject, bodyText });
+    const dispatch = resend.ok ? resend : await dispatchViaGmailOAuth({ to: email, subject, bodyText });
+    if (!dispatch.ok) {
+      await pool.query(
+        `UPDATE account_setup_codes SET used_at = now()
+         WHERE user_id = $1 AND used_at IS NULL`,
+        [account.id]
+      );
+      res.status(503).json({
+        error: 'EMAIL_DELIVERY_UNAVAILABLE',
+        message: 'Email delivery is not available right now. Contact the Secretariat administrator.',
+      });
+      return;
+    }
+
+    res.status(200).json({ ok: true, message: 'If an eligible account exists, a verification code has been sent.' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+emailsRouter.post('/account-setup/complete', async (req, res, next) => {
+  try {
+    const email = String(req.body?.email ?? '').trim().toLowerCase();
+    const code = String(req.body?.code ?? '').trim();
+    const password = String(req.body?.password ?? '');
+    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email) || !/^\\d{6}$/.test(code) || password.length < 10 || password.length > 128) {
+      res.status(400).json({ error: 'INVALID_INPUT', message: 'Enter your email, six-digit code, and a 10–128 character password.' });
+      return;
+    }
+
+    const outcome = await withTransaction(async (client) => {
+      const account = (
+        await client.query<{ id: string; role: string; department_slug: string | null }>(
+          `SELECT u.id, p.role, p.department_slug
+           FROM users u JOIN profiles p ON p.user_id = u.id
+           WHERE lower(u.email) = $1 AND p.role <> 'super_admin'
+           LIMIT 1 FOR UPDATE OF u, p`,
+          [email]
+        )
+      ).rows[0];
+      if (!account) return null;
+
+      const challenge = (
+        await client.query<{ id: string; code_hash: string; attempts: number; expires_at: string; used_at: string | null }>(
+          `SELECT id, code_hash, attempts, expires_at, used_at
+           FROM account_setup_codes
+           WHERE user_id = $1 AND used_at IS NULL
+           ORDER BY created_at DESC LIMIT 1 FOR UPDATE`,
+          [account.id]
+        )
+      ).rows[0];
+      if (!challenge || challenge.used_at || new Date(challenge.expires_at).getTime() <= Date.now() || challenge.attempts >= 5) {
+        return null;
+      }
+      if (hashOpaqueToken(code) !== challenge.code_hash) {
+        await client.query(
+          `UPDATE account_setup_codes SET attempts = attempts + 1,
+             used_at = CASE WHEN attempts + 1 >= 5 THEN now() ELSE used_at END
+           WHERE id = $1`,
+          [challenge.id]
+        );
+        return null;
+      }
+
+      await client.query(
+        `UPDATE users SET password_hash = $1, banned_until = NULL, updated_at = now() WHERE id = $2`,
+        [hashPassword(password), account.id]
+      );
+      await client.query(
+        `UPDATE profiles SET is_active = true, updated_at = now() WHERE user_id = $1`,
+        [account.id]
+      );
+      await client.query(
+        `UPDATE account_setup_codes SET used_at = now() WHERE user_id = $1 AND used_at IS NULL`,
+        [account.id]
+      );
+      return { role: account.role, departmentSlug: account.department_slug };
+    });
+
+    if (!outcome) {
+      res.status(400).json({ error: 'INVALID_OR_EXPIRED_CODE', message: 'The verification code is invalid, expired, or has already been used.' });
+      return;
+    }
+    res.json({ ok: true, message: 'Password saved. Your existing account details were preserved.' });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // All remaining routes require Auth + Admin or HR Head
 emailsRouter.use(requireAuth);
 
