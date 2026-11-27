@@ -271,7 +271,6 @@ emailsRouter.post('/account-setup/request-code', async (req, res, next) => {
       await pool.query(
         `SELECT id FROM account_setup_codes
          WHERE user_id = $1 AND created_at > now() - interval '60 seconds'
-           AND used_at IS NULL
          ORDER BY created_at DESC LIMIT 1`,
         [account.id]
       )
