@@ -64,37 +64,36 @@ superAdminRouter.get(
         is_primary_super_admin: Boolean(primaryEmail) && r.email.toLowerCase() === primaryEmail,
       }));
 
-      // EB Sign Ups must mirror Account Management exactly: only actual Executive Board
-      // accounts belong in the roster. Signup state comes from explicit claim/redeem records;
-      // profile creation timestamps are NOT evidence that the member completed signup.
-      const claimByEmail = new Map<string, string>();
-      for (const row of allowlistRes.rows) {
-        const key = String(row.email || '').trim().toLowerCase();
-        if (key && row.claimed_at) claimByEmail.set(key, String(row.claimed_at));
-        for (const alias of Array.isArray(row.email_aliases) ? row.email_aliases : []) {
-          const aliasKey = String(alias).trim().toLowerCase();
-          if (aliasKey && row.claimed_at) claimByEmail.set(aliasKey, String(row.claimed_at));
-        }
+      // Keep the complete 40-member allowlist as the canonical EB roster.
+      // A member is signed up only when an actual active executive_board profile exists
+      // for the allowlisted email (or one of its aliases).
+      const profilesByEmail = new Map<string, any>();
+      for (const profile of profilesRes.rows) {
+        if (profile.role !== 'executive_board' || !profile.is_active) continue;
+        const email = String(profile.email || '').trim().toLowerCase();
+        if (email) profilesByEmail.set(email, profile);
       }
-      for (const invite of ebInvitesRes.rows) {
-        const key = String(invite.email || '').trim().toLowerCase();
-        const claimedAt = invite.redeemed_at || invite.claimed_at;
-        if (key && claimedAt && !claimByEmail.has(key)) claimByEmail.set(key, String(claimedAt));
-      }
-      const ebRoster = profilesRes.rows
-        .filter((profile) => profile.role === 'executive_board')
-        .map((profile) => {
-          const email = String(profile.email || '').trim().toLowerCase();
-          return {
-            member_key: 'account:' + profile.user_id,
-            user_id: profile.user_id,
-            email,
-            full_name: profile.full_name || email,
-            department_slug: profile.department_slug || '',
-            eb_rank: profile.eb_rank || 'member',
-            claimed_at: claimByEmail.get(email) || null,
-          };
-        });
+      const ebRoster = allowlistRes.rows.map((entry) => {
+        const email = String(entry.email || '').trim().toLowerCase();
+        const aliases = Array.isArray(entry.email_aliases)
+          ? entry.email_aliases.map((alias: unknown) => String(alias).trim().toLowerCase())
+          : [];
+        const matchedProfile = [email, ...aliases]
+          .map((key) => profilesByEmail.get(key))
+          .find(Boolean);
+        const claimedAt = matchedProfile
+          ? (entry.claimed_at || matchedProfile.updated_at || matchedProfile.created_at || null)
+          : null;
+        return {
+          member_key: entry.member_key,
+          user_id: matchedProfile?.user_id || null,
+          email: entry.email,
+          full_name: entry.full_name,
+          department_slug: entry.department_slug || '',
+          eb_rank: entry.eb_rank || 'member',
+          claimed_at: claimedAt,
+        };
+      });
 
       res.json({
         accounts,
