@@ -37,7 +37,7 @@ superAdminRouter.get(
       const pool = getPool();
       const [profilesRes, allowlistRes, violationsRes, ebInvitesRes] = await Promise.all([
         pool.query(
-          `SELECT p.*, COALESCE(d.slug, p.department_slug) AS department_slug, d.name AS department_name, u.banned_until
+          `SELECT p.*, COALESCE(d.slug, p.department_slug) AS department_slug, d.name AS department_name, u.banned_until, u.setup_completed_at
            FROM profiles p
            JOIN users u ON u.id = p.user_id
            LEFT JOIN departments d ON d.id = p.department_id
