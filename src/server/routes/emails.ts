@@ -5,6 +5,7 @@ import {
   encryptGmailSecret,
   generateOpaqueToken,
   hashOpaqueToken,
+  hashPassword,
 } from '../services/crypto.ts';
 import { issueHrSignupInvite } from './invites.ts';
 import {
