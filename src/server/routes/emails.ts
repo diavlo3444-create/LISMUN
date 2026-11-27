@@ -294,8 +294,8 @@ emailsRouter.post('/account-setup/request-code', async (req, res, next) => {
 
     const subject = 'LIS MUN — Account Setup Verification Code';
     const bodyText =
-      `Hello ${account.full_name || 'LIS MUN team member'},\\n\\n` +
-      `Your verification code to set your LIS MUN account password is: ${rawCode}\\n\\n` +
+      `Hello ${account.full_name || 'LIS MUN team member'},\n\n` +
+      `Your verification code to set your LIS MUN account password is: ${rawCode}\n\n` +
       'This code expires in 10 minutes and can only be used once. If you did not request this, ignore this email.';
 
     const resend = await dispatchViaResend({ to: email, subject, bodyText });
