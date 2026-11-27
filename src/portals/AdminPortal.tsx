@@ -1335,48 +1335,48 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
           {activeTab === 'eb_signups' && isSuper && (
             <div className="space-y-6">
               <PortalPageHeader
-                kicker="Executive Board Onboarding"
-                title="EB Sign Ups"
-                subtitle="Share one signup link with the Executive Board and track exactly which roster members have activated their accounts."
+                kicker="Team Account Onboarding"
+                title="Account Setup"
+                subtitle="One permanent setup link for every existing team account. Members verify their registered email before setting or changing their password."
                 actions={
                   <button
                     type="button"
                     onClick={() => void loadAll()}
                     className="portal-btn-secondary"
                   >
-                    <Activity className="h-3.5 w-3.5" /> Refresh Roster
+                    <Activity className="h-3.5 w-3.5" /> Refresh Accounts
                   </button>
                 }
               />
               <MetricLedger
                 items={[
-                  { label: 'Expected EB Members', value: ebAllowlist.length, detail: 'Rostered for signup' },
-                  { label: 'Signed Up', value: ebAllowlist.filter((entry) => Boolean(entry.claimed_at)).length, detail: 'Accounts claimed', accent: 'green' },
-                  { label: 'Not Signed Up', value: ebAllowlist.filter((entry) => !entry.claimed_at).length, detail: 'Still pending', accent: 'amber' },
+                  { label: 'Team Accounts', value: accounts.filter((account) => account.role !== 'super_admin').length, detail: 'All non-Super-Admin accounts' },
+                  { label: 'Active Accounts', value: accounts.filter((account) => account.role !== 'super_admin' && account.is_active).length, detail: 'Currently active', accent: 'green' },
+                  { label: 'Inactive Accounts', value: accounts.filter((account) => account.role !== 'super_admin' && !account.is_active).length, detail: 'Currently inactive', accent: 'amber' },
                 ]}
               />
               {ebSignupLoadError && (
                 <div className="border border-red-500/40 bg-red-950/30 p-4 text-sm text-red-200">
-                  <strong>Roster data failed to load.</strong> The zero counts below are not confirmed real counts.
+                  <strong>Account roster failed to load.</strong>
                   <p className="mt-1 font-mono text-xs break-all">{ebSignupLoadError}</p>
-                  <p className="mt-2">Use Refresh Roster to retry. If it persists, the API or database query needs fixing.</p>
+                  <p className="mt-2">Use Refresh Accounts to retry.</p>
                 </div>
               )}
               <section className="portal-surface space-y-3 p-5">
                 <div>
-                  <h3 className="font-display text-2xl font-medium text-[#D5BD8B]">Shared EB Signup Link</h3>
-                  <p className="mt-1 text-sm text-[#b8c8dc]/75">Everyone on the roster can use this same link. Their email must match an entry added to the EB allowlist.</p>
+                  <h3 className="font-display text-2xl font-medium text-[#D5BD8B]">Permanent Shared Account Setup Link</h3>
+                  <p className="mt-1 text-sm text-[#b8c8dc]/75">This URL has no expiry date. Each person must enter the email already attached to their account and verify the one-time code sent to that inbox. Verification codes expire after 10 minutes; the shared link does not.</p>
                 </div>
                 <div className="flex flex-col gap-2 sm:flex-row">
-                  <div className="min-w-0 flex-1 break-all border border-[#263D59] bg-[#030914] p-3 font-mono text-sm text-[#9fc5ee]">{window.location.origin}/eb-signup</div>
+                  <div className="min-w-0 flex-1 break-all border border-[#263D59] bg-[#030914] p-3 font-mono text-sm text-[#9fc5ee]">{window.location.origin}/account-setup</div>
                   <button
                     type="button"
-                    onClick={() => void navigator.clipboard.writeText(window.location.origin + '/eb-signup').then(() => addToast('EB signup link copied.', 'success')).catch(() => addToast('Copy failed. Select and copy the link manually.', 'error'))}
+                    onClick={() => void navigator.clipboard.writeText(window.location.origin + '/account-setup').then(() => addToast('Account setup link copied.', 'success')).catch(() => addToast('Copy failed. Select and copy the link manually.', 'error'))}
                     className="portal-btn-primary"
                   >
-                    <Copy className="h-3.5 w-3.5" /> Copy Signup Link
+                    <Copy className="h-3.5 w-3.5" /> Copy Setup Link
                   </button>
-                  <button type="button" onClick={() => navigate('/eb-signup')} className="portal-btn-secondary">
+                  <button type="button" onClick={() => navigate('/account-setup')} className="portal-btn-secondary">
                     <ExternalLink className="h-3.5 w-3.5" /> Open Link
                   </button>
                 </div>
@@ -1384,39 +1384,39 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
               <section className="portal-surface space-y-4 p-5">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <h3 className="font-display text-2xl font-medium text-[#D5BD8B]">Signup Roster</h3>
-                    <p className="text-sm text-[#b8c8dc]/70">A member is marked signed up when their allowlist entry is claimed.</p>
+                    <h3 className="font-display text-2xl font-medium text-[#D5BD8B]">All Team Accounts</h3>
+                    <p className="text-sm text-[#b8c8dc]/70">Includes Executive Board, Department Heads, Admins, and Staff. Existing roles and permissions are preserved during password setup.</p>
                   </div>
                   <input
                     value={ebSignupSearch}
                     onChange={(e) => setEbSignupSearch(e.target.value)}
-                    placeholder="Search name, email, department…"
+                    placeholder="Search name, email, role, department…"
                     className="portal-input w-full sm:max-w-sm"
                   />
                 </div>
                 <div className="max-h-[65vh] overflow-auto border border-[#263D59]/70">
-                  <table className="w-full min-w-[720px] text-left text-sm">
+                  <table className="w-full min-w-[760px] text-left text-sm">
                     <thead className="sticky top-0 bg-[#0b1b30] font-mono text-[10px] uppercase tracking-wider text-[#9fc5ee]">
                       <tr>
-                        <th className="p-3">Member</th><th className="p-3">Email</th><th className="p-3">Department</th><th className="p-3">Rank</th><th className="p-3">Signup Status</th><th className="p-3">Signed Up At</th>
+                        <th className="p-3">Member</th><th className="p-3">Email</th><th className="p-3">Role</th><th className="p-3">Department</th><th className="p-3">Title</th><th className="p-3">Account Status</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {ebAllowlist.filter((entry) => {
+                      {accounts.filter((account) => account.role !== 'super_admin').filter((account) => {
                         const q = ebSignupSearch.trim().toLowerCase();
-                        return !q || [entry.full_name, entry.email, entry.department_slug, entry.eb_rank].some((value) => String(value || '').toLowerCase().includes(q));
-                      }).map((entry) => (
-                        <tr key={entry.member_key} className="border-t border-[#263D59]/70 text-[#dce7f5]">
-                          <td className="p-3">{entry.full_name || '—'}</td>
-                          <td className="p-3">{entry.email || '—'}</td>
-                          <td className="p-3 capitalize">{String(entry.department_slug || '—').replace(/_/g, ' ')}</td>
-                          <td className="p-3 capitalize">{String(entry.eb_rank || '—').replace(/_/g, ' ')}</td>
-                          <td className="p-3"><span className={entry.claimed_at ? 'text-emerald-300' : 'text-amber-200'}>{entry.claimed_at ? 'Signed Up' : 'Not Signed Up'}</span></td>
-                          <td className="p-3 text-xs text-[#b8c8dc]/70">{entry.claimed_at ? new Date(entry.claimed_at).toLocaleString() : '—'}</td>
+                        return !q || [account.full_name, account.email, account.role, account.department_slug, account.title].some((value) => String(value || '').toLowerCase().includes(q));
+                      }).map((account) => (
+                        <tr key={account.user_id} className="border-t border-[#263D59]/70 text-[#dce7f5]">
+                          <td className="p-3">{account.full_name || '—'}</td>
+                          <td className="p-3">{account.email || '—'}</td>
+                          <td className="p-3 capitalize">{String(account.role || '—').replace(/_/g, ' ')}</td>
+                          <td className="p-3 capitalize">{String(account.department_slug || '—').replace(/_/g, ' ')}</td>
+                          <td className="p-3 capitalize">{account.title || '—'}</td>
+                          <td className="p-3"><span className={account.is_active ? 'text-emerald-300' : 'text-amber-200'}>{account.is_active ? 'Active' : 'Inactive'}</span></td>
                         </tr>
                       ))}
-                      {ebAllowlist.length === 0 && (
-                        <tr><td colSpan={6} className="p-8 text-center text-[#b8c8dc]/65">No EB roster entries yet. Add members in Accounts & Permissions under EB Signup Allowlist.</td></tr>
+                      {accounts.filter((account) => account.role !== 'super_admin').length === 0 && (
+                        <tr><td colSpan={6} className="p-8 text-center text-[#b8c8dc]/65">No team accounts found. Refresh the account list or check account permissions.</td></tr>
                       )}
                     </tbody>
                   </table>
