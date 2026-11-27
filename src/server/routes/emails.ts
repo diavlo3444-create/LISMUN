@@ -246,7 +246,7 @@ emailsRouter.post('/account-setup/complete', async (req, res, next) => {
   try {
     const email = String(req.body?.email ?? '').trim().toLowerCase();
     const password = String(req.body?.password ?? '');
-    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email) || password.length < 10 || password.length > 128) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || password.length < 10 || password.length > 128) {
       res.status(400).json({ error: 'INVALID_INPUT', message: 'Enter a valid registered email and a 10–128 character password.' });
       return;
     }
