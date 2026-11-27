@@ -1398,7 +1398,7 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
                   <table className="w-full min-w-[760px] text-left text-sm">
                     <thead className="sticky top-0 bg-[#0b1b30] font-mono text-[10px] uppercase tracking-wider text-[#9fc5ee]">
                       <tr>
-                        <th className="p-3">Member</th><th className="p-3">Email</th><th className="p-3">Role</th><th className="p-3">Department</th><th className="p-3">Title</th><th className="p-3">Account Status</th>
+                        <th className="p-3">Member</th><th className="p-3">Email</th><th className="p-3">Role</th><th className="p-3">Department</th><th className="p-3">Title</th><th className="p-3">Setup Status</th><th className="p-3">Account Status</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1412,11 +1412,12 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
                           <td className="p-3 capitalize">{String(account.role || '—').replace(/_/g, ' ')}</td>
                           <td className="p-3 capitalize">{String(account.department_slug || '—').replace(/_/g, ' ')}</td>
                           <td className="p-3 capitalize">{account.title || '—'}</td>
+                          <td className="p-3"><span className={account.setup_completed_at ? 'text-emerald-300' : 'text-amber-200'}>{account.setup_completed_at ? `Completed · ${new Date(account.setup_completed_at).toLocaleDateString()}` : 'Not completed'}</span></td>
                           <td className="p-3"><span className={account.is_active ? 'text-emerald-300' : 'text-amber-200'}>{account.is_active ? 'Active' : 'Inactive'}</span></td>
                         </tr>
                       ))}
                       {accounts.filter((account) => account.role !== 'super_admin').length === 0 && (
-                        <tr><td colSpan={6} className="p-8 text-center text-[#b8c8dc]/65">No team accounts found. Refresh the account list or check account permissions.</td></tr>
+                        <tr><td colSpan={7} className="p-8 text-center text-[#b8c8dc]/65">No team accounts found. Refresh the account list or check account permissions.</td></tr>
                       )}
                     </tbody>
                   </table>
