@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import type { AtlasSectionId } from '../types/atlas';
 import { prefersReducedMotion } from '../utils/atlasAnimations';
+import { GoldParticlesCanvas, GoldenWorldMapBackdrop } from './LuxuryOrnaments';
 
 interface ScrollAtlasBackdropProps {
   activeSection: AtlasSectionId;
@@ -313,14 +314,14 @@ export const ScrollAtlasBackdrop: React.FC<ScrollAtlasBackdropProps> = ({
         style={{ backgroundColor: mood.tintColor }}
       />
 
-      {/* Morphing Lapis Blueprint Halo */}
+      {/* Morphing Lapis & Baby-Blue Diplomatic Halo */}
       <div
         className="absolute top-0 left-0 h-[92vmax] w-[92vmax] -translate-x-1/2 -translate-y-1/2 rounded-full will-change-transform"
         style={{
           transform: `translate3d(calc(${mood.lapisX}vw - 50%), calc(${mood.lapisY}vh - 50%), 0) scale(${mood.lapisScale})`,
           opacity: mood.lapisOpacity,
           background:
-            'radial-gradient(circle, rgba(38, 69, 114, 0.72) 0%, rgba(20, 42, 74, 0.34) 42%, transparent 70%)',
+            'radial-gradient(circle, rgba(131, 181, 237, 0.24) 0%, rgba(38, 69, 114, 0.62) 32%, rgba(20, 42, 74, 0.28) 54%, transparent 72%)',
           transition:
             'transform 1150ms cubic-bezier(0.22, 1, 0.36, 1), opacity 1150ms ease',
         }}
@@ -338,6 +339,20 @@ export const ScrollAtlasBackdrop: React.FC<ScrollAtlasBackdropProps> = ({
             'transform 1150ms cubic-bezier(0.22, 1, 0.36, 1), opacity 1150ms ease',
         }}
       />
+
+      {/* Subtle Golden World Map Graticule Backdrop */}
+      <GoldenWorldMapBackdrop
+        className={`absolute inset-0 h-full w-full transition-opacity duration-1000 ${
+          activeSection === 'hero' || activeSection === 'registration'
+            ? 'opacity-45'
+            : activeSection === 'about' || activeSection === 'experience'
+            ? 'opacity-20'
+            : 'opacity-32'
+        }`}
+      />
+
+      {/* Lightweight Floating Gold & Baby-Blue Particles */}
+      {!dimmed && <GoldParticlesCanvas count={24} className="z-0 opacity-85" />}
 
       {/* Far Meridian & Parallel Grid Plane (Slow Parallax) */}
       <div

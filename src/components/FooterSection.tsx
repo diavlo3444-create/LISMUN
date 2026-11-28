@@ -9,6 +9,7 @@ import {
 } from '../utils/atlasAnimations';
 import { BritusEmblem } from './BritusEmblem';
 import { navigate } from '../client/router';
+import { OrnamentalGoldDivider } from './LuxuryOrnaments';
 
 interface FooterSectionProps {
   onNavigate: (sectionId: AtlasSectionId) => void;
@@ -67,21 +68,24 @@ export const FooterSection: React.FC<FooterSectionProps> = ({
   return (
     <footer
       ref={footerRef}
-      className="relative z-[2] border-t border-[#B89A62]/30 bg-[#020710] pt-24 pb-12"
+      className="relative z-[2] border-t border-[#B89A62]/35 bg-[radial-gradient(ellipse_60%_40%_at_50%_0%,rgba(131,181,237,0.06),transparent_65%)] bg-[#020710] pt-14 pb-12"
     >
+      <OrnamentalGoldDivider label="Finis · Session I" className="mb-14" />
       <div className="mx-auto max-w-[1440px] px-6 md:px-10">
         {/* Return to Origin Emblem Closure */}
         <div
           ref={emblemContainerRef}
-          className="flex flex-col items-center border-b border-[#263D59]/60 pb-16 text-center"
+          className="flex flex-col items-center border-b border-[#B89A62]/25 pb-16 text-center"
         >
-          <BritusEmblem
-            size={210}
-            variant="layered"
-            sealOpacity={0.94}
-            showCaption
-            animated
-          />
+          <div className="relative flex items-center justify-center">
+            <BritusEmblem
+              size={210}
+              variant="layered"
+              sealOpacity={0.94}
+              showCaption
+              animated
+            />
+          </div>
           <p
             data-footer-motto
             className="mt-6 max-w-md font-display text-2xl italic text-[#D5BD8B]"
@@ -190,7 +194,7 @@ export const FooterSection: React.FC<FooterSectionProps> = ({
                   Conference Session
                 </dt>
                 <dd className="mt-0.5 font-sans text-[#E8E1D2]/70">
-                  Inaugural Session I · Official Calendar &amp; Venue Forthcoming
+                  Session I · Official Calendar &amp; Venue Forthcoming
                 </dd>
               </div>
             </dl>

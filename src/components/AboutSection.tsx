@@ -164,13 +164,13 @@ export const AboutSection: React.FC = () => {
               <article
                 key={chapter.id}
                 data-about-chapter="true"
-                className={`max-w-xl border-t border-[#B89A62]/40 bg-[#030914]/92 p-7 md:p-9 ${
+                className={`atlas-luxury-card max-w-xl border-t-2 border-t-[#D5BD8B]/75 p-7 md:p-9 ${
                   idx % 2 === 1 ? 'md:ml-auto lg:mr-16' : ''
                 }`}
               >
                 <div
                   data-chapter-reveal
-                  className="flex flex-wrap items-center justify-between gap-2 font-mono text-[11px] tracking-[0.2em] text-[#B89A62] uppercase"
+                  className="flex flex-wrap items-center justify-between gap-2 font-mono text-[11px] tracking-[0.2em] text-[#83B5ED] uppercase"
                 >
                   <span>
                     {chapter.roman} · {chapter.regionLabel}

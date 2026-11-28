@@ -237,13 +237,15 @@ test('Vercel entrypoint normalizes rewritten multi-segment /api/* paths and verc
   }
 });
 
-test('Database migration runner discovers and orders 001, 002, and 003 migrations', async () => {
+test('Database migration runner discovers and orders 001 through 005 migrations', async () => {
   const { getOrderedMigrationFiles } = await import('./db/migrate.ts');
   const files = getOrderedMigrationFiles().map((f) => path.basename(f));
   assert.deepEqual(files, [
     '001_lismun_core_schema.sql',
     '002_test_mode_launch_tickets.sql',
     '003_test_mode_sessions.sql',
+    '004_account_setup_codes.sql',
+    '005_account_setup_tracking.sql',
   ]);
   const sql003 = fs.readFileSync(
     path.resolve(process.cwd(), 'src/server/db/migrations/003_test_mode_sessions.sql'),
@@ -255,7 +257,9 @@ test('Database migration runner discovers and orders 001, 002, and 003 migration
 
 test('Sign In As full lifecycle via Vercel handler: launch, single-use consume, scoped preview, cross-actor block, and Exit Preview revocation', async () => {
   const { setPoolForTests } = await import('./db/pool.ts');
+  const { resetMigrationCacheForTests } = await import('./db/migrate.ts');
   const { default: vercelHandler } = await import('../../api/index.ts');
+  resetMigrationCacheForTests();
 
   const superAdminId = '11111111-1111-4111-8111-111111111111';
   const superAdmin2Id = '22222222-2222-4222-8222-222222222222';
@@ -451,6 +455,12 @@ test('Sign In As full lifecycle via Vercel handler: launch, single-use consume, 
         return { rows: auditLogs };
       }
       return { rows: [] };
+    },
+    async connect() {
+      return {
+        query: (sql: string, params?: unknown[]) => mockPool.query(sql, params),
+        release: () => {},
+      };
     },
   };
 
@@ -653,6 +663,313 @@ test('Sign In As full lifecycle via Vercel handler: launch, single-use consume, 
   } finally {
     await new Promise<void>((resolve, reject) => server.close((err) => (err ? reject(err) : resolve())));
     setPoolForTests(null);
+    resetMigrationCacheForTests();
+    if (prevDbUrl === undefined) delete process.env.DATABASE_URL;
+    else process.env.DATABASE_URL = prevDbUrl;
+  }
+});
+
+test('Security application end-to-end API flow: upload proof, submit conditional answers, Admin review, and signed file download', async () => {
+  const { setPoolForTests } = await import('./db/pool.ts');
+  const { resetMigrationCacheForTests } = await import('./db/migrate.ts');
+  const { default: vercelHandler } = await import('../../api/index.ts');
+  resetMigrationCacheForTests();
+
+  const adminId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+  const adminToken = 'sec-test-admin-token';
+  const storedFiles = new Map<
+    string,
+    { file_name: string; mime_type: string; content: Buffer }
+  >();
+  const storedApps: Array<Record<string, unknown>> = [];
+  const storedMedical: Array<Record<string, unknown>> = [];
+  const authSessions = new Map<string, string>([
+    [hashOpaqueToken(adminToken), adminId],
+  ]);
+
+  const mockPool = {
+    async query(sql: string, params: unknown[] = []) {
+      const q = sql.replace(/\s+/g, ' ').trim();
+      if (q.startsWith('SELECT user_id FROM sessions')) {
+        const uid = authSessions.get(String(params[0]));
+        return { rows: uid ? [{ user_id: uid }] : [] };
+      }
+      if (q.includes('FROM profiles p JOIN users u ON u.id = p.user_id')) {
+        if (String(params[0]) !== adminId) return { rows: [] };
+        return {
+          rows: [
+            {
+              user_id: adminId,
+              email: 'admin@lismun.org',
+              full_name: 'Secretariat Admin',
+              role: 'admin',
+              department_id: null,
+              department_slug: null,
+              department_name: null,
+              title: 'Admin',
+              division: null,
+              gender: null,
+              phone: null,
+              is_active: true,
+              eb_rank: null,
+              eb_permissions: {},
+              permissions: {},
+              reporting_head_id: null,
+              banned_until: null,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            },
+          ],
+        };
+      }
+      if (q.startsWith('SELECT id, slug, name, description, is_sectioned')) {
+        return {
+          rows: [
+            {
+              id: 'd-sec',
+              slug: 'security',
+              name: 'Security & Protocol',
+              description: '',
+              is_sectioned: true,
+              has_public_intake: true,
+              registration_open: true,
+              updated_at: new Date().toISOString(),
+            },
+          ],
+        };
+      }
+      if (q.startsWith('SELECT registration_open FROM departments WHERE slug = $1')) {
+        return { rows: [{ registration_open: true }] };
+      }
+      if (q.startsWith('SELECT id, registration_open FROM departments WHERE slug = $1')) {
+        return { rows: [{ id: 'd-sec', registration_open: true }] };
+      }
+      if (q.startsWith('SELECT value FROM settings WHERE key = $1')) {
+        return { rows: [{ value: true }] };
+      }
+      if (q.startsWith('SELECT COUNT(*)::text AS cnt FROM rate_limit_events')) {
+        return { rows: [{ cnt: '0' }] };
+      }
+      if (q.startsWith('INSERT INTO application_files')) {
+        storedFiles.set(String(params[0]), {
+          file_name: String(params[2]),
+          mime_type: String(params[3]),
+          content: params[5] as Buffer,
+        });
+        return { rows: [] };
+      }
+      if (q.startsWith('SELECT file_name, mime_type, content FROM application_files')) {
+        const f = storedFiles.get(String(params[0]));
+        return { rows: f ? [f] : [] };
+      }
+      if (q.startsWith('SELECT id FROM applications WHERE lower(application_type) = $1')) {
+        return { rows: [] };
+      }
+      if (q.startsWith('INSERT INTO applications (')) {
+        const record: Record<string, unknown> = {
+          id: 'app-sec-1',
+          application_code: params[0],
+          application_type: params[1],
+          department_id: params[2],
+          department_slug: params[3],
+          applicant_name: params[4],
+          email: params[5],
+          phone: params[6],
+          emergency_phone: params[7],
+          gender: params[8],
+          institution: params[9],
+          grade_or_year: params[10],
+          birth_date: params[11],
+          age: params[12],
+          position: params[13],
+          experience: params[14],
+          statement: params[15],
+          answers: JSON.parse(String(params[16])),
+          attachments: JSON.parse(String(params[17])),
+          status: 'pending',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        storedApps.push(record);
+        return { rows: [record] };
+      }
+      if (q.startsWith('INSERT INTO application_medical')) {
+        storedMedical.push({
+          application_id: params[0],
+          medical_has_conditions: params[1],
+          medical_details: params[2],
+        });
+        return { rows: [] };
+      }
+      if (q.includes('FROM applications a')) {
+        return {
+          rows: storedApps.map((a) => {
+            const med = storedMedical.find((m) => m.application_id === a.id);
+            return {
+              ...a,
+              medical_has_conditions: med?.medical_has_conditions ?? false,
+              medical_details: med?.medical_details ?? '',
+            };
+          }),
+        };
+      }
+      if (q.startsWith('SELECT * FROM applications WHERE id = $1')) {
+        const found = storedApps.find((a) => a.id === params[0]);
+        return { rows: found ? [found] : [] };
+      }
+      return { rows: [] };
+    },
+    async connect() {
+      return {
+        query: (sql: string, params?: unknown[]) => mockPool.query(sql, params),
+        release: () => {},
+      };
+    },
+  };
+
+  const prevDbUrl = process.env.DATABASE_URL;
+  process.env.DATABASE_URL = 'postgres://mock-for-unit-test';
+  setPoolForTests(mockPool as unknown as import('pg').Pool);
+
+  const server = http.createServer((req, res) => {
+    void vercelHandler(req, res);
+  });
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+
+  try {
+    const addr = server.address();
+    assert.ok(addr && typeof addr === 'object');
+    const baseUrl = `http://127.0.0.1:${addr.port}`;
+
+    // 1. Initialize & upload proof of experience (PNG bytes)
+    const sampleBytes = Buffer.from('PNG-PROOF-OF-EXPERIENCE');
+    const initRes = await fetch(`${baseUrl}/api/public/files/init-upload`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        application_type: 'security',
+        file_name: 'marshal-cert.png',
+        mime_type: 'image/png',
+        size_bytes: sampleBytes.length,
+      }),
+    });
+    assert.equal(initRes.status, 200);
+    const { uploadUrl } = (await initRes.json()) as { uploadUrl: string };
+
+    const putRes = await fetch(`${baseUrl}${uploadUrl}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'image/png' },
+      body: sampleBytes,
+    });
+    assert.equal(putRes.status, 200);
+    const { attachment } = (await putRes.json()) as {
+      attachment: { id: string; file_name: string; mime_type: string; size_bytes: number; storage_key: string };
+    };
+    assert.equal(attachment.file_name, 'marshal-cert.png');
+
+    // 2. Reject missing conditional allergy explanation
+    const badSubmit = await fetch(`${baseUrl}/api/public/applications/team`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        track: 'security',
+        gender: 'female',
+        applicant_name: 'Noura Al-Harbi',
+        email: 'noura@example.com',
+        grade_or_year: '12th Grade',
+        institution: 'Leadership International School',
+        phone: '+966501112233',
+        emergency_phone: '+966509998877',
+        experience: 'Event coordination marshal',
+        answers: {
+          security_why_join: 'Ready to maintain protocol excellence.',
+          security_difference: 'Attentive and calm.',
+          security_negligent_teammate: 'Discuss privately and ensure coverage.',
+          security_allergies_has: 'Yes',
+          security_allergies_details: '',
+          security_additional_info_has: 'No',
+        },
+        attachments: [attachment],
+        privacy_policy_accepted: true,
+        terms_accepted: true,
+      }),
+    });
+    assert.equal(badSubmit.status, 400);
+
+    // 3. Submit full valid Security application with Yes allergies & No inquiries
+    const goodSubmit = await fetch(`${baseUrl}/api/public/applications/team`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        track: 'security',
+        gender: 'female',
+        applicant_name: 'Noura Al-Harbi',
+        email: 'noura@example.com',
+        grade_or_year: '12th Grade',
+        institution: 'Leadership International School',
+        phone: '+966501112233',
+        emergency_phone: '+966509998877',
+        experience: 'Event coordination marshal',
+        answers: {
+          security_why_join: 'Ready to maintain protocol excellence.',
+          security_difference: 'Attentive and calm.',
+          security_negligent_teammate: 'Discuss privately and ensure coverage.',
+          security_allergies_has: 'Yes',
+          security_allergies_details: 'Mild dust sensitivity',
+          security_additional_info_has: 'No',
+        },
+        attachments: [attachment],
+        privacy_policy_accepted: true,
+        terms_accepted: true,
+      }),
+    });
+    assert.equal(goodSubmit.status, 201);
+    const submitJson = (await goodSubmit.json()) as { ok: boolean; application_code: string };
+    assert.equal(submitJson.ok, true);
+    assert.ok(submitJson.application_code.startsWith('LM-'));
+
+    // 4. Verify Admin list returns Security answers, synced allergy medical disclosure, and attachment
+    const adminList = await fetch(`${baseUrl}/api/applications`, {
+      headers: { Authorization: `Bearer ${adminToken}` },
+    });
+    assert.equal(adminList.status, 200);
+    const listJson = (await adminList.json()) as {
+      applications: Array<{
+        id: string;
+        emergency_phone: string;
+        medical_has_conditions: boolean;
+        medical_details: string;
+        answers: Record<string, string>;
+        attachments: Array<{ storage_key: string; file_name: string }>;
+      }>;
+    };
+    assert.equal(listJson.applications.length, 1);
+    const saved = listJson.applications[0];
+    assert.equal(saved.emergency_phone, '+966509998877');
+    assert.equal(saved.medical_has_conditions, true);
+    assert.equal(saved.medical_details, 'Mild dust sensitivity');
+    assert.equal(saved.answers.security_allergies_has, 'Yes');
+    assert.equal(saved.attachments[0].file_name, 'marshal-cert.png');
+
+    // 5. Verify Admin can sign & download proof of experience
+    const signRes = await fetch(`${baseUrl}/api/applications/${saved.id}/sign-attachment`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${adminToken}`,
+      },
+      body: JSON.stringify({ storage_key: saved.attachments[0].storage_key }),
+    });
+    assert.equal(signRes.status, 200);
+    const { signedUrl } = (await signRes.json()) as { signedUrl: string };
+    const dlRes = await fetch(`${baseUrl}${signedUrl}`);
+    assert.equal(dlRes.status, 200);
+    const dlBuf = Buffer.from(await dlRes.arrayBuffer());
+    assert.equal(dlBuf.toString('utf8'), 'PNG-PROOF-OF-EXPERIENCE');
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((err) => (err ? reject(err) : resolve())));
+    setPoolForTests(null);
+    resetMigrationCacheForTests();
     if (prevDbUrl === undefined) delete process.env.DATABASE_URL;
     else process.env.DATABASE_URL = prevDbUrl;
   }

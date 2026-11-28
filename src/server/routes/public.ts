@@ -15,6 +15,7 @@ import {
   LEGAL_CONSENT_VERSION,
   computeAgeFromBirthDate,
   isNAValue,
+  parseYesNo,
   validateChairIntakePayload,
   validateTeamIntakePayload,
 } from '../../shared/intake.ts';
@@ -382,12 +383,21 @@ publicRouter.post('/applications/team', requireDbMiddleware, async (req, res, ne
     }
 
     const rawMediaMed = String(submittedAnswers.media_medical_concerns ?? '').trim();
+    const secAllergiesYes =
+      track === 'security' && parseYesNo(submittedAnswers.security_allergies_has) === 'Yes';
+    const rawSecAllergies = secAllergiesYes
+      ? String(submittedAnswers.security_allergies_details ?? '').trim()
+      : '';
     const hasMedConditions =
       Boolean(req.body.medical_has_conditions) ||
-      (track === 'media' && Boolean(rawMediaMed) && !isNAValue(rawMediaMed));
+      (track === 'media' && Boolean(rawMediaMed) && !isNAValue(rawMediaMed)) ||
+      secAllergiesYes;
     const medDetailsText =
       String(req.body.medical_details ?? '').trim() ||
-      (track === 'media' && Boolean(rawMediaMed) && !isNAValue(rawMediaMed) ? rawMediaMed : '');
+      (track === 'media' && Boolean(rawMediaMed) && !isNAValue(rawMediaMed)
+        ? rawMediaMed
+        : '') ||
+      rawSecAllergies;
 
     const inserted = await withTransaction(async (client) => {
       const dup = await client.query<{ id: string }>(

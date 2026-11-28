@@ -52,40 +52,50 @@ export interface IntakeQuestion {
 
 export const SECURITY_QUESTIONS: readonly IntakeQuestion[] = [
   {
-    id: 'security_emergency',
+    id: 'security_why_join',
+    number: 9,
+    label: 'Why are you interested in joining LIS MUN as Security?',
+    minWords: 1,
+    kind: 'textarea',
+    placeholder:
+      'Share your motivation for serving in conference Security & Protocol and upholding safety across committees...',
+  },
+  {
+    id: 'security_difference',
+    number: 10,
+    label: 'What makes you different from other candidates?',
+    minWords: 1,
+    kind: 'textarea',
+    placeholder:
+      'Highlight your discipline, situational awareness, composure under pressure, or leadership qualities...',
+  },
+  {
+    id: 'security_negligent_teammate',
     number: 11,
-    label: 'Emergency Problem-Solving Scenario',
-    minWords: 80,
+    label:
+      'You notice that one of your fellow security members is ignoring their responsibilities. What would you do?',
+    minWords: 1,
     kind: 'textarea',
     placeholder:
-      'Describe step-by-step how you de-escalate an unauthorized entry or medical/fire alarm incident at a conference gate while maintaining delegate calm and chain-of-command...',
+      'Describe how you would address the situation professionally, protect coverage at the post, and follow chain of command...',
   },
   {
-    id: 'security_teamwork',
+    id: 'security_allergies_has',
     number: 12,
-    label: 'Teamwork & Chain of Command',
-    minWords: 50,
-    kind: 'textarea',
-    placeholder:
-      'Explain how you coordinate shift handoffs, radio protocols, and conflicting directives between fellow security officers and your Security Head...',
+    label: 'Do you have any allergies?',
+    minWords: 1,
+    kind: 'yes_no',
+    hint: 'Select Yes or No. If Yes, please explain below so our team can accommodate you safely.',
+    placeholder: 'Select Yes or No',
   },
   {
-    id: 'security_motivation',
+    id: 'security_additional_info_has',
     number: 13,
-    label: 'Motivation & Commitment',
-    minWords: 50,
-    kind: 'textarea',
-    placeholder:
-      'Why do you want to serve in LIS MUN Security & Protocol, and how will you uphold professionalism throughout long conference days...',
-  },
-  {
-    id: 'security_bullying',
-    number: 14,
-    label: 'Handling Harassment or Bullying',
-    minWords: 50,
-    kind: 'textarea',
-    placeholder:
-      'Detail how you respond if you observe delegate harassment, bullying, or hostile behavior in corridors while protecting privacy and safety...',
+    label: 'Do you have any inquiries or additional information you would like us to know?',
+    minWords: 1,
+    kind: 'yes_no',
+    hint: 'Select Yes or No. If Yes, please explain below.',
+    placeholder: 'Select Yes or No',
   },
 ] as const;
 
@@ -259,6 +269,12 @@ export const QUESTIONS_BY_TRACK: Record<
 
 // Map legacy & current keys to human-readable labels for Admin/Head review panels
 const LEGACY_AND_CURRENT_LABELS: Record<string, string> = {
+  security_emergency: 'Emergency Problem-Solving Scenario',
+  security_teamwork: 'Teamwork & Chain of Command',
+  security_motivation: 'Motivation & Commitment',
+  security_bullying: 'Handling Harassment or Bullying',
+  security_allergies_details: 'Allergy Details & Accommodations',
+  security_additional_info_details: 'Inquiries / Additional Information Details',
   media_storytelling: 'Visual Storytelling Approach',
   media_turnaround: 'Same-Day Rapid Turnaround',
   media_editorial: 'Press & Journalistic Accuracy',
@@ -387,13 +403,14 @@ export function validateGeneralInfoFields(
     emergency_phone?: string;
     experience?: string;
   },
-  options: { strictV2?: boolean } = {}
+  options: { strictV2?: boolean; track?: string } = {}
 ): Record<string, string> {
   const errors: Record<string, string> = {};
   const strict = Boolean(options.strictV2);
+  const isSecurity = options.track === 'security';
 
   if (!input.gender || !['male', 'female'].includes(input.gender)) {
-    errors.gender = 'Please select Female or Male.';
+    errors.gender = 'Please select Female or Male division.';
   }
   const name = String(input.applicant_name ?? '').trim();
   if (!name || name.length < 2) {
@@ -404,7 +421,11 @@ export function validateGeneralInfoFields(
     errors.email = 'A valid email address is required.';
   }
 
-  if (strict || input.birth_date !== undefined) {
+  if (isSecurity) {
+    if (input.birth_date && computeAgeFromBirthDate(input.birth_date) === null) {
+      errors.birth_date = 'Please enter a valid birth date.';
+    }
+  } else if (strict || input.birth_date !== undefined) {
     const computedAge = computeAgeFromBirthDate(input.birth_date);
     if (computedAge === null || computedAge < 12 || computedAge > 35) {
       errors.birth_date = 'Please enter a valid birth date (applicant age must be between 12 and 35).';
@@ -416,7 +437,12 @@ export function validateGeneralInfoFields(
     }
   }
 
-  if (strict) {
+  if (isSecurity) {
+    const grade = String(input.grade_or_year ?? '').trim();
+    if (!grade) {
+      errors.grade_or_year = 'Please select or enter your grade level.';
+    }
+  } else if (strict) {
     const grade = String(input.grade_or_year ?? '').trim();
     if (!GRADE_OPTIONS.includes(grade as GradeOption)) {
       errors.grade_or_year = 'Please select your grade level.';
@@ -424,7 +450,7 @@ export function validateGeneralInfoFields(
   }
 
   const inst = String(input.institution ?? '').trim();
-  if (!inst || (strict && inst.length < 3)) {
+  if (!inst || ((strict || isSecurity) && inst.length < 3)) {
     errors.institution = 'Full school name is required (please avoid abbreviations).';
   }
 
@@ -433,7 +459,11 @@ export function validateGeneralInfoFields(
   }
 
   const emergencyRaw = String(input.emergency_phone ?? '').trim();
-  if (strict) {
+  if (isSecurity) {
+    if (emergencyRaw.replace(/\D/g, '').length < 7) {
+      errors.emergency_phone = "A valid guardian's phone number is required.";
+    }
+  } else if (strict) {
     if (emergencyRaw.length < 5) {
       errors.emergency_phone = 'Please provide an emergency contact.';
     }
@@ -441,7 +471,7 @@ export function validateGeneralInfoFields(
     errors.emergency_phone = 'Valid emergency/guardian phone number is required.';
   }
 
-  if (strict) {
+  if (strict || isSecurity) {
     const exp = String(input.experience ?? '').trim();
     if (!exp || exp.length < 2) {
       errors.experience = 'Please list your previous experiences (or enter None if first time).';
@@ -455,11 +485,15 @@ export function validateTeamIntakePayload(
   payload: Partial<TeamIntakePayload>
 ): { valid: boolean; errors: Record<string, string> } {
   const strictV2 =
-    payload.intake_version === 2 ||
-    payload.birth_date !== undefined ||
-    payload.track === 'media';
+    payload.track !== 'security' &&
+    (payload.intake_version === 2 ||
+      payload.birth_date !== undefined ||
+      payload.track === 'media');
 
-  const errors: Record<string, string> = validateGeneralInfoFields(payload, { strictV2 });
+  const errors: Record<string, string> = validateGeneralInfoFields(payload, {
+    strictV2,
+    track: payload.track,
+  });
 
   if (!payload.track || !['security', 'media', 'press', 'volunteers'].includes(payload.track)) {
     errors.track = 'Select a valid conference team track.';
@@ -474,9 +508,32 @@ export function validateTeamIntakePayload(
   const answers = payload.answers ?? {};
   if (payload.track === 'security') {
     for (const q of SECURITY_QUESTIONS) {
-      const wc = wordCount(answers[q.id]);
+      const raw = String(answers[q.id] ?? '').trim();
+      if (q.kind === 'yes_no') {
+        if (!parseYesNo(raw)) {
+          errors[q.id] = `Please select Yes or No for: ${q.label}`;
+        }
+        continue;
+      }
+      const wc = wordCount(raw);
       if (wc < q.minWords) {
-        errors[q.id] = `${q.label} requires at least ${q.minWords} words (currently ${wc}).`;
+        errors[q.id] =
+          q.minWords > 1
+            ? `${q.label} requires at least ${q.minWords} words (currently ${wc}).`
+            : `Please provide a response for: ${q.label}`;
+      }
+    }
+    if (parseYesNo(answers.security_allergies_has) === 'Yes') {
+      const details = String(answers.security_allergies_details ?? '').trim();
+      if (details.length < 2) {
+        errors.security_allergies_details = 'Please describe your allergies above.';
+      }
+    }
+    if (parseYesNo(answers.security_additional_info_has) === 'Yes') {
+      const infoDetails = String(answers.security_additional_info_details ?? '').trim();
+      if (infoDetails.length < 2) {
+        errors.security_additional_info_details =
+          'Please enter your inquiry or additional information.';
       }
     }
   } else if (payload.track === 'volunteers') {
@@ -612,11 +669,25 @@ export function formatApplicationAnswersForReview(
     }
     const val = raw[q.id];
     if (val !== undefined && val !== null && String(val).trim() !== '') {
+      let answerText = String(val).trim();
+      if (q.id === 'security_allergies_has') {
+        seen.add('security_allergies_details');
+        const detail = String(raw.security_allergies_details ?? '').trim();
+        if (parseYesNo(answerText) === 'Yes' && detail) {
+          answerText = `Yes — ${detail}`;
+        }
+      } else if (q.id === 'security_additional_info_has') {
+        seen.add('security_additional_info_details');
+        const detail = String(raw.security_additional_info_details ?? '').trim();
+        if (parseYesNo(answerText) === 'Yes' && detail) {
+          answerText = `Yes — ${detail}`;
+        }
+      }
       result.push({
         id: q.id,
         numberLabel: q.number ? `Q${q.number}` : undefined,
         questionLabel: q.label,
-        answerText: String(val).trim(),
+        answerText,
         confidentialMedical: q.confidentialMedical,
       });
     }

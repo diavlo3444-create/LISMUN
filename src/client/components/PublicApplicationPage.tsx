@@ -33,6 +33,11 @@ import type {
   DepartmentRecord,
 } from '../../shared/types';
 import { StatusLabel } from './UiPrimitives';
+import {
+  DiplomaticWaxSeal,
+  GoldParticlesCanvas,
+  LaurelWreathAccent,
+} from '../../components/LuxuryOrnaments';
 
 type TeamTrack = 'media' | 'volunteers' | 'press' | 'security';
 type WizardStep = 1 | 2 | 3 | 4;
@@ -47,30 +52,35 @@ const TRACK_CATALOG: ReadonlyArray<{
   title: string;
   tagline: string;
   questionCount: number;
+  summaryLabel: string;
 }> = [
   {
     id: 'media',
     title: 'Media',
     tagline: 'Photography, videography, and live visual storytelling across committees.',
     questionCount: MEDIA_QUESTIONS.length,
+    summaryLabel: `10 General + ${MEDIA_QUESTIONS.length} Department Questions`,
   },
   {
     id: 'volunteers',
     title: 'Volunteers',
     tagline: 'Committee floor runners, delegate support, and conference hospitality.',
     questionCount: VOLUNTEER_QUESTIONS.length,
+    summaryLabel: `10 General + ${VOLUNTEER_QUESTIONS.length} Department Questions`,
   },
   {
     id: 'press',
     title: 'Press',
     tagline: 'Conference journalism, dispatches, interviews, and diplomatic reporting.',
     questionCount: PRESS_QUESTIONS.length,
+    summaryLabel: `10 General + ${PRESS_QUESTIONS.length} Department Questions`,
   },
   {
     id: 'security',
     title: 'Security',
     tagline: 'Venue access control, QR gate verification, and protocol safety.',
     questionCount: SECURITY_QUESTIONS.length,
+    summaryLabel: `8 Personal & Experience + ${SECURITY_QUESTIONS.length} Security Questions`,
   },
 ];
 
@@ -121,6 +131,9 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 }
 
+const LUXURY_INPUT_CLS =
+  'mt-1.5 w-full border border-[#B89A62]/30 bg-[#040D1B] px-3.5 py-2.5 text-sm text-[#E8E1D2] placeholder-[#E8E1D2]/35 transition-colors focus:border-[#D5BD8B] focus:outline-none focus:ring-1 focus:ring-[#83B5ED]/35';
+
 export const PublicApplicationPage: React.FC<{
   embedded?: boolean;
 }> = ({ embedded = false }) => {
@@ -155,7 +168,7 @@ export const PublicApplicationPage: React.FC<{
   // Track selection
   const [track, setTrack] = useState<TeamTrack>(initialDraft.track ?? 'media');
 
-  // Shared General Information (Q1–Q10)
+  // Shared General Information (Q1–Q10) / Security Personal & Experience (1–8)
   const [applicantName, setApplicantName] = useState(initialDraft.applicantName ?? '');
   const [email, setEmail] = useState(initialDraft.email ?? '');
   const [gender, setGender] = useState<'male' | 'female' | ''>(initialDraft.gender ?? '');
@@ -308,13 +321,23 @@ export const PublicApplicationPage: React.FC<{
         [qId]: val,
       },
     }));
-    if (fieldErrors[qId]) {
-      setFieldErrors((prev) => {
-        const next = { ...prev };
+    setFieldErrors((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      if (next[qId]) {
         delete next[qId];
-        return next;
-      });
-    }
+        changed = true;
+      }
+      if (qId === 'security_allergies_has' && next.security_allergies_details) {
+        delete next.security_allergies_details;
+        changed = true;
+      }
+      if (qId === 'security_additional_info_has' && next.security_additional_info_details) {
+        delete next.security_additional_info_details;
+        changed = true;
+      }
+      return changed ? next : prev;
+    });
   };
 
   const clearSavedDraft = () => {
@@ -395,24 +418,41 @@ export const PublicApplicationPage: React.FC<{
     }
   };
 
+  const buildSanitizedAnswersForTrack = () => {
+    const out: Record<string, string> = { ...activeAnswers };
+    if (track === 'security') {
+      if (parseYesNo(out.security_allergies_has) !== 'Yes') {
+        delete out.security_allergies_details;
+      }
+      if (parseYesNo(out.security_additional_info_has) !== 'Yes') {
+        delete out.security_additional_info_details;
+      }
+    }
+    return out;
+  };
+
   const validateStep2General = (): boolean => {
     const errors = validateGeneralInfoFields(
       {
         applicant_name: applicantName,
         email,
         gender: gender || undefined,
-        birth_date: birthDate,
+        birth_date: track === 'security' ? undefined : birthDate,
         grade_or_year: gradeOrYear,
         institution,
         phone: combinedPhone,
         emergency_phone: emergencyContact,
         experience,
       },
-      { strictV2: true }
+      { strictV2: track !== 'security', track }
     );
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) {
-      setErrorMsg('Please complete all required General Information questions (Questions 1–10).');
+      setErrorMsg(
+        track === 'security'
+          ? 'Please complete all required Personal Information and Experience fields (Items 1–7 and Division).'
+          : 'Please complete all required General Information questions (Questions 1–10).'
+      );
       return false;
     }
     setErrorMsg('');
@@ -420,6 +460,7 @@ export const PublicApplicationPage: React.FC<{
   };
 
   const validateStep3Department = (): boolean => {
+    const sanitizedAnswers = buildSanitizedAnswersForTrack();
     const check = validateTeamIntakePayload({
       intake_version: 2,
       track,
@@ -430,10 +471,10 @@ export const PublicApplicationPage: React.FC<{
       emergency_phone: emergencyContact,
       institution,
       grade_or_year: gradeOrYear,
-      birth_date: birthDate,
+      birth_date: track === 'security' ? undefined : birthDate,
       experience,
       portfolio_url: portfolioUrl || undefined,
-      answers: activeAnswers,
+      answers: sanitizedAnswers,
       privacy_policy_accepted: true,
       terms_accepted: true,
     });
@@ -442,6 +483,8 @@ export const PublicApplicationPage: React.FC<{
     for (const [k, v] of Object.entries(check.errors)) {
       if (
         k === 'portfolio_url' ||
+        k === 'security_allergies_details' ||
+        k === 'security_additional_info_details' ||
         activeQuestions.some((q) => q.id === k)
       ) {
         deptErrors[k] = v;
@@ -475,6 +518,7 @@ export const PublicApplicationPage: React.FC<{
     e.preventDefault();
     setErrorMsg('');
 
+    const sanitizedAnswers = buildSanitizedAnswersForTrack();
     const check = validateTeamIntakePayload({
       intake_version: 2,
       track,
@@ -485,10 +529,10 @@ export const PublicApplicationPage: React.FC<{
       emergency_phone: emergencyContact,
       institution,
       grade_or_year: gradeOrYear,
-      birth_date: birthDate,
+      birth_date: track === 'security' ? undefined : birthDate,
       experience,
       portfolio_url: track === 'press' && portfolioUrl ? portfolioUrl : undefined,
-      answers: activeAnswers,
+      answers: sanitizedAnswers,
       privacy_policy_accepted: privacyAccepted,
       terms_accepted: termsAccepted,
     });
@@ -497,6 +541,12 @@ export const PublicApplicationPage: React.FC<{
       setErrorMsg(Object.values(check.errors).join(' '));
       return;
     }
+
+    const secAllergiesYes =
+      track === 'security' && parseYesNo(sanitizedAnswers.security_allergies_has) === 'Yes';
+    const secAllergiesDetail = secAllergiesYes
+      ? String(sanitizedAnswers.security_allergies_details ?? '').trim()
+      : '';
 
     setSubmitting(true);
     try {
@@ -515,26 +565,33 @@ export const PublicApplicationPage: React.FC<{
             emergency_phone: emergencyContact.trim(),
             institution: institution.trim(),
             grade_or_year: gradeOrYear,
-            birth_date: birthDate,
-            age: computeAgeFromBirthDate(birthDate) ?? 17,
+            birth_date: track === 'security' ? undefined : birthDate,
+            age:
+              track === 'security'
+                ? undefined
+                : computeAgeFromBirthDate(birthDate) ?? 17,
             position: 'Team Member',
             experience: experience.trim(),
             portfolio_url: track === 'press' && portfolioUrl ? portfolioUrl.trim() : undefined,
             answers: {
-              ...activeAnswers,
+              ...sanitizedAnswers,
               country_code: countryCode,
             },
             attachments,
             medical_has_conditions:
               track === 'media'
-                ? Boolean(activeAnswers.media_medical_concerns?.trim()) &&
-                  !isNAValue(activeAnswers.media_medical_concerns)
+                ? Boolean(sanitizedAnswers.media_medical_concerns?.trim()) &&
+                  !isNAValue(sanitizedAnswers.media_medical_concerns)
+                : track === 'security'
+                ? secAllergiesYes
                 : medHas,
             medical_details:
               track === 'media'
-                ? !isNAValue(activeAnswers.media_medical_concerns)
-                  ? activeAnswers.media_medical_concerns?.trim() || ''
+                ? !isNAValue(sanitizedAnswers.media_medical_concerns)
+                  ? sanitizedAnswers.media_medical_concerns?.trim() || ''
                   : ''
+                : track === 'security'
+                ? secAllergiesDetail
                 : medDetails.trim(),
             privacy_policy_accepted: privacyAccepted,
             terms_accepted: termsAccepted,
@@ -571,10 +628,130 @@ export const PublicApplicationPage: React.FC<{
 
   const stepsMeta: Array<{ num: WizardStep; title: string }> = [
     { num: 1, title: 'Department' },
-    { num: 2, title: 'General Info (Q1–Q10)' },
+    {
+      num: 2,
+      title: track === 'security' ? 'Personal & Experience (1–8)' : 'General Info (Q1–Q10)',
+    },
     { num: 3, title: `${TRACK_CATALOG.find((t) => t.id === track)?.title ?? track} Questions` },
     { num: 4, title: 'Review & Submit' },
   ];
+
+  const securityWrittenQuestions =
+    track === 'security' ? activeQuestions.slice(0, 3) : [];
+  const securityAdditionalQuestions =
+    track === 'security' ? activeQuestions.slice(3) : [];
+
+  const renderQuestionCard = (q: IntakeQuestion, idx: number) => {
+    const qNum = q.number ?? 11 + idx;
+    const val = activeAnswers[q.id] ?? '';
+    const wc = wordCount(val);
+    const needsMediaScheduleExplanation =
+      q.id === 'media_anything_else' && mediaScheduleNeedsExplanation;
+
+    const detailFieldId =
+      q.id === 'security_allergies_has'
+        ? 'security_allergies_details'
+        : q.id === 'security_additional_info_has'
+        ? 'security_additional_info_details'
+        : null;
+    const detailVal = detailFieldId ? activeAnswers[detailFieldId] ?? '' : '';
+    const showConditionalDetail = detailFieldId !== null && parseYesNo(val) === 'Yes';
+
+    return (
+      <div
+        key={q.id}
+        className={`border p-4 transition-colors sm:p-5 ${
+          q.confidentialMedical
+            ? 'border-[#83B5ED]/35 bg-[#040D1B]/95'
+            : 'border-[#B89A62]/28 bg-[#040D1B]/90'
+        }`}
+      >
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <label className="block font-sans text-sm font-semibold text-[#E8E1D2]">
+            {qNum}. {q.label} <span className="text-[#83B5ED]">*</span>
+          </label>
+          {q.kind !== 'yes_no' && q.minWords > 1 && (
+            <span
+              className={`font-mono text-[11px] tabular-nums ${
+                wc >= q.minWords ? 'text-[#86EFAC]' : 'text-[#D5BD8B]'
+              }`}
+            >
+              {wc} / {q.minWords} min words
+            </span>
+          )}
+        </div>
+
+        {q.hint && <p className="mt-1 text-xs text-[#E8E1D2]/60">{q.hint}</p>}
+
+        {needsMediaScheduleExplanation && (
+          <p className="mt-2 border border-[#FCD34D]/45 bg-[#1B1406] px-3 py-2 text-xs text-[#FCD34D]">
+            You indicated you may miss part of the conference or pre-MUN orientation. Please explain your scheduling details here.
+          </p>
+        )}
+
+        {q.kind === 'yes_no' ? (
+          <>
+            <div className="mt-3 grid grid-cols-2 gap-2.5 sm:max-w-xs">
+              {(['Yes', 'No'] as const).map((opt) => {
+                const selected = parseYesNo(val) === opt;
+                return (
+                  <button
+                    key={opt}
+                    type="button"
+                    aria-pressed={selected}
+                    onClick={() => updateAnswer(q.id, opt)}
+                    className={`border py-2.5 text-center font-sans text-xs font-semibold tracking-[0.06em] uppercase transition-all ${
+                      selected
+                        ? 'border-[#D5BD8B] bg-[#132949] text-[#F0DFB8] shadow-[0_0_16px_-6px_rgba(131,181,237,0.45)]'
+                        : 'border-[#B89A62]/25 bg-[#030914] text-[#E8E1D2]/75 hover:border-[#83B5ED]/60 hover:text-[#E8E1D2]'
+                    }`}
+                  >
+                    {opt}
+                  </button>
+                );
+              })}
+            </div>
+
+            {showConditionalDetail && detailFieldId && (
+              <div className="atlas-reveal-in mt-4 border-t border-[#B89A62]/20 pt-4">
+                <label className="block font-mono text-[10px] tracking-[0.16em] text-[#83B5ED] uppercase">
+                  {detailFieldId === 'security_allergies_details'
+                    ? 'Please explain your allergies or accommodations *'
+                    : 'Please share your inquiry or additional information *'}
+                </label>
+                <textarea
+                  rows={3}
+                  value={detailVal}
+                  onChange={(e) => updateAnswer(detailFieldId, e.target.value)}
+                  placeholder={
+                    detailFieldId === 'security_allergies_details'
+                      ? 'List any food, environmental, or medication allergies we should know about...'
+                      : 'Enter your question or any additional details for the Security Directorate...'
+                  }
+                  className={LUXURY_INPUT_CLS}
+                />
+                {fieldErrors[detailFieldId] && (
+                  <p className="mt-1.5 text-xs text-[#FCA5A5]">{fieldErrors[detailFieldId]}</p>
+                )}
+              </div>
+            )}
+          </>
+        ) : (
+          <textarea
+            rows={q.minWords >= 40 ? 4 : 3}
+            value={val}
+            onChange={(e) => updateAnswer(q.id, e.target.value)}
+            placeholder={q.placeholder}
+            className={LUXURY_INPUT_CLS}
+          />
+        )}
+
+        {fieldErrors[q.id] && (
+          <p className="mt-1.5 text-xs text-[#FCA5A5]">{fieldErrors[q.id]}</p>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div
@@ -582,22 +759,27 @@ export const PublicApplicationPage: React.FC<{
       className={
         embedded
           ? 'scroll-mt-24 text-[#E8E1D2]'
-          : 'min-h-screen bg-[#07111f] px-4 py-8 text-[#edf3fb] sm:px-6 md:px-10 md:py-12'
+          : 'relative min-h-screen overflow-hidden bg-[radial-gradient(ellipse_75%_45%_at_50%_0%,rgba(131,181,237,0.12),transparent_65%)] bg-[#030914] px-4 py-8 text-[#E8E1D2] sm:px-6 md:px-10 md:py-12'
       }
     >
-      <div className="mx-auto max-w-4xl">
+      {!embedded && <GoldParticlesCanvas count={20} className="z-0 opacity-70" />}
+
+      <div className="relative z-10 mx-auto max-w-4xl">
         {/* Header */}
         {embedded ? (
           <div className="flex flex-wrap items-center justify-between gap-3 pb-1">
-            <span className="font-mono text-[11px] tracking-[0.18em] text-[#B89A62] uppercase">
-              Team Member Application Desk
-            </span>
+            <div className="flex items-center gap-2.5">
+              <span className="h-1.5 w-1.5 rotate-45 bg-[#7F1D26] ring-1 ring-[#D5BD8B]" aria-hidden="true" />
+              <span className="font-mono text-[11px] tracking-[0.18em] text-[#D5BD8B] uppercase">
+                Team Member Application Desk
+              </span>
+            </div>
             <div className="flex items-center gap-2.5">
               {!successReceipt && (
                 <button
                   type="button"
                   onClick={clearSavedDraft}
-                  className="inline-flex items-center gap-1.5 border border-[#263D59] bg-[#071426] px-3.5 py-2 font-sans text-xs font-medium text-[#E8E1D2]/80 transition-colors hover:border-[#B89A62] hover:text-[#E8E1D2]"
+                  className="inline-flex items-center gap-1.5 border border-[#B89A62]/30 bg-[#071426] px-3.5 py-2 font-sans text-xs font-medium text-[#E8E1D2]/80 transition-colors hover:border-[#D5BD8B] hover:text-[#E8E1D2]"
                 >
                   <RotateCcw className="h-3.5 w-3.5 text-[#D5BD8B]" />
                   <span>Reset Form</span>
@@ -606,28 +788,34 @@ export const PublicApplicationPage: React.FC<{
               <button
                 type="button"
                 onClick={() => navigate('/staff-login')}
-                className="border border-[#263D59] bg-[#071426] px-4 py-2 font-sans text-xs font-semibold tracking-[0.08em] text-[#D5BD8B] uppercase transition-colors hover:border-[#B89A62] hover:text-[#E8E1D2]"
+                className="border border-[#B89A62]/35 bg-[#071426] px-4 py-2 font-sans text-xs font-semibold tracking-[0.08em] text-[#83B5ED] uppercase transition-colors hover:border-[#D5BD8B] hover:text-[#D5BD8B]"
               >
                 Staff Portal
               </button>
             </div>
           </div>
         ) : (
-          <header className="flex flex-wrap items-end justify-between gap-4 border-b border-[#9eb8da]/18 pb-6">
+          <header className="flex flex-wrap items-end justify-between gap-4 border-b border-[#B89A62]/30 pb-6">
             <div>
               <button
                 type="button"
                 onClick={() => navigate('/')}
-                className="inline-flex items-center gap-2 font-sans text-xs font-medium tracking-[0.12em] text-[#83b5ed] uppercase transition-colors hover:text-[#b3d5ff]"
+                className="inline-flex items-center gap-2 font-sans text-xs font-medium tracking-[0.12em] text-[#83B5ED] uppercase transition-colors hover:text-[#D5BD8B]"
               >
                 <ArrowLeft className="h-3.5 w-3.5" />
                 <span>Return to Living Atlas</span>
               </button>
-              <h1 className="mt-3 font-display text-4xl font-semibold tracking-tight text-[#edf3fb] sm:text-5xl">
+              <div className="mt-3 flex items-center gap-3">
+                <LaurelWreathAccent size={42} />
+                <span className="font-mono text-[10px] tracking-[0.22em] text-[#B89A62] uppercase">
+                  Leadership International School MUN · Session I
+                </span>
+              </div>
+              <h1 className="mt-2 font-display text-4xl font-semibold tracking-tight text-[#E8E1D2] sm:text-5xl">
                 LIS MUN Team Member Applications
               </h1>
-              <p className="mt-1.5 max-w-2xl font-sans text-sm text-[#bdcce0]">
-                Apply to join one of the four conference departments (Media, Volunteers, Press, or Security). Every department shares the same 10-question applicant profile followed by department-specific prompts.
+              <p className="mt-1.5 max-w-2xl font-sans text-sm text-[#E8E1D2]/75">
+                Apply to join one of the four conference departments (Media, Volunteers, Press, or Security).
               </p>
             </div>
             <div className="flex items-center gap-2.5">
@@ -635,16 +823,16 @@ export const PublicApplicationPage: React.FC<{
                 <button
                   type="button"
                   onClick={clearSavedDraft}
-                  className="inline-flex items-center gap-1.5 border border-[#9eb8da]/25 bg-[#09182b] px-3.5 py-2 font-sans text-xs font-medium text-[#bdcce0] transition-colors hover:border-[#83b5ed]/60 hover:text-[#edf3fb]"
+                  className="inline-flex items-center gap-1.5 border border-[#B89A62]/30 bg-[#071426] px-3.5 py-2 font-sans text-xs font-medium text-[#E8E1D2]/80 transition-colors hover:border-[#D5BD8B] hover:text-[#E8E1D2]"
                 >
-                  <RotateCcw className="h-3.5 w-3.5" />
+                  <RotateCcw className="h-3.5 w-3.5 text-[#D5BD8B]" />
                   <span>Reset Form</span>
                 </button>
               )}
               <button
                 type="button"
                 onClick={() => navigate('/staff-login')}
-                className="border border-[#9eb8da]/30 bg-[#0e2037] px-4 py-2 font-sans text-xs font-semibold tracking-[0.08em] text-[#b3d5ff] uppercase transition-colors hover:border-[#83b5ed]"
+                className="border border-[#B89A62]/35 bg-[#071426] px-4 py-2 font-sans text-xs font-semibold tracking-[0.08em] text-[#83B5ED] uppercase transition-colors hover:border-[#D5BD8B] hover:text-[#D5BD8B]"
               >
                 Staff Portal
               </button>
@@ -654,40 +842,45 @@ export const PublicApplicationPage: React.FC<{
 
         {/* Submission Confirmation Receipt */}
         {successReceipt ? (
-          <section className="mt-8 border border-[#83b5ed]/40 bg-[#0e2037] p-7 sm:p-10">
-            <div className="flex items-center gap-2.5 text-[#86EFAC]">
-              <Check className="h-5 w-5" />
-              <p className="font-mono text-xs tracking-[0.16em] uppercase">
-                Application Confirmed &amp; Recorded
-              </p>
-            </div>
-            <h2 className="mt-3 font-display text-3xl font-semibold text-[#edf3fb] sm:text-4xl">
-              Reference Code:{' '}
-              <span className="font-mono text-2xl tabular-nums text-[#b3d5ff] sm:text-3xl">
-                {successReceipt.code}
-              </span>
-            </h2>
-            <dl className="mt-6 grid gap-4 border-y border-[#9eb8da]/20 py-4 text-xs sm:grid-cols-3">
+          <section className="atlas-luxury-card mt-8 p-7 sm:p-10">
+            <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
-                <dt className="font-mono text-[10px] tracking-[0.14em] text-[#8da5c3] uppercase">
+                <div className="flex items-center gap-2.5 text-[#86EFAC]">
+                  <Check className="h-5 w-5" />
+                  <p className="font-mono text-xs tracking-[0.16em] uppercase">
+                    Application Confirmed &amp; Recorded
+                  </p>
+                </div>
+                <h2 className="mt-3 font-display text-3xl font-semibold text-[#E8E1D2] sm:text-4xl">
+                  Reference Code:{' '}
+                  <span className="font-mono text-2xl tabular-nums text-[#D5BD8B] sm:text-3xl">
+                    {successReceipt.code}
+                  </span>
+                </h2>
+              </div>
+              <DiplomaticWaxSeal size={64} label="FILED" />
+            </div>
+            <dl className="mt-6 grid gap-4 border-y border-[#B89A62]/25 py-4 text-xs sm:grid-cols-3">
+              <div>
+                <dt className="font-mono text-[10px] tracking-[0.14em] text-[#83B5ED] uppercase">
                   Applicant
                 </dt>
-                <dd className="mt-1 font-medium text-[#edf3fb]">{applicantName || 'Recorded'}</dd>
+                <dd className="mt-1 font-medium text-[#E8E1D2]">{applicantName || 'Recorded'}</dd>
               </div>
               <div>
-                <dt className="font-mono text-[10px] tracking-[0.14em] text-[#8da5c3] uppercase">
+                <dt className="font-mono text-[10px] tracking-[0.14em] text-[#83B5ED] uppercase">
                   Department / Track
                 </dt>
-                <dd className="mt-1 font-medium text-[#edf3fb]">{successReceipt.department}</dd>
+                <dd className="mt-1 font-medium text-[#E8E1D2]">{successReceipt.department}</dd>
               </div>
               <div>
-                <dt className="font-mono text-[10px] tracking-[0.14em] text-[#8da5c3] uppercase">
+                <dt className="font-mono text-[10px] tracking-[0.14em] text-[#83B5ED] uppercase">
                   Submitted
                 </dt>
-                <dd className="mt-1 font-mono text-[#bdcce0]">{successReceipt.submittedAt}</dd>
+                <dd className="mt-1 font-mono text-[#E8E1D2]/80">{successReceipt.submittedAt}</dd>
               </div>
             </dl>
-            <p className="mt-4 font-sans text-sm leading-relaxed text-[#bdcce0]">
+            <p className="mt-4 font-sans text-sm leading-relaxed text-[#E8E1D2]/78">
               Please keep your reference code for your records. Your responses and uploaded certificates have been routed directly to the LIS MUN Secretariat and relevant Department Directorate.
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
@@ -697,7 +890,7 @@ export const PublicApplicationPage: React.FC<{
                   setSuccessReceipt(null);
                   clearSavedDraft();
                 }}
-                className="border border-[#83b5ed]/55 bg-[#244b78] px-5 py-2.5 font-sans text-xs font-semibold tracking-[0.08em] text-white uppercase transition-colors hover:bg-[#315f96]"
+                className="atlas-btn-gold bg-[#0D1E36] px-5 py-2.5 font-sans text-xs font-semibold tracking-[0.08em] text-[#E8E1D2] uppercase"
               >
                 Start New Application
               </button>
@@ -708,27 +901,21 @@ export const PublicApplicationPage: React.FC<{
                     ? window.scrollTo({ top: 0, behavior: 'smooth' })
                     : navigate('/')
                 }
-                className="border border-[#9eb8da]/30 bg-[#09182b] px-5 py-2.5 font-sans text-xs font-semibold tracking-[0.08em] text-[#bdcce0] uppercase transition-colors hover:text-[#edf3fb]"
+                className="border border-[#B89A62]/30 bg-[#040D1B] px-5 py-2.5 font-sans text-xs font-semibold tracking-[0.08em] text-[#E8E1D2]/80 uppercase transition-colors hover:border-[#83B5ED]/60 hover:text-[#E8E1D2]"
               >
                 {embedded ? 'Back to Top' : 'Return to Atlas'}
               </button>
             </div>
           </section>
         ) : (
-          <div
-            className={`mt-7 border p-5 sm:p-8 ${
-              embedded
-                ? 'border-[#B89A62]/35 bg-[#071426]/95'
-                : 'border-[#9eb8da]/20 bg-[#0e2037]'
-            }`}
-          >
+          <div className="atlas-luxury-card mt-7 p-5 sm:p-8">
             {/* Stepper Progress Indicator */}
-            <nav aria-label="Application steps" className="mb-7 border-b border-[#9eb8da]/15 pb-5">
+            <nav aria-label="Application steps" className="mb-7 border-b border-[#B89A62]/20 pb-5">
               <div className="flex flex-wrap items-center justify-between gap-2 pb-3">
-                <span className="font-mono text-[11px] tracking-[0.14em] text-[#83b5ed] uppercase">
+                <span className="font-mono text-[11px] tracking-[0.14em] text-[#83B5ED] uppercase">
                   {TRACK_CATALOG.find((t) => t.id === track)?.title} Team Member Application
                 </span>
-                <span className="font-mono text-[11px] text-[#8da5c3]">
+                <span className="font-mono text-[11px] text-[#B89A62]/80">
                   Progress auto-saved locally
                 </span>
               </div>
@@ -741,15 +928,15 @@ export const PublicApplicationPage: React.FC<{
                       <button
                         type="button"
                         onClick={() => goToStep(s.num)}
-                        className={`flex w-full items-center gap-2.5 border px-3 py-2.5 text-left transition-colors ${
+                        className={`flex w-full items-center gap-2.5 border px-3 py-2.5 text-left transition-all ${
                           isCurrent
-                            ? 'border-[#83b5ed] bg-[#142b49] text-[#edf3fb]'
+                            ? 'border-[#D5BD8B] bg-[#122847] text-[#F0DFB8] shadow-[0_0_16px_-8px_rgba(131,181,237,0.45)]'
                             : isDone
-                            ? 'border-[#83b5ed]/35 bg-[#09182b] text-[#b3d5ff]'
-                            : 'border-[#9eb8da]/15 bg-[#09182b]/60 text-[#8da5c3] hover:text-[#bdcce0]'
+                            ? 'border-[#83B5ED]/45 bg-[#071426] text-[#B3D5FF]'
+                            : 'border-[#B89A62]/20 bg-[#040D1B]/75 text-[#E8E1D2]/60 hover:border-[#B89A62]/45 hover:text-[#E8E1D2]'
                         }`}
                       >
-                        <span className="font-mono text-[11px] font-semibold tabular-nums">
+                        <span className="font-mono text-[11px] font-semibold tabular-nums text-[#D5BD8B]">
                           0{idx + 1}
                         </span>
                         <span className="truncate font-sans text-xs font-medium">{s.title}</span>
@@ -785,784 +972,1136 @@ export const PublicApplicationPage: React.FC<{
               {step === 1 && (
                 <div className="space-y-6">
                   <div>
-                    <h2 className="font-display text-2xl font-semibold text-[#edf3fb]">
+                    <h2 className="font-display text-2xl font-semibold text-[#E8E1D2] sm:text-3xl">
                       Select Your Department
                     </h2>
-                    <p className="mt-1 text-xs text-[#bdcce0]">
-                      Each team department uses a dedicated application with shared general information (Questions 1–10) and role-specific questions.
+                    <p className="mt-1 text-xs text-[#E8E1D2]/75">
+                      Choose a department below. Security features a streamlined Personal &amp; Experience profile followed by Security protocol scenarios; Media, Volunteers, and Press use the 10-question general profile.
                     </p>
                   </div>
 
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      {TRACK_CATALOG.map((item) => {
-                        const open = isTrackOpen(item.id);
-                        const selected = track === item.id;
-                        return (
-                          <button
-                            key={item.id}
-                            type="button"
-                            onClick={() => {
-                              setTrack(item.id);
-                              setErrorMsg('');
-                              setFieldErrors({});
-                            }}
-                            className={`flex flex-col justify-between border p-4 text-left transition-colors ${
-                              selected
-                                ? 'border-[#83b5ed] bg-[#142b49]'
-                                : 'border-[#9eb8da]/20 bg-[#09182b] hover:border-[#83b5ed]/50'
-                            }`}
-                          >
-                            <div>
-                              <div className="flex items-center justify-between gap-2">
-                                <span className="font-display text-2xl font-semibold text-[#edf3fb]">
-                                  {item.title}
-                                </span>
-                                <StatusLabel status={open ? 'Open' : 'Closed'} tone={open ? 'green' : 'red'} />
-                              </div>
-                              <p className="mt-2 text-xs leading-relaxed text-[#bdcce0]">
-                                {item.tagline}
-                              </p>
-                            </div>
-                            <p className="mt-3 font-mono text-[10px] tracking-[0.12em] text-[#83b5ed] uppercase">
-                              10 General + {item.questionCount} Department Questions
-                            </p>
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    {!trackOpen && (
-                      <div className="border border-[#EF4444]/50 bg-[#250D12] p-5 text-center">
-                        <p className="font-display text-xl text-[#FCA5A5]">
-                          {TRACK_CATALOG.find((t) => t.id === track)?.title} Applications Paused
-                        </p>
-                        <p className="mt-1 text-xs text-[#bdcce0]">
-                          This division is currently closed by the Secretariat. Select another open department to apply.
-                        </p>
-                      </div>
-                    )}
-
-                    <div className="flex justify-end border-t border-[#9eb8da]/15 pt-5">
-                      <button
-                        type="button"
-                        disabled={!trackOpen}
-                        onClick={() => {
-                          setStep(2);
-                          scrollWizardIntoView();
-                        }}
-                        className="inline-flex items-center gap-2 border border-[#83b5ed]/55 bg-[#244b78] px-6 py-2.5 font-sans text-xs font-semibold tracking-[0.1em] text-white uppercase transition-colors hover:bg-[#315f96] disabled:cursor-not-allowed disabled:opacity-40"
-                      >
-                        <span>Continue to General Information</span>
-                        <ArrowRight className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* STEP 2: SHARED GENERAL INFORMATION (QUESTIONS 1–10) */}
-                {step === 2 && (
-                  <div className="space-y-6">
-                    <div className="border-b border-[#9eb8da]/15 pb-4">
-                      <p className="font-mono text-[10px] tracking-[0.16em] text-[#83b5ed] uppercase">
-                        Section 1 · Required for All Departments
-                      </p>
-                      <h2 className="mt-1 font-display text-2xl font-semibold text-[#edf3fb] sm:text-3xl">
-                        General Applicant Information (Questions 1–10)
-                      </h2>
-                    </div>
-
-                    {!trackOpen && (
-                      <div className="border border-[#EF4444]/50 bg-[#250D12] p-4 text-xs text-[#FCA5A5]">
-                        Applications for this track are currently paused by the Secretariat.
-                      </div>
-                    )}
-
-                    <div className="grid gap-5 sm:grid-cols-2">
-                      {/* Q1 */}
-                      <div>
-                        <label className="block font-sans text-xs font-semibold text-[#edf3fb]">
-                          1. What is your full name? <span className="text-[#83b5ed]">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={applicantName}
-                          onChange={(e) => {
-                            setApplicantName(e.target.value);
-                            if (fieldErrors.applicant_name) {
-                              setFieldErrors((p) => ({ ...p, applicant_name: '' }));
-                            }
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {TRACK_CATALOG.map((item) => {
+                      const open = isTrackOpen(item.id);
+                      const selected = track === item.id;
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => {
+                            setTrack(item.id);
+                            setErrorMsg('');
+                            setFieldErrors({});
                           }}
-                          placeholder="First Middle Last"
-                          className="mt-1.5 w-full border border-[#9eb8da]/25 bg-[#09182b] px-3 py-2.5 text-sm text-[#edf3fb] focus:border-[#83b5ed] focus:outline-none"
-                        />
-                        {fieldErrors.applicant_name && (
-                          <p className="mt-1 text-xs text-[#FCA5A5]">{fieldErrors.applicant_name}</p>
-                        )}
-                      </div>
-
-                      {/* Q2 */}
-                      <div>
-                        <label className="block font-sans text-xs font-semibold text-[#edf3fb]">
-                          2. What is your email? <span className="text-[#83b5ed]">*</span>
-                        </label>
-                        <input
-                          type="email"
-                          value={email}
-                          onChange={(e) => {
-                            setEmail(e.target.value);
-                            if (fieldErrors.email) {
-                              setFieldErrors((p) => ({ ...p, email: '' }));
-                            }
-                          }}
-                          placeholder="applicant@example.com"
-                          className="mt-1.5 w-full border border-[#9eb8da]/25 bg-[#09182b] px-3 py-2.5 text-sm text-[#edf3fb] focus:border-[#83b5ed] focus:outline-none"
-                        />
-                        {fieldErrors.email && (
-                          <p className="mt-1 text-xs text-[#FCA5A5]">{fieldErrors.email}</p>
-                        )}
-                      </div>
-
-                      {/* Q3 */}
-                      <div>
-                        <label className="block font-sans text-xs font-semibold text-[#edf3fb]">
-                          3. What is your gender? <span className="text-[#83b5ed]">*</span>
-                        </label>
-                        <div className="mt-1.5 grid grid-cols-2 gap-2.5">
-                          {[
-                            { val: 'female' as const, label: 'Female' },
-                            { val: 'male' as const, label: 'Male' },
-                          ].map((opt) => (
-                            <button
-                              key={opt.val}
-                              type="button"
-                              onClick={() => {
-                                setGender(opt.val);
-                                if (fieldErrors.gender) {
-                                  setFieldErrors((p) => ({ ...p, gender: '' }));
-                                }
-                              }}
-                              className={`border py-2.5 text-center font-sans text-sm font-medium transition-colors ${
-                                gender === opt.val
-                                  ? 'border-[#83b5ed] bg-[#142b49] text-[#edf3fb]'
-                                  : 'border-[#9eb8da]/25 bg-[#09182b] text-[#bdcce0] hover:border-[#83b5ed]/50'
-                              }`}
-                            >
-                              {opt.label}
-                            </button>
-                          ))}
-                        </div>
-                        {fieldErrors.gender && (
-                          <p className="mt-1 text-xs text-[#FCA5A5]">{fieldErrors.gender}</p>
-                        )}
-                      </div>
-
-                      {/* Q4 */}
-                      <div>
-                        <div className="flex items-center justify-between gap-2">
-                          <label className="block font-sans text-xs font-semibold text-[#edf3fb]">
-                            4. When is your birth date? <span className="text-[#83b5ed]">*</span>
-                          </label>
-                          {computedAge !== null && (
-                            <span className="font-mono text-[11px] tabular-nums text-[#83b5ed]">
-                              Age {computedAge}
-                            </span>
-                          )}
-                        </div>
-                        <input
-                          type="date"
-                          max={todayIso}
-                          value={birthDate}
-                          onChange={(e) => {
-                            setBirthDate(e.target.value);
-                            if (fieldErrors.birth_date) {
-                              setFieldErrors((p) => ({ ...p, birth_date: '' }));
-                            }
-                          }}
-                          className="mt-1.5 w-full border border-[#9eb8da]/25 bg-[#09182b] px-3 py-2.5 font-mono text-sm text-[#edf3fb] focus:border-[#83b5ed] focus:outline-none"
-                        />
-                        {fieldErrors.birth_date && (
-                          <p className="mt-1 text-xs text-[#FCA5A5]">{fieldErrors.birth_date}</p>
-                        )}
-                      </div>
-
-                      {/* Q5 */}
-                      <div>
-                        <label className="block font-sans text-xs font-semibold text-[#edf3fb]">
-                          5. What grade are you? <span className="text-[#83b5ed]">*</span>
-                        </label>
-                        <select
-                          value={gradeOrYear}
-                          onChange={(e) => {
-                            setGradeOrYear(e.target.value);
-                            if (fieldErrors.grade_or_year) {
-                              setFieldErrors((p) => ({ ...p, grade_or_year: '' }));
-                            }
-                          }}
-                          className="mt-1.5 w-full border border-[#9eb8da]/25 bg-[#09182b] px-3 py-2.5 text-sm text-[#edf3fb] focus:border-[#83b5ed] focus:outline-none"
+                          className={`flex flex-col justify-between border p-4 text-left transition-all ${
+                            selected
+                              ? 'border-[#D5BD8B] bg-[radial-gradient(circle_at_90%_10%,rgba(131,181,237,0.14),transparent_60%)] bg-[#102440] shadow-[0_12px_28px_-16px_rgba(131,181,237,0.45)]'
+                              : 'border-[#B89A62]/25 bg-[#040D1B]/85 hover:border-[#D5BD8B]/60'
+                          }`}
                         >
-                          <option value="">Select your current grade...</option>
-                          {GRADE_OPTIONS.map((g) => (
-                            <option key={g} value={g}>
-                              {g}
+                          <div>
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="font-display text-2xl font-semibold text-[#E8E1D2]">
+                                {item.title}
+                              </span>
+                              <StatusLabel status={open ? 'Open' : 'Closed'} tone={open ? 'green' : 'red'} />
+                            </div>
+                            <p className="mt-2 text-xs leading-relaxed text-[#E8E1D2]/75">
+                              {item.tagline}
+                            </p>
+                          </div>
+                          <p className="mt-3 font-mono text-[10px] tracking-[0.12em] text-[#83B5ED] uppercase">
+                            {item.summaryLabel}
+                          </p>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {!trackOpen && (
+                    <div className="border border-[#EF4444]/50 bg-[#250D12] p-5 text-center">
+                      <p className="font-display text-xl text-[#FCA5A5]">
+                        {TRACK_CATALOG.find((t) => t.id === track)?.title} Applications Paused
+                      </p>
+                      <p className="mt-1 text-xs text-[#E8E1D2]/75">
+                        This division is currently closed by the Secretariat. Select another open department to apply.
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="flex justify-end border-t border-[#B89A62]/20 pt-5">
+                    <button
+                      type="button"
+                      disabled={!trackOpen}
+                      onClick={() => {
+                        setStep(2);
+                        scrollWizardIntoView();
+                      }}
+                      className="atlas-btn-gold inline-flex items-center gap-2 bg-[#0D1E36] px-6 py-2.5 font-sans text-xs font-semibold tracking-[0.1em] text-[#E8E1D2] uppercase disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      <span>
+                        {track === 'security'
+                          ? 'Continue to Personal Information'
+                          : 'Continue to General Information'}
+                      </span>
+                      <ArrowRight className="atlas-btn-arrow h-3.5 w-3.5 text-[#D5BD8B]" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 2: SECURITY PERSONAL INFO (1-6) & EXPERIENCE (7-8) OR STANDARD Q1-Q10 */}
+              {step === 2 && track === 'security' && (
+                <div className="space-y-6">
+                  <div className="border-b border-[#B89A62]/25 pb-4">
+                    <p className="font-mono text-[10px] tracking-[0.16em] text-[#83B5ED] uppercase">
+                      Section 1 · Security Personal Information (1–6)
+                    </p>
+                    <h2 className="mt-1 font-display text-2xl font-semibold text-[#E8E1D2] sm:text-3xl">
+                      Security Applicant Profile &amp; Experience
+                    </h2>
+                  </div>
+
+                  {!trackOpen && (
+                    <div className="border border-[#EF4444]/50 bg-[#250D12] p-4 text-xs text-[#FCA5A5]">
+                      Applications for Security are currently paused by the Secretariat.
+                    </div>
+                  )}
+
+                  <div className="grid gap-5 sm:grid-cols-2">
+                    {/* 1. Full Name */}
+                    <div>
+                      <label className="block font-sans text-xs font-semibold text-[#E8E1D2]">
+                        1. Full Name <span className="text-[#83B5ED]">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={applicantName}
+                        onChange={(e) => {
+                          setApplicantName(e.target.value);
+                          if (fieldErrors.applicant_name) {
+                            setFieldErrors((p) => ({ ...p, applicant_name: '' }));
+                          }
+                        }}
+                        placeholder="First Middle Last"
+                        className={LUXURY_INPUT_CLS}
+                      />
+                      {fieldErrors.applicant_name && (
+                        <p className="mt-1 text-xs text-[#FCA5A5]">{fieldErrors.applicant_name}</p>
+                      )}
+                    </div>
+
+                    {/* 2. Email Address */}
+                    <div>
+                      <label className="block font-sans text-xs font-semibold text-[#E8E1D2]">
+                        2. Email Address <span className="text-[#83B5ED]">*</span>
+                      </label>
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => {
+                          setEmail(e.target.value);
+                          if (fieldErrors.email) {
+                            setFieldErrors((p) => ({ ...p, email: '' }));
+                          }
+                        }}
+                        placeholder="applicant@example.com"
+                        className={LUXURY_INPUT_CLS}
+                      />
+                      {fieldErrors.email && (
+                        <p className="mt-1 text-xs text-[#FCA5A5]">{fieldErrors.email}</p>
+                      )}
+                    </div>
+
+                    {/* 3. Grade */}
+                    <div>
+                      <label className="block font-sans text-xs font-semibold text-[#E8E1D2]">
+                        3. Grade <span className="text-[#83B5ED]">*</span>
+                      </label>
+                      <select
+                        value={gradeOrYear}
+                        onChange={(e) => {
+                          setGradeOrYear(e.target.value);
+                          if (fieldErrors.grade_or_year) {
+                            setFieldErrors((p) => ({ ...p, grade_or_year: '' }));
+                          }
+                        }}
+                        className={LUXURY_INPUT_CLS}
+                      >
+                        <option value="">Select your current grade...</option>
+                        {GRADE_OPTIONS.map((g) => (
+                          <option key={g} value={g}>
+                            {g}
+                          </option>
+                        ))}
+                      </select>
+                      {fieldErrors.grade_or_year && (
+                        <p className="mt-1 text-xs text-[#FCA5A5]">{fieldErrors.grade_or_year}</p>
+                      )}
+                    </div>
+
+                    {/* 4. School */}
+                    <div>
+                      <label className="block font-sans text-xs font-semibold text-[#E8E1D2]">
+                        4. School <span className="text-[#83B5ED]">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={institution}
+                        onChange={(e) => {
+                          setInstitution(e.target.value);
+                          if (fieldErrors.institution) {
+                            setFieldErrors((p) => ({ ...p, institution: '' }));
+                          }
+                        }}
+                        placeholder="Full school name (no abbreviations)"
+                        className={LUXURY_INPUT_CLS}
+                      />
+                      <p className="mt-1 text-[11px] font-medium text-[#83B5ED]">
+                        Do not use abbreviations (e.g. write Leadership International School, not LIS).
+                      </p>
+                      {fieldErrors.institution && (
+                        <p className="mt-1 text-xs text-[#FCA5A5]">{fieldErrors.institution}</p>
+                      )}
+                    </div>
+
+                    {/* 5. Phone Number */}
+                    <div>
+                      <label className="block font-sans text-xs font-semibold text-[#E8E1D2]">
+                        5. Phone Number <span className="text-[#83B5ED]">*</span>
+                      </label>
+                      <div className="mt-1.5 flex gap-2">
+                        <select
+                          aria-label="Country dial code"
+                          value={countryCode}
+                          onChange={(e) => setCountryCode(e.target.value)}
+                          className="w-40 shrink-0 border border-[#B89A62]/30 bg-[#040D1B] px-2.5 py-2.5 font-mono text-xs text-[#E8E1D2] focus:border-[#D5BD8B] focus:outline-none"
+                        >
+                          {COUNTRY_DIAL_CODES.map((c) => (
+                            <option key={c.code} value={c.code}>
+                              {c.label}
                             </option>
                           ))}
                         </select>
-                        {fieldErrors.grade_or_year && (
-                          <p className="mt-1 text-xs text-[#FCA5A5]">{fieldErrors.grade_or_year}</p>
-                        )}
-                      </div>
-
-                      {/* Q6 */}
-                      <div>
-                        <label className="block font-sans text-xs font-semibold text-[#edf3fb]">
-                          6. What school are you in? <span className="text-[#83b5ed]">*</span>
-                        </label>
                         <input
-                          type="text"
-                          value={institution}
+                          type="tel"
+                          value={phoneLocal}
                           onChange={(e) => {
-                            setInstitution(e.target.value);
-                            if (fieldErrors.institution) {
-                              setFieldErrors((p) => ({ ...p, institution: '' }));
+                            setPhoneLocal(e.target.value);
+                            if (fieldErrors.phone) {
+                              setFieldErrors((p) => ({ ...p, phone: '' }));
                             }
                           }}
-                          placeholder="Full school name (no abbreviations)"
-                          className="mt-1.5 w-full border border-[#9eb8da]/25 bg-[#09182b] px-3 py-2.5 text-sm text-[#edf3fb] focus:border-[#83b5ed] focus:outline-none"
+                          placeholder={countryCode === 'INTL' ? '+XX XXX XXX XXXX' : '5X XXX XXXX'}
+                          className="w-full border border-[#B89A62]/30 bg-[#040D1B] px-3 py-2.5 font-mono text-sm text-[#E8E1D2] focus:border-[#D5BD8B] focus:outline-none"
                         />
-                        <p className="mt-1 text-[11px] font-medium text-[#b3d5ff]">
-                          Do not use abbreviations (e.g. write Leadership International School, not LIS).
-                        </p>
-                        {fieldErrors.institution && (
-                          <p className="mt-1 text-xs text-[#FCA5A5]">{fieldErrors.institution}</p>
-                        )}
                       </div>
+                      {combinedPhone && (
+                        <p className="mt-1 font-mono text-[10px] text-[#E8E1D2]/55">
+                          Formatted: {combinedPhone}
+                        </p>
+                      )}
+                      {fieldErrors.phone && (
+                        <p className="mt-1 text-xs text-[#FCA5A5]">{fieldErrors.phone}</p>
+                      )}
+                    </div>
 
-                      {/* Q7 */}
-                      <div>
-                        <label className="block font-sans text-xs font-semibold text-[#edf3fb]">
-                          7. What is your phone number? <span className="text-[#83b5ed]">*</span>
-                        </label>
-                        <div className="mt-1.5 flex gap-2">
-                          <select
-                            aria-label="Country dial code"
-                            value={countryCode}
-                            onChange={(e) => setCountryCode(e.target.value)}
-                            className="w-40 shrink-0 border border-[#9eb8da]/25 bg-[#09182b] px-2.5 py-2.5 font-mono text-xs text-[#edf3fb] focus:border-[#83b5ed] focus:outline-none"
-                          >
-                            {COUNTRY_DIAL_CODES.map((c) => (
-                              <option key={c.code} value={c.code}>
-                                {c.label}
-                              </option>
-                            ))}
-                          </select>
-                          <input
-                            type="tel"
-                            value={phoneLocal}
-                            onChange={(e) => {
-                              setPhoneLocal(e.target.value);
-                              if (fieldErrors.phone) {
-                                setFieldErrors((p) => ({ ...p, phone: '' }));
+                    {/* 6. Guardian's Phone Number */}
+                    <div>
+                      <label className="block font-sans text-xs font-semibold text-[#E8E1D2]">
+                        6. Guardian&apos;s Phone Number <span className="text-[#83B5ED]">*</span>
+                      </label>
+                      <input
+                        type="tel"
+                        value={emergencyContact}
+                        onChange={(e) => {
+                          setEmergencyContact(e.target.value);
+                          if (fieldErrors.emergency_phone) {
+                            setFieldErrors((p) => ({ ...p, emergency_phone: '' }));
+                          }
+                        }}
+                        placeholder="+966 5X XXX XXXX (Parent / Guardian)"
+                        className={`${LUXURY_INPUT_CLS} font-mono`}
+                      />
+                      <p className="mt-1 text-[11px] text-[#E8E1D2]/55">
+                        Parent or legal guardian emergency contact phone number.
+                      </p>
+                      {fieldErrors.emergency_phone && (
+                        <p className="mt-1 text-xs text-[#FCA5A5]">{fieldErrors.emergency_phone}</p>
+                      )}
+                    </div>
+
+                    {/* Division Routing for Boys / Girls Security Heads */}
+                    <div className="sm:col-span-2">
+                      <label className="block font-sans text-xs font-semibold text-[#E8E1D2]">
+                        Security Division Assignment <span className="text-[#83B5ED]">*</span>
+                      </label>
+                      <p className="mt-0.5 text-[11px] text-[#E8E1D2]/55">
+                        Routes your Security dossier to the corresponding Female (Girls) or Male (Boys) Section Head.
+                      </p>
+                      <div className="mt-2 grid max-w-md grid-cols-2 gap-2.5">
+                        {[
+                          { val: 'female' as const, label: 'Female' },
+                          { val: 'male' as const, label: 'Male' },
+                        ].map((opt) => (
+                          <button
+                            key={opt.val}
+                            type="button"
+                            aria-pressed={gender === opt.val}
+                            onClick={() => {
+                              setGender(opt.val);
+                              if (fieldErrors.gender) {
+                                setFieldErrors((p) => ({ ...p, gender: '' }));
                               }
                             }}
-                            placeholder={countryCode === 'INTL' ? '+XX XXX XXX XXXX' : '5X XXX XXXX'}
-                            className="w-full border border-[#9eb8da]/25 bg-[#09182b] px-3 py-2.5 font-mono text-sm text-[#edf3fb] focus:border-[#83b5ed] focus:outline-none"
-                          />
-                        </div>
-                        {combinedPhone && (
-                          <p className="mt-1 font-mono text-[10px] text-[#8da5c3]">
-                            Formatted: {combinedPhone}
-                          </p>
-                        )}
-                        {fieldErrors.phone && (
-                          <p className="mt-1 text-xs text-[#FCA5A5]">{fieldErrors.phone}</p>
-                        )}
+                            className={`border py-2.5 text-center font-sans text-sm font-medium transition-all ${
+                              gender === opt.val
+                                ? 'border-[#D5BD8B] bg-[#122847] text-[#F0DFB8]'
+                                : 'border-[#B89A62]/25 bg-[#040D1B] text-[#E8E1D2]/75 hover:border-[#83B5ED]/60'
+                            }`}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
                       </div>
-
-                      {/* Q8 */}
-                      <div>
-                        <label className="block font-sans text-xs font-semibold text-[#edf3fb]">
-                          8. Please enter an emergency contact. <span className="text-[#83b5ed]">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={emergencyContact}
-                          onChange={(e) => {
-                            setEmergencyContact(e.target.value);
-                            if (fieldErrors.emergency_phone) {
-                              setFieldErrors((p) => ({ ...p, emergency_phone: '' }));
-                            }
-                          }}
-                          placeholder="Name, relationship, and phone number"
-                          className="mt-1.5 w-full border border-[#9eb8da]/25 bg-[#09182b] px-3 py-2.5 text-sm text-[#edf3fb] focus:border-[#83b5ed] focus:outline-none"
-                        />
-                        {fieldErrors.emergency_phone && (
-                          <p className="mt-1 text-xs text-[#FCA5A5]">{fieldErrors.emergency_phone}</p>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Q9 */}
-                    <div>
-                      <label className="block font-sans text-xs font-semibold text-[#edf3fb]">
-                        9. Please list your previous experiences. <span className="text-[#83b5ed]">*</span>
-                      </label>
-                      <textarea
-                        rows={4}
-                        value={experience}
-                        onChange={(e) => {
-                          setExperience(e.target.value);
-                          if (fieldErrors.experience) {
-                            setFieldErrors((p) => ({ ...p, experience: '' }));
-                          }
-                        }}
-                        placeholder="List previous MUN conferences, school clubs, volunteer roles, or leadership positions (or write None if this is your first time)..."
-                        className="mt-1.5 w-full border border-[#9eb8da]/25 bg-[#09182b] px-3 py-2.5 text-sm text-[#edf3fb] focus:border-[#83b5ed] focus:outline-none"
-                      />
-                      {fieldErrors.experience && (
-                        <p className="mt-1 text-xs text-[#FCA5A5]">{fieldErrors.experience}</p>
+                      {fieldErrors.gender && (
+                        <p className="mt-1 text-xs text-[#FCA5A5]">{fieldErrors.gender}</p>
                       )}
-                    </div>
-
-                    {/* Q10 */}
-                    <div className="border border-[#9eb8da]/20 bg-[#09182b] p-4 sm:p-5">
-                      <label className="block font-sans text-xs font-semibold text-[#edf3fb]">
-                        10. Please attach certificates for your experiences.
-                      </label>
-                      <p className="mt-1 text-xs text-[#8da5c3]">
-                        Multiple files supported. Accepted formats: PDF, JPG, JPEG, and PNG (max 15 MB per file).
-                      </p>
-
-                      <div className="mt-3 flex flex-wrap items-center gap-3">
-                        <label className="inline-flex cursor-pointer items-center gap-2 border border-[#83b5ed]/45 bg-[#142b49] px-4 py-2 font-sans text-xs font-semibold text-[#b3d5ff] transition-colors hover:border-[#b3d5ff]">
-                          <Upload className="h-3.5 w-3.5" />
-                          <span>
-                            {uploadingCount > 0
-                              ? `Uploading (${uploadingCount})...`
-                              : 'Select Certificate Files'}
-                          </span>
-                          <input
-                            type="file"
-                            multiple
-                            accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
-                            disabled={uploadingCount > 0}
-                            onChange={(e) => {
-                              void handleFilesSelected(e.target.files);
-                              e.target.value = '';
-                            }}
-                            className="hidden"
-                          />
-                        </label>
-                        <span className="font-mono text-[11px] text-[#8da5c3]">
-                          {attachments.length} file{attachments.length === 1 ? '' : 's'} attached
-                        </span>
-                      </div>
-
-                      {attachments.length > 0 && (
-                        <ul className="mt-4 divide-y divide-[#9eb8da]/15 border border-[#9eb8da]/20 bg-[#07111f]">
-                          {attachments.map((att) => (
-                            <li
-                              key={att.id}
-                              className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5 text-xs"
-                            >
-                              <div className="flex items-center gap-2.5 min-w-0">
-                                <FileText className="h-4 w-4 shrink-0 text-[#83b5ed]" />
-                                <span className="truncate font-medium text-[#edf3fb]">
-                                  {att.file_name}
-                                </span>
-                                <span className="font-mono text-[10px] text-[#8da5c3]">
-                                  {formatBytes(att.size_bytes)}
-                                </span>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setAttachments((prev) => prev.filter((x) => x.id !== att.id))
-                                }
-                                aria-label={`Remove ${att.file_name}`}
-                                className="inline-flex items-center gap-1 text-[11px] text-[#FCA5A5] hover:text-white"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                                <span>Remove</span>
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-
-                    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#9eb8da]/15 pt-5">
-                      <button
-                        type="button"
-                        onClick={() => goToStep(1)}
-                        className="inline-flex items-center gap-2 border border-[#9eb8da]/30 bg-[#09182b] px-4 py-2.5 font-sans text-xs font-semibold tracking-[0.08em] text-[#bdcce0] uppercase hover:text-white"
-                      >
-                        <ArrowLeft className="h-3.5 w-3.5" />
-                        <span>Back to Department</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (validateStep2General()) {
-                            setStep(3);
-                            scrollWizardIntoView();
-                          }
-                        }}
-                        className="inline-flex items-center gap-2 border border-[#83b5ed]/55 bg-[#244b78] px-6 py-2.5 font-sans text-xs font-semibold tracking-[0.1em] text-white uppercase hover:bg-[#315f96]"
-                      >
-                        <span>Continue to Department Questions</span>
-                        <ArrowRight className="h-3.5 w-3.5" />
-                      </button>
                     </div>
                   </div>
-                )}
 
-                {/* STEP 3: STRICTLY DEPARTMENT-ISOLATED QUESTIONS */}
-                {step === 3 && (
-                  <div className="space-y-6">
-                    <div className="border-b border-[#9eb8da]/15 pb-4">
-                      <p className="font-mono text-[10px] tracking-[0.16em] text-[#83b5ed] uppercase">
-                        Section 2 · Department-Specific Application
-                      </p>
-                      <h2 className="mt-1 font-display text-2xl font-semibold text-[#edf3fb] sm:text-3xl">
-                        {TRACK_CATALOG.find((t) => t.id === track)?.title} Team Member Questions
-                      </h2>
+                  {/* Section 2: Experience (7–8) */}
+                  <div className="border-t border-[#B89A62]/25 pt-5">
+                    <p className="font-mono text-[10px] tracking-[0.16em] text-[#83B5ED] uppercase">
+                      Section 2 · Experience (7–8)
+                    </p>
+                  </div>
+
+                  {/* 7. Previous Experience */}
+                  <div>
+                    <label className="block font-sans text-xs font-semibold text-[#E8E1D2]">
+                      7. Previous Experience <span className="text-[#83B5ED]">*</span>
+                    </label>
+                    <textarea
+                      rows={4}
+                      value={experience}
+                      onChange={(e) => {
+                        setExperience(e.target.value);
+                        if (fieldErrors.experience) {
+                          setFieldErrors((p) => ({ ...p, experience: '' }));
+                        }
+                      }}
+                      placeholder="List prior MUN security, event management, discipline, scouting, or leadership experience (or enter None if first time)..."
+                      className={LUXURY_INPUT_CLS}
+                    />
+                    {fieldErrors.experience && (
+                      <p className="mt-1 text-xs text-[#FCA5A5]">{fieldErrors.experience}</p>
+                    )}
+                  </div>
+
+                  {/* 8. Upload Proof of Experience */}
+                  <div className="border border-[#B89A62]/30 bg-[#040D1B]/95 p-4 sm:p-5">
+                    <label className="block font-sans text-xs font-semibold text-[#E8E1D2]">
+                      8. Upload Proof of Experience
+                    </label>
+                    <p className="mt-1 text-xs text-[#E8E1D2]/60">
+                      Upload certificates, letters, or verification documents if available. Accepted formats: PDF, JPG, JPEG, and PNG (max 15 MB per file).
+                    </p>
+
+                    <div className="mt-3 flex flex-wrap items-center gap-3">
+                      <label className="inline-flex cursor-pointer items-center gap-2 border border-[#D5BD8B]/45 bg-[#102440] px-4 py-2 font-sans text-xs font-semibold text-[#F0DFB8] transition-colors hover:border-[#D5BD8B] hover:bg-[#173258]">
+                        <Upload className="h-3.5 w-3.5 text-[#83B5ED]" />
+                        <span>
+                          {uploadingCount > 0
+                            ? `Uploading (${uploadingCount})...`
+                            : 'Select Proof of Experience Files'}
+                        </span>
+                        <input
+                          type="file"
+                          multiple
+                          accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+                          disabled={uploadingCount > 0}
+                          onChange={(e) => {
+                            void handleFilesSelected(e.target.files);
+                            e.target.value = '';
+                          }}
+                          className="hidden"
+                        />
+                      </label>
+                      <span className="font-mono text-[11px] text-[#83B5ED]">
+                        {attachments.length} file{attachments.length === 1 ? '' : 's'} attached
+                      </span>
                     </div>
 
-                    <div className="space-y-6">
-                        {track === 'press' && (
-                          <div>
-                            <label className="block font-sans text-xs font-semibold text-[#edf3fb]">
-                              Writing Portfolio / Published Clips URL (Optional)
-                            </label>
-                            <input
-                              type="url"
-                              value={portfolioUrl}
-                              onChange={(e) => setPortfolioUrl(e.target.value)}
-                              placeholder="https://portfolio.example.com"
-                              className="mt-1.5 w-full border border-[#9eb8da]/25 bg-[#09182b] px-3 py-2.5 text-sm text-[#edf3fb] focus:border-[#83b5ed] focus:outline-none"
-                            />
-                            {fieldErrors.portfolio_url && (
-                              <p className="mt-1 text-xs text-[#FCA5A5]">{fieldErrors.portfolio_url}</p>
-                            )}
-                          </div>
-                        )}
-
-                        {activeQuestions.map((q, idx) => {
-                          const qNum = q.number ?? 11 + idx;
-                          const val = activeAnswers[q.id] ?? '';
-                          const wc = wordCount(val);
-                          const needsMediaScheduleExplanation =
-                            q.id === 'media_anything_else' && mediaScheduleNeedsExplanation;
-
-                          return (
-                            <div
-                              key={q.id}
-                              className={`border p-4 sm:p-5 ${
-                                q.confidentialMedical
-                                  ? 'border-[#83b5ed]/30 bg-[#09182b]'
-                                  : 'border-[#9eb8da]/20 bg-[#09182b]'
-                              }`}
+                    {attachments.length > 0 && (
+                      <ul className="mt-4 divide-y divide-[#B89A62]/15 border border-[#B89A62]/25 bg-[#030914]">
+                        {attachments.map((att) => (
+                          <li
+                            key={att.id}
+                            className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5 text-xs"
+                          >
+                            <div className="flex min-w-0 items-center gap-2.5">
+                              <FileText className="h-4 w-4 shrink-0 text-[#D5BD8B]" />
+                              <span className="truncate font-medium text-[#E8E1D2]">
+                                {att.file_name}
+                              </span>
+                              <span className="font-mono text-[10px] text-[#83B5ED]">
+                                {formatBytes(att.size_bytes)}
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setAttachments((prev) => prev.filter((x) => x.id !== att.id))
+                              }
+                              aria-label={`Remove ${att.file_name}`}
+                              className="inline-flex items-center gap-1 text-[11px] text-[#FCA5A5] hover:text-white"
                             >
-                              <div className="flex flex-wrap items-start justify-between gap-2">
-                                <label className="block font-sans text-sm font-semibold text-[#edf3fb]">
-                                  {qNum}. {q.label} <span className="text-[#83b5ed]">*</span>
-                                </label>
-                                {q.kind !== 'yes_no' && q.minWords > 1 && (
-                                  <span
-                                    className={`font-mono text-[11px] tabular-nums ${
-                                      wc >= q.minWords ? 'text-[#86EFAC]' : 'text-[#FCD34D]'
-                                    }`}
-                                  >
-                                    {wc} / {q.minWords} min words
-                                  </span>
-                                )}
-                              </div>
+                              <Trash2 className="h-3.5 w-3.5" />
+                              <span>Remove</span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
 
-                              {q.hint && (
-                                <p className="mt-1 text-xs text-[#8da5c3]">{q.hint}</p>
-                              )}
+                  <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#B89A62]/20 pt-5">
+                    <button
+                      type="button"
+                      onClick={() => goToStep(1)}
+                      className="inline-flex items-center gap-2 border border-[#B89A62]/30 bg-[#040D1B] px-4 py-2.5 font-sans text-xs font-semibold tracking-[0.08em] text-[#E8E1D2]/80 uppercase hover:border-[#83B5ED]/60 hover:text-white"
+                    >
+                      <ArrowLeft className="h-3.5 w-3.5" />
+                      <span>Back to Department</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (validateStep2General()) {
+                          setStep(3);
+                          scrollWizardIntoView();
+                        }
+                      }}
+                      className="atlas-btn-gold inline-flex items-center gap-2 bg-[#0D1E36] px-6 py-2.5 font-sans text-xs font-semibold tracking-[0.1em] text-[#E8E1D2] uppercase"
+                    >
+                      <span>Continue to Security Questions</span>
+                      <ArrowRight className="atlas-btn-arrow h-3.5 w-3.5 text-[#D5BD8B]" />
+                    </button>
+                  </div>
+                </div>
+              )}
 
-                              {needsMediaScheduleExplanation && (
-                                <p className="mt-2 border border-[#FCD34D]/45 bg-[#1B1406] px-3 py-2 text-xs text-[#FCD34D]">
-                                  You indicated you may miss part of the conference or pre-MUN orientation. Please explain your scheduling details here.
-                                </p>
-                              )}
+              {/* STEP 2 FOR MEDIA / VOLUNTEERS / PRESS: SHARED GENERAL INFORMATION (QUESTIONS 1–10) */}
+              {step === 2 && track !== 'security' && (
+                <div className="space-y-6">
+                  <div className="border-b border-[#B89A62]/25 pb-4">
+                    <p className="font-mono text-[10px] tracking-[0.16em] text-[#83B5ED] uppercase">
+                      Section 1 · Required for All Departments
+                    </p>
+                    <h2 className="mt-1 font-display text-2xl font-semibold text-[#E8E1D2] sm:text-3xl">
+                      General Applicant Information (Questions 1–10)
+                    </h2>
+                  </div>
 
-                              {q.kind === 'yes_no' ? (
-                                <div className="mt-3 grid grid-cols-2 gap-2.5 sm:max-w-xs">
-                                  {(['Yes', 'No'] as const).map((opt) => {
-                                    const selected = parseYesNo(val) === opt;
-                                    return (
-                                      <button
-                                        key={opt}
-                                        type="button"
-                                        onClick={() => updateAnswer(q.id, opt)}
-                                        className={`border py-2 text-center font-sans text-xs font-semibold transition-colors ${
-                                          selected
-                                            ? 'border-[#83b5ed] bg-[#142b49] text-[#edf3fb]'
-                                            : 'border-[#9eb8da]/25 bg-[#07111f] text-[#bdcce0] hover:border-[#83b5ed]/50'
-                                        }`}
-                                      >
-                                        {opt}
-                                      </button>
-                                    );
-                                  })}
-                                </div>
-                              ) : (
-                                <textarea
-                                  rows={q.minWords >= 40 ? 4 : 3}
-                                  value={val}
-                                  onChange={(e) => updateAnswer(q.id, e.target.value)}
-                                  placeholder={q.placeholder}
-                                  className="mt-3 w-full border border-[#9eb8da]/25 bg-[#07111f] px-3 py-2.5 text-sm text-[#edf3fb] focus:border-[#83b5ed] focus:outline-none"
-                                />
-                              )}
+                  {!trackOpen && (
+                    <div className="border border-[#EF4444]/50 bg-[#250D12] p-4 text-xs text-[#FCA5A5]">
+                      Applications for this track are currently paused by the Secretariat.
+                    </div>
+                  )}
 
-                              {fieldErrors[q.id] && (
-                                <p className="mt-1.5 text-xs text-[#FCA5A5]">{fieldErrors[q.id]}</p>
-                              )}
-                            </div>
-                          );
-                        })}
+                  <div className="grid gap-5 sm:grid-cols-2">
+                    {/* Q1 */}
+                    <div>
+                      <label className="block font-sans text-xs font-semibold text-[#E8E1D2]">
+                        1. What is your full name? <span className="text-[#83B5ED]">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={applicantName}
+                        onChange={(e) => {
+                          setApplicantName(e.target.value);
+                          if (fieldErrors.applicant_name) {
+                            setFieldErrors((p) => ({ ...p, applicant_name: '' }));
+                          }
+                        }}
+                        placeholder="First Middle Last"
+                        className={LUXURY_INPUT_CLS}
+                      />
+                      {fieldErrors.applicant_name && (
+                        <p className="mt-1 text-xs text-[#FCA5A5]">{fieldErrors.applicant_name}</p>
+                      )}
+                    </div>
 
-                        {/* Admin-Only Confidential Medical Disclosure for non-Media tracks (Media has Q17 built-in) */}
-                        {track !== 'media' && (
-                          <div className="border border-[#9eb8da]/20 bg-[#09182b] p-4">
-                            <div className="flex items-center gap-2 text-[#b3d5ff]">
-                              <ShieldCheck className="h-4 w-4" />
-                              <span className="font-mono text-[10px] tracking-[0.14em] uppercase">
-                                Confidential Medical Disclosure (Optional · Admin-Only Access)
-                              </span>
-                            </div>
-                            <label className="mt-3 flex items-center gap-2.5 text-xs text-[#bdcce0]">
-                              <input
-                                type="checkbox"
-                                checked={medHas}
-                                onChange={(e) => setMedHas(e.target.checked)}
-                              />
-                              <span>
-                                I have medical conditions, allergies, or emergency accommodations to disclose.
-                              </span>
-                            </label>
-                            {medHas && (
-                              <textarea
-                                rows={2}
-                                value={medDetails}
-                                onChange={(e) => setMedDetails(e.target.value)}
-                                placeholder="Provide confidential details (never shown to Department Heads or HR)..."
-                                className="mt-3 w-full border border-[#9eb8da]/25 bg-[#07111f] px-3 py-2 text-sm text-[#edf3fb] focus:border-[#83b5ed] focus:outline-none"
-                              />
-                            )}
-                          </div>
+                    {/* Q2 */}
+                    <div>
+                      <label className="block font-sans text-xs font-semibold text-[#E8E1D2]">
+                        2. What is your email? <span className="text-[#83B5ED]">*</span>
+                      </label>
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => {
+                          setEmail(e.target.value);
+                          if (fieldErrors.email) {
+                            setFieldErrors((p) => ({ ...p, email: '' }));
+                          }
+                        }}
+                        placeholder="applicant@example.com"
+                        className={LUXURY_INPUT_CLS}
+                      />
+                      {fieldErrors.email && (
+                        <p className="mt-1 text-xs text-[#FCA5A5]">{fieldErrors.email}</p>
+                      )}
+                    </div>
+
+                    {/* Q3 */}
+                    <div>
+                      <label className="block font-sans text-xs font-semibold text-[#E8E1D2]">
+                        3. What is your gender? <span className="text-[#83B5ED]">*</span>
+                      </label>
+                      <div className="mt-1.5 grid grid-cols-2 gap-2.5">
+                        {[
+                          { val: 'female' as const, label: 'Female' },
+                          { val: 'male' as const, label: 'Male' },
+                        ].map((opt) => (
+                          <button
+                            key={opt.val}
+                            type="button"
+                            onClick={() => {
+                              setGender(opt.val);
+                              if (fieldErrors.gender) {
+                                setFieldErrors((p) => ({ ...p, gender: '' }));
+                              }
+                            }}
+                            className={`border py-2.5 text-center font-sans text-sm font-medium transition-all ${
+                              gender === opt.val
+                                ? 'border-[#D5BD8B] bg-[#122847] text-[#F0DFB8]'
+                                : 'border-[#B89A62]/25 bg-[#040D1B] text-[#E8E1D2]/75 hover:border-[#83B5ED]/60'
+                            }`}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                      {fieldErrors.gender && (
+                        <p className="mt-1 text-xs text-[#FCA5A5]">{fieldErrors.gender}</p>
+                      )}
+                    </div>
+
+                    {/* Q4 */}
+                    <div>
+                      <div className="flex items-center justify-between gap-2">
+                        <label className="block font-sans text-xs font-semibold text-[#E8E1D2]">
+                          4. When is your birth date? <span className="text-[#83B5ED]">*</span>
+                        </label>
+                        {computedAge !== null && (
+                          <span className="font-mono text-[11px] tabular-nums text-[#83B5ED]">
+                            Age {computedAge}
+                          </span>
                         )}
                       </div>
+                      <input
+                        type="date"
+                        max={todayIso}
+                        value={birthDate}
+                        onChange={(e) => {
+                          setBirthDate(e.target.value);
+                          if (fieldErrors.birth_date) {
+                            setFieldErrors((p) => ({ ...p, birth_date: '' }));
+                          }
+                        }}
+                        className={`${LUXURY_INPUT_CLS} font-mono`}
+                      />
+                      {fieldErrors.birth_date && (
+                        <p className="mt-1 text-xs text-[#FCA5A5]">{fieldErrors.birth_date}</p>
+                      )}
+                    </div>
 
-                    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#9eb8da]/15 pt-5">
+                    {/* Q5 */}
+                    <div>
+                      <label className="block font-sans text-xs font-semibold text-[#E8E1D2]">
+                        5. What grade are you? <span className="text-[#83B5ED]">*</span>
+                      </label>
+                      <select
+                        value={gradeOrYear}
+                        onChange={(e) => {
+                          setGradeOrYear(e.target.value);
+                          if (fieldErrors.grade_or_year) {
+                            setFieldErrors((p) => ({ ...p, grade_or_year: '' }));
+                          }
+                        }}
+                        className={LUXURY_INPUT_CLS}
+                      >
+                        <option value="">Select your current grade...</option>
+                        {GRADE_OPTIONS.map((g) => (
+                          <option key={g} value={g}>
+                            {g}
+                          </option>
+                        ))}
+                      </select>
+                      {fieldErrors.grade_or_year && (
+                        <p className="mt-1 text-xs text-[#FCA5A5]">{fieldErrors.grade_or_year}</p>
+                      )}
+                    </div>
+
+                    {/* Q6 */}
+                    <div>
+                      <label className="block font-sans text-xs font-semibold text-[#E8E1D2]">
+                        6. What school are you in? <span className="text-[#83B5ED]">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={institution}
+                        onChange={(e) => {
+                          setInstitution(e.target.value);
+                          if (fieldErrors.institution) {
+                            setFieldErrors((p) => ({ ...p, institution: '' }));
+                          }
+                        }}
+                        placeholder="Full school name (no abbreviations)"
+                        className={LUXURY_INPUT_CLS}
+                      />
+                      <p className="mt-1 text-[11px] font-medium text-[#83B5ED]">
+                        Do not use abbreviations (e.g. write Leadership International School, not LIS).
+                      </p>
+                      {fieldErrors.institution && (
+                        <p className="mt-1 text-xs text-[#FCA5A5]">{fieldErrors.institution}</p>
+                      )}
+                    </div>
+
+                    {/* Q7 */}
+                    <div>
+                      <label className="block font-sans text-xs font-semibold text-[#E8E1D2]">
+                        7. What is your phone number? <span className="text-[#83B5ED]">*</span>
+                      </label>
+                      <div className="mt-1.5 flex gap-2">
+                        <select
+                          aria-label="Country dial code"
+                          value={countryCode}
+                          onChange={(e) => setCountryCode(e.target.value)}
+                          className="w-40 shrink-0 border border-[#B89A62]/30 bg-[#040D1B] px-2.5 py-2.5 font-mono text-xs text-[#E8E1D2] focus:border-[#D5BD8B] focus:outline-none"
+                        >
+                          {COUNTRY_DIAL_CODES.map((c) => (
+                            <option key={c.code} value={c.code}>
+                              {c.label}
+                            </option>
+                          ))}
+                        </select>
+                        <input
+                          type="tel"
+                          value={phoneLocal}
+                          onChange={(e) => {
+                            setPhoneLocal(e.target.value);
+                            if (fieldErrors.phone) {
+                              setFieldErrors((p) => ({ ...p, phone: '' }));
+                            }
+                          }}
+                          placeholder={countryCode === 'INTL' ? '+XX XXX XXX XXXX' : '5X XXX XXXX'}
+                          className="w-full border border-[#B89A62]/30 bg-[#040D1B] px-3 py-2.5 font-mono text-sm text-[#E8E1D2] focus:border-[#D5BD8B] focus:outline-none"
+                        />
+                      </div>
+                      {combinedPhone && (
+                        <p className="mt-1 font-mono text-[10px] text-[#E8E1D2]/55">
+                          Formatted: {combinedPhone}
+                        </p>
+                      )}
+                      {fieldErrors.phone && (
+                        <p className="mt-1 text-xs text-[#FCA5A5]">{fieldErrors.phone}</p>
+                      )}
+                    </div>
+
+                    {/* Q8 */}
+                    <div>
+                      <label className="block font-sans text-xs font-semibold text-[#E8E1D2]">
+                        8. Please enter an emergency contact. <span className="text-[#83B5ED]">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={emergencyContact}
+                        onChange={(e) => {
+                          setEmergencyContact(e.target.value);
+                          if (fieldErrors.emergency_phone) {
+                            setFieldErrors((p) => ({ ...p, emergency_phone: '' }));
+                          }
+                        }}
+                        placeholder="Name, relationship, and phone number"
+                        className={LUXURY_INPUT_CLS}
+                      />
+                      {fieldErrors.emergency_phone && (
+                        <p className="mt-1 text-xs text-[#FCA5A5]">{fieldErrors.emergency_phone}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Q9 */}
+                  <div>
+                    <label className="block font-sans text-xs font-semibold text-[#E8E1D2]">
+                      9. Please list your previous experiences. <span className="text-[#83B5ED]">*</span>
+                    </label>
+                    <textarea
+                      rows={4}
+                      value={experience}
+                      onChange={(e) => {
+                        setExperience(e.target.value);
+                        if (fieldErrors.experience) {
+                          setFieldErrors((p) => ({ ...p, experience: '' }));
+                        }
+                      }}
+                      placeholder="List previous MUN conferences, school clubs, volunteer roles, or leadership positions (or write None if this is your first time)..."
+                      className={LUXURY_INPUT_CLS}
+                    />
+                    {fieldErrors.experience && (
+                      <p className="mt-1 text-xs text-[#FCA5A5]">{fieldErrors.experience}</p>
+                    )}
+                  </div>
+
+                  {/* Q10 */}
+                  <div className="border border-[#B89A62]/30 bg-[#040D1B]/95 p-4 sm:p-5">
+                    <label className="block font-sans text-xs font-semibold text-[#E8E1D2]">
+                      10. Please attach certificates for your experiences.
+                    </label>
+                    <p className="mt-1 text-xs text-[#E8E1D2]/60">
+                      Multiple files supported. Accepted formats: PDF, JPG, JPEG, and PNG (max 15 MB per file).
+                    </p>
+
+                    <div className="mt-3 flex flex-wrap items-center gap-3">
+                      <label className="inline-flex cursor-pointer items-center gap-2 border border-[#D5BD8B]/45 bg-[#102440] px-4 py-2 font-sans text-xs font-semibold text-[#F0DFB8] transition-colors hover:border-[#D5BD8B] hover:bg-[#173258]">
+                        <Upload className="h-3.5 w-3.5 text-[#83B5ED]" />
+                        <span>
+                          {uploadingCount > 0
+                            ? `Uploading (${uploadingCount})...`
+                            : 'Select Certificate Files'}
+                        </span>
+                        <input
+                          type="file"
+                          multiple
+                          accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+                          disabled={uploadingCount > 0}
+                          onChange={(e) => {
+                            void handleFilesSelected(e.target.files);
+                            e.target.value = '';
+                          }}
+                          className="hidden"
+                        />
+                      </label>
+                      <span className="font-mono text-[11px] text-[#83B5ED]">
+                        {attachments.length} file{attachments.length === 1 ? '' : 's'} attached
+                      </span>
+                    </div>
+
+                    {attachments.length > 0 && (
+                      <ul className="mt-4 divide-y divide-[#B89A62]/15 border border-[#B89A62]/25 bg-[#030914]">
+                        {attachments.map((att) => (
+                          <li
+                            key={att.id}
+                            className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5 text-xs"
+                          >
+                            <div className="flex min-w-0 items-center gap-2.5">
+                              <FileText className="h-4 w-4 shrink-0 text-[#D5BD8B]" />
+                              <span className="truncate font-medium text-[#E8E1D2]">
+                                {att.file_name}
+                              </span>
+                              <span className="font-mono text-[10px] text-[#83B5ED]">
+                                {formatBytes(att.size_bytes)}
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setAttachments((prev) => prev.filter((x) => x.id !== att.id))
+                              }
+                              aria-label={`Remove ${att.file_name}`}
+                              className="inline-flex items-center gap-1 text-[11px] text-[#FCA5A5] hover:text-white"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                              <span>Remove</span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#B89A62]/20 pt-5">
+                    <button
+                      type="button"
+                      onClick={() => goToStep(1)}
+                      className="inline-flex items-center gap-2 border border-[#B89A62]/30 bg-[#040D1B] px-4 py-2.5 font-sans text-xs font-semibold tracking-[0.08em] text-[#E8E1D2]/80 uppercase hover:border-[#83B5ED]/60 hover:text-white"
+                    >
+                      <ArrowLeft className="h-3.5 w-3.5" />
+                      <span>Back to Department</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (validateStep2General()) {
+                          setStep(3);
+                          scrollWizardIntoView();
+                        }
+                      }}
+                      className="atlas-btn-gold inline-flex items-center gap-2 bg-[#0D1E36] px-6 py-2.5 font-sans text-xs font-semibold tracking-[0.1em] text-[#E8E1D2] uppercase"
+                    >
+                      <span>Continue to Department Questions</span>
+                      <ArrowRight className="atlas-btn-arrow h-3.5 w-3.5 text-[#D5BD8B]" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 3: STRICTLY DEPARTMENT-ISOLATED QUESTIONS */}
+              {step === 3 && (
+                <div className="space-y-6">
+                  <div className="border-b border-[#B89A62]/25 pb-4">
+                    <p className="font-mono text-[10px] tracking-[0.16em] text-[#83B5ED] uppercase">
+                      {track === 'security'
+                        ? 'Section 3 & 4 · Written & Additional Questions'
+                        : 'Section 2 · Department-Specific Application'}
+                    </p>
+                    <h2 className="mt-1 font-display text-2xl font-semibold text-[#E8E1D2] sm:text-3xl">
+                      {TRACK_CATALOG.find((t) => t.id === track)?.title} Team Member Questions
+                    </h2>
+                  </div>
+
+                  {track === 'security' ? (
+                    <div className="space-y-7">
+                      <div className="space-y-4">
+                        <p className="font-mono text-[10px] tracking-[0.18em] text-[#D5BD8B] uppercase">
+                          Written Questions (9–11)
+                        </p>
+                        <div className="space-y-5">
+                          {securityWrittenQuestions.map((q, idx) => renderQuestionCard(q, idx))}
+                        </div>
+                      </div>
+
+                      <div className="space-y-4 border-t border-[#B89A62]/25 pt-6">
+                        <p className="font-mono text-[10px] tracking-[0.18em] text-[#83B5ED] uppercase">
+                          Additional Questions (12–13)
+                        </p>
+                        <div className="space-y-5">
+                          {securityAdditionalQuestions.map((q, idx) =>
+                            renderQuestionCard(q, 3 + idx)
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {track === 'press' && (
+                        <div>
+                          <label className="block font-sans text-xs font-semibold text-[#E8E1D2]">
+                            Writing Portfolio / Published Clips URL (Optional)
+                          </label>
+                          <input
+                            type="url"
+                            value={portfolioUrl}
+                            onChange={(e) => setPortfolioUrl(e.target.value)}
+                            placeholder="https://portfolio.example.com"
+                            className={LUXURY_INPUT_CLS}
+                          />
+                          {fieldErrors.portfolio_url && (
+                            <p className="mt-1 text-xs text-[#FCA5A5]">{fieldErrors.portfolio_url}</p>
+                          )}
+                        </div>
+                      )}
+
+                      {activeQuestions.map((q, idx) => renderQuestionCard(q, idx))}
+
+                      {/* Admin-Only Confidential Medical Disclosure for Volunteers & Press (Media has Q17, Security has Q12) */}
+                      {track !== 'media' && (
+                        <div className="border border-[#B89A62]/25 bg-[#040D1B]/90 p-4">
+                          <div className="flex items-center gap-2 text-[#83B5ED]">
+                            <ShieldCheck className="h-4 w-4" />
+                            <span className="font-mono text-[10px] tracking-[0.14em] uppercase">
+                              Confidential Medical Disclosure (Optional · Admin-Only Access)
+                            </span>
+                          </div>
+                          <label className="mt-3 flex items-center gap-2.5 text-xs text-[#E8E1D2]/80">
+                            <input
+                              type="checkbox"
+                              checked={medHas}
+                              onChange={(e) => setMedHas(e.target.checked)}
+                            />
+                            <span>
+                              I have medical conditions, allergies, or emergency accommodations to disclose.
+                            </span>
+                          </label>
+                          {medHas && (
+                            <textarea
+                              rows={2}
+                              value={medDetails}
+                              onChange={(e) => setMedDetails(e.target.value)}
+                              placeholder="Provide confidential details (never shown to Department Heads or HR)..."
+                              className={LUXURY_INPUT_CLS}
+                            />
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#B89A62]/20 pt-5">
+                    <button
+                      type="button"
+                      onClick={() => goToStep(2)}
+                      className="inline-flex items-center gap-2 border border-[#B89A62]/30 bg-[#040D1B] px-4 py-2.5 font-sans text-xs font-semibold tracking-[0.08em] text-[#E8E1D2]/80 uppercase hover:border-[#83B5ED]/60 hover:text-white"
+                    >
+                      <ArrowLeft className="h-3.5 w-3.5" />
+                      <span>
+                        {track === 'security' ? 'Back to Personal Info' : 'Back to General Info'}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (validateStep3Department()) {
+                          setStep(4);
+                          scrollWizardIntoView();
+                        }
+                      }}
+                      className="atlas-btn-gold inline-flex items-center gap-2 bg-[#0D1E36] px-6 py-2.5 font-sans text-xs font-semibold tracking-[0.1em] text-[#E8E1D2] uppercase"
+                    >
+                      <span>Review Application</span>
+                      <ArrowRight className="atlas-btn-arrow h-3.5 w-3.5 text-[#D5BD8B]" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 4: REVIEW & FINAL CONSENT SUBMISSION */}
+              {step === 4 && (
+                <div className="space-y-6">
+                  <div className="border-b border-[#B89A62]/25 pb-4">
+                    <p className="font-mono text-[10px] tracking-[0.16em] text-[#83B5ED] uppercase">
+                      Final Verification · Diplomatic Registry
+                    </p>
+                    <h2 className="mt-1 font-display text-2xl font-semibold text-[#E8E1D2] sm:text-3xl">
+                      Review Your Application
+                    </h2>
+                  </div>
+
+                  {/* General / Personal Information Review */}
+                  <div className="border border-[#B89A62]/28 bg-[#040D1B]/95 p-5">
+                    <div className="flex items-center justify-between gap-2 border-b border-[#B89A62]/20 pb-3">
+                      <h3 className="font-sans text-xs font-semibold tracking-[0.1em] text-[#D5BD8B] uppercase">
+                        {track === 'security'
+                          ? 'Personal Information & Experience (1–8)'
+                          : 'General Information (Questions 1–10)'}
+                      </h3>
                       <button
                         type="button"
                         onClick={() => goToStep(2)}
-                        className="inline-flex items-center gap-2 border border-[#9eb8da]/30 bg-[#09182b] px-4 py-2.5 font-sans text-xs font-semibold tracking-[0.08em] text-[#bdcce0] uppercase hover:text-white"
+                        className="text-xs font-medium text-[#83B5ED] underline hover:text-[#D5BD8B]"
                       >
-                        <ArrowLeft className="h-3.5 w-3.5" />
-                        <span>Back to General Info</span>
+                        Edit
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (validateStep3Department()) {
-                            setStep(4);
-                            scrollWizardIntoView();
-                          }
-                        }}
-                        className="inline-flex items-center gap-2 border border-[#83b5ed]/55 bg-[#244b78] px-6 py-2.5 font-sans text-xs font-semibold tracking-[0.1em] text-white uppercase hover:bg-[#315f96]"
-                      >
-                        <span>Review Application</span>
-                        <ArrowRight className="h-3.5 w-3.5" />
-                      </button>
+                    </div>
+                    <dl className="mt-4 grid gap-x-6 gap-y-3 text-xs sm:grid-cols-2">
+                      <div>
+                        <dt className="text-[#E8E1D2]/55">1. Full Name</dt>
+                        <dd className="mt-0.5 font-medium text-[#E8E1D2]">{applicantName}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-[#E8E1D2]/55">2. Email Address</dt>
+                        <dd className="mt-0.5 font-medium text-[#E8E1D2]">{email}</dd>
+                      </div>
+                      {track === 'security' ? (
+                        <>
+                          <div>
+                            <dt className="text-[#E8E1D2]/55">3. Grade</dt>
+                            <dd className="mt-0.5 font-medium text-[#E8E1D2]">{gradeOrYear}</dd>
+                          </div>
+                          <div>
+                            <dt className="text-[#E8E1D2]/55">4. School</dt>
+                            <dd className="mt-0.5 font-medium text-[#E8E1D2]">{institution}</dd>
+                          </div>
+                          <div>
+                            <dt className="text-[#E8E1D2]/55">5. Phone Number</dt>
+                            <dd className="mt-0.5 font-mono text-[#E8E1D2]">{combinedPhone}</dd>
+                          </div>
+                          <div>
+                            <dt className="text-[#E8E1D2]/55">6. Guardian&apos;s Phone Number</dt>
+                            <dd className="mt-0.5 font-mono text-[#E8E1D2]">{emergencyContact}</dd>
+                          </div>
+                          <div>
+                            <dt className="text-[#E8E1D2]/55">Security Division</dt>
+                            <dd className="mt-0.5 font-medium capitalize text-[#E8E1D2]">{gender}</dd>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div>
+                            <dt className="text-[#E8E1D2]/55">3. Gender</dt>
+                            <dd className="mt-0.5 font-medium capitalize text-[#E8E1D2]">{gender}</dd>
+                          </div>
+                          <div>
+                            <dt className="text-[#E8E1D2]/55">4. Birth Date</dt>
+                            <dd className="mt-0.5 font-mono text-[#E8E1D2]">
+                              {birthDate} {computedAge !== null ? `(Age ${computedAge})` : ''}
+                            </dd>
+                          </div>
+                          <div>
+                            <dt className="text-[#E8E1D2]/55">5. Grade</dt>
+                            <dd className="mt-0.5 font-medium text-[#E8E1D2]">{gradeOrYear}</dd>
+                          </div>
+                          <div>
+                            <dt className="text-[#E8E1D2]/55">6. School</dt>
+                            <dd className="mt-0.5 font-medium text-[#E8E1D2]">{institution}</dd>
+                          </div>
+                          <div>
+                            <dt className="text-[#E8E1D2]/55">7. Phone Number</dt>
+                            <dd className="mt-0.5 font-mono text-[#E8E1D2]">{combinedPhone}</dd>
+                          </div>
+                          <div>
+                            <dt className="text-[#E8E1D2]/55">8. Emergency Contact</dt>
+                            <dd className="mt-0.5 font-medium text-[#E8E1D2]">{emergencyContact}</dd>
+                          </div>
+                        </>
+                      )}
+                    </dl>
+                    <div className="mt-4 border-t border-[#B89A62]/15 pt-3 text-xs">
+                      <dt className="text-[#E8E1D2]/55">
+                        {track === 'security' ? '7. Previous Experience' : '9. Previous Experiences'}
+                      </dt>
+                      <dd className="mt-1 whitespace-pre-wrap leading-relaxed text-[#E8E1D2]">
+                        {experience}
+                      </dd>
+                    </div>
+                    <div className="mt-4 border-t border-[#B89A62]/15 pt-3 text-xs">
+                      <dt className="text-[#E8E1D2]/55">
+                        {track === 'security'
+                          ? '8. Proof of Experience'
+                          : '10. Attached Certificates'}
+                      </dt>
+                      <dd className="mt-1 text-[#E8E1D2]">
+                        {attachments.length === 0 ? (
+                          <span className="text-[#E8E1D2]/55">No files attached.</span>
+                        ) : (
+                          <ul className="mt-1 space-y-1 font-mono text-[11px] text-[#83B5ED]">
+                            {attachments.map((a) => (
+                              <li key={a.id}>
+                                {a.file_name} ({formatBytes(a.size_bytes)})
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </dd>
                     </div>
                   </div>
-                )}
 
-                {/* STEP 4: REVIEW & FINAL CONSENT SUBMISSION */}
-                {step === 4 && (
-                  <div className="space-y-6">
-                    <div className="border-b border-[#9eb8da]/15 pb-4">
-                      <p className="font-mono text-[10px] tracking-[0.16em] text-[#83b5ed] uppercase">
-                        Section 3 · Pre-Submission Verification
-                      </p>
-                      <h2 className="mt-1 font-display text-2xl font-semibold text-[#edf3fb] sm:text-3xl">
-                        Review Your Application
-                      </h2>
-                    </div>
-
-                    {/* General Information Review */}
-                    <div className="border border-[#9eb8da]/20 bg-[#09182b] p-5">
-                      <div className="flex items-center justify-between gap-2 border-b border-[#9eb8da]/15 pb-3">
-                        <h3 className="font-sans text-xs font-semibold tracking-[0.1em] text-[#b3d5ff] uppercase">
-                          General Information (Questions 1–10)
-                        </h3>
-                        <button
-                          type="button"
-                          onClick={() => goToStep(2)}
-                          className="text-xs font-medium text-[#83b5ed] underline"
-                        >
-                          Edit
-                        </button>
-                      </div>
-                      <dl className="mt-4 grid gap-x-6 gap-y-3 text-xs sm:grid-cols-2">
-                        <div>
-                          <dt className="text-[#8da5c3]">1. Full Name</dt>
-                          <dd className="mt-0.5 font-medium text-[#edf3fb]">{applicantName}</dd>
-                        </div>
-                        <div>
-                          <dt className="text-[#8da5c3]">2. Email</dt>
-                          <dd className="mt-0.5 font-medium text-[#edf3fb]">{email}</dd>
-                        </div>
-                        <div>
-                          <dt className="text-[#8da5c3]">3. Gender</dt>
-                          <dd className="mt-0.5 font-medium capitalize text-[#edf3fb]">{gender}</dd>
-                        </div>
-                        <div>
-                          <dt className="text-[#8da5c3]">4. Birth Date</dt>
-                          <dd className="mt-0.5 font-mono text-[#edf3fb]">
-                            {birthDate} {computedAge !== null ? `(Age ${computedAge})` : ''}
-                          </dd>
-                        </div>
-                        <div>
-                          <dt className="text-[#8da5c3]">5. Grade</dt>
-                          <dd className="mt-0.5 font-medium text-[#edf3fb]">{gradeOrYear}</dd>
-                        </div>
-                        <div>
-                          <dt className="text-[#8da5c3]">6. School</dt>
-                          <dd className="mt-0.5 font-medium text-[#edf3fb]">{institution}</dd>
-                        </div>
-                        <div>
-                          <dt className="text-[#8da5c3]">7. Phone Number</dt>
-                          <dd className="mt-0.5 font-mono text-[#edf3fb]">{combinedPhone}</dd>
-                        </div>
-                        <div>
-                          <dt className="text-[#8da5c3]">8. Emergency Contact</dt>
-                          <dd className="mt-0.5 font-medium text-[#edf3fb]">{emergencyContact}</dd>
-                        </div>
-                      </dl>
-                      <div className="mt-4 border-t border-[#9eb8da]/15 pt-3 text-xs">
-                        <dt className="text-[#8da5c3]">9. Previous Experiences</dt>
-                        <dd className="mt-1 whitespace-pre-wrap leading-relaxed text-[#edf3fb]">
-                          {experience}
-                        </dd>
-                      </div>
-                      <div className="mt-4 border-t border-[#9eb8da]/15 pt-3 text-xs">
-                        <dt className="text-[#8da5c3]">10. Attached Certificates</dt>
-                        <dd className="mt-1 text-[#edf3fb]">
-                          {attachments.length === 0 ? (
-                            <span className="text-[#8da5c3]">No certificates attached.</span>
-                          ) : (
-                            <ul className="mt-1 space-y-1 font-mono text-[11px]">
-                              {attachments.map((a) => (
-                                <li key={a.id}>
-                                  {a.file_name} ({formatBytes(a.size_bytes)})
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                        </dd>
-                      </div>
-                    </div>
-
-                    {/* Department Questions Review */}
-                    <div className="border border-[#9eb8da]/20 bg-[#09182b] p-5">
-                      <div className="flex items-center justify-between gap-2 border-b border-[#9eb8da]/15 pb-3">
-                        <h3 className="font-sans text-xs font-semibold tracking-[0.1em] text-[#b3d5ff] uppercase">
-                          {TRACK_CATALOG.find((t) => t.id === track)?.title} Team Member Responses
-                        </h3>
-                        <button
-                          type="button"
-                          onClick={() => goToStep(3)}
-                          className="text-xs font-medium text-[#83b5ed] underline"
-                        >
-                          Edit
-                        </button>
-                      </div>
-
-                      <div className="mt-4 space-y-4 text-xs">
-                        {activeQuestions.map((q, idx) => (
-                          <div key={q.id} className="border-b border-[#9eb8da]/10 pb-3 last:border-b-0 last:pb-0">
-                            <p className="font-medium text-[#8da5c3]">
-                              {q.number ?? 11 + idx}. {q.label}
-                            </p>
-                            <p className="mt-1 whitespace-pre-wrap leading-relaxed text-[#edf3fb]">
-                              {activeAnswers[q.id] || '—'}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Legal Consent (Always initialized unchecked) */}
-                    <div className="space-y-3 border border-[#9eb8da]/20 bg-[#09182b] p-4 text-xs text-[#bdcce0]">
-                      <label className="flex items-start gap-2.5">
-                        <input
-                          type="checkbox"
-                          checked={privacyAccepted}
-                          onChange={(e) => setPrivacyAccepted(e.target.checked)}
-                          className="mt-0.5"
-                        />
-                        <span>
-                          I confirm all information above is accurate and agree to the{' '}
-                          <button
-                            type="button"
-                            onClick={() => navigate('/privacy')}
-                            className="text-[#83b5ed] underline"
-                          >
-                            LIS MUN Privacy Policy
-                          </button>
-                          .
-                        </span>
-                      </label>
-                      <label className="flex items-start gap-2.5">
-                        <input
-                          type="checkbox"
-                          checked={termsAccepted}
-                          onChange={(e) => setTermsAccepted(e.target.checked)}
-                          className="mt-0.5"
-                        />
-                        <span>
-                          I accept the{' '}
-                          <button
-                            type="button"
-                            onClick={() => navigate('/terms')}
-                            className="text-[#83b5ed] underline"
-                          >
-                            Terms &amp; Delegate/Staff Code of Conduct
-                          </button>
-                          .
-                        </span>
-                      </label>
-                    </div>
-
-                    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#9eb8da]/15 pt-5">
+                  {/* Department Questions Review */}
+                  <div className="border border-[#B89A62]/28 bg-[#040D1B]/95 p-5">
+                    <div className="flex items-center justify-between gap-2 border-b border-[#B89A62]/20 pb-3">
+                      <h3 className="font-sans text-xs font-semibold tracking-[0.1em] text-[#D5BD8B] uppercase">
+                        {TRACK_CATALOG.find((t) => t.id === track)?.title} Team Member Responses
+                      </h3>
                       <button
                         type="button"
                         onClick={() => goToStep(3)}
-                        className="inline-flex items-center gap-2 border border-[#9eb8da]/30 bg-[#09182b] px-4 py-2.5 font-sans text-xs font-semibold tracking-[0.08em] text-[#bdcce0] uppercase hover:text-white"
+                        className="text-xs font-medium text-[#83B5ED] underline hover:text-[#D5BD8B]"
                       >
-                        <ArrowLeft className="h-3.5 w-3.5" />
-                        <span>Back to Department Questions</span>
-                      </button>
-                      <button
-                        type="submit"
-                        disabled={submitting || !trackOpen}
-                        className="inline-flex items-center gap-2 border border-[#83b5ed]/65 bg-[#244b78] px-7 py-3 font-sans text-xs font-semibold tracking-[0.12em] text-white uppercase transition-colors hover:bg-[#315f96] disabled:opacity-50"
-                      >
-                        <span>
-                          {submitting
-                            ? 'Submitting Application...'
-                            : `Submit ${TRACK_CATALOG.find((t) => t.id === track)?.title} Application`}
-                        </span>
+                        Edit
                       </button>
                     </div>
+
+                    <div className="mt-4 space-y-4 text-xs">
+                      {activeQuestions.map((q, idx) => {
+                        const baseAnswer = activeAnswers[q.id] || '—';
+                        let combinedAnswer = baseAnswer;
+                        if (q.id === 'security_allergies_has' && parseYesNo(baseAnswer) === 'Yes') {
+                          const d = String(activeAnswers.security_allergies_details ?? '').trim();
+                          if (d) combinedAnswer = `Yes — ${d}`;
+                        } else if (
+                          q.id === 'security_additional_info_has' &&
+                          parseYesNo(baseAnswer) === 'Yes'
+                        ) {
+                          const d = String(
+                            activeAnswers.security_additional_info_details ?? ''
+                          ).trim();
+                          if (d) combinedAnswer = `Yes — ${d}`;
+                        }
+                        return (
+                          <div
+                            key={q.id}
+                            className="border-b border-[#B89A62]/12 pb-3 last:border-b-0 last:pb-0"
+                          >
+                            <p className="font-medium text-[#83B5ED]">
+                              {q.number ?? 11 + idx}. {q.label}
+                            </p>
+                            <p className="mt-1 whitespace-pre-wrap leading-relaxed text-[#E8E1D2]">
+                              {combinedAnswer}
+                            </p>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-                )}
+
+                  {/* Legal Consent (Always initialized unchecked) */}
+                  <div className="space-y-3 border border-[#B89A62]/28 bg-[#040D1B]/95 p-4 text-xs text-[#E8E1D2]/85">
+                    <label className="flex items-start gap-2.5">
+                      <input
+                        type="checkbox"
+                        checked={privacyAccepted}
+                        onChange={(e) => setPrivacyAccepted(e.target.checked)}
+                        className="mt-0.5"
+                      />
+                      <span>
+                        I confirm all information above is accurate and agree to the{' '}
+                        <button
+                          type="button"
+                          onClick={() => navigate('/privacy')}
+                          className="text-[#83B5ED] underline hover:text-[#D5BD8B]"
+                        >
+                          LIS MUN Privacy Policy
+                        </button>
+                        .
+                      </span>
+                    </label>
+                    <label className="flex items-start gap-2.5">
+                      <input
+                        type="checkbox"
+                        checked={termsAccepted}
+                        onChange={(e) => setTermsAccepted(e.target.checked)}
+                        className="mt-0.5"
+                      />
+                      <span>
+                        I accept the{' '}
+                        <button
+                          type="button"
+                          onClick={() => navigate('/terms')}
+                          className="text-[#83B5ED] underline hover:text-[#D5BD8B]"
+                        >
+                          Terms &amp; Delegate/Staff Code of Conduct
+                        </button>
+                        .
+                      </span>
+                    </label>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#B89A62]/20 pt-5">
+                    <button
+                      type="button"
+                      onClick={() => goToStep(3)}
+                      className="inline-flex items-center gap-2 border border-[#B89A62]/30 bg-[#040D1B] px-4 py-2.5 font-sans text-xs font-semibold tracking-[0.08em] text-[#E8E1D2]/80 uppercase hover:border-[#83B5ED]/60 hover:text-white"
+                    >
+                      <ArrowLeft className="h-3.5 w-3.5" />
+                      <span>Back to Department Questions</span>
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={submitting || !trackOpen}
+                      className="atlas-btn-gold inline-flex items-center gap-2 bg-[#0D1E36] px-7 py-3 font-sans text-xs font-semibold tracking-[0.12em] text-[#F0DFB8] uppercase disabled:opacity-50"
+                    >
+                      <span>
+                        {submitting
+                          ? 'Submitting Application...'
+                          : `Submit ${TRACK_CATALOG.find((t) => t.id === track)?.title} Application`}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              )}
             </form>
           </div>
         )}

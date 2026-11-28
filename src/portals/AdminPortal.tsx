@@ -1831,7 +1831,11 @@ export const AdminPortal: React.FC<{ isSuperAdminRoute: boolean }> = ({
                     <span className="font-mono">{selectedApp.phone || 'N/A'}</span>
                   </p>
                   <p>
-                    <span className="font-mono text-[10px] text-[#B89A62] uppercase">Emergency Contact: </span>
+                    <span className="font-mono text-[10px] text-[#B89A62] uppercase">
+                      {selectedApp.application_type === 'security'
+                        ? "Guardian's Phone: "
+                        : 'Emergency Contact: '}
+                    </span>
                     {selectedApp.emergency_phone || 'N/A'}
                   </p>
                   <p>

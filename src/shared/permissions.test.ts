@@ -288,55 +288,93 @@ test('Stealth spoof helpers, shift overlap detector, email sanitizer & template 
   assert.equal(replacedBody.includes('0123456789abcdef'), false);
 });
 
-test('Public intake validation enforces word counts (80/50/50/50 for Security) & legal checkboxes', () => {
-  const words = (n: number) => Array.from({ length: n }, (_, i) => `word${i}`).join(' ');
+test('Security intake validation: Personal (1-6), Experience (7-8), Written (9-11), Conditional Yes/No (12-13), and Review Formatting', () => {
   assert.equal(wordCount('  hello   world  '), 2);
+  assert.equal(SECURITY_QUESTIONS.length, 5);
   assert.deepEqual(
-    SECURITY_QUESTIONS.map((q) => q.minWords),
-    [80, 50, 50, 50]
+    SECURITY_QUESTIONS.map((q) => q.id),
+    [
+      'security_why_join',
+      'security_difference',
+      'security_negligent_teammate',
+      'security_allergies_has',
+      'security_additional_info_has',
+    ]
   );
 
-  const invalid = validateTeamIntakePayload({
+  // Missing allergy/inquiry details when Yes is selected must fail; missing birth_date is allowed for Security
+  const invalidYesWithoutDetails = validateTeamIntakePayload({
     track: 'security',
     gender: 'male',
-    applicant_name: 'Tariq',
+    applicant_name: 'Tariq Al-Otaibi',
     email: 'tariq@example.com',
+    grade_or_year: '11th Grade',
+    institution: 'Leadership International School',
     phone: '+966501234567',
     emergency_phone: '+966507654321',
-    institution: 'LIS',
-    age: 17,
+    experience: 'Served on event safety crew for two summits.',
     answers: {
-      security_emergency: words(79),
-      security_teamwork: words(50),
-      security_motivation: words(50),
-      security_bullying: words(50),
+      security_why_join: 'Committed to maintaining calm protocol and venue safety.',
+      security_difference: 'Strong communication and punctual discipline.',
+      security_negligent_teammate: 'Speak privately first, cover post gaps, escalate if repeated.',
+      security_allergies_has: 'Yes',
+      security_allergies_details: '',
+      security_additional_info_has: 'Yes',
+      security_additional_info_details: '',
     },
     privacy_policy_accepted: false,
     terms_accepted: true,
   });
-  assert.equal(invalid.valid, false);
-  assert.ok(invalid.errors.security_emergency);
-  assert.ok(invalid.errors.privacy_policy_accepted);
+  assert.equal(invalidYesWithoutDetails.valid, false);
+  assert.ok(invalidYesWithoutDetails.errors.security_allergies_details);
+  assert.ok(invalidYesWithoutDetails.errors.security_additional_info_details);
+  assert.ok(invalidYesWithoutDetails.errors.privacy_policy_accepted);
+  assert.equal(invalidYesWithoutDetails.errors.birth_date, undefined);
 
-  const valid = validateTeamIntakePayload({
+  // Selecting No for Q12 and Q13 passes without detail text
+  const validNoDetails = validateTeamIntakePayload({
     track: 'security',
     gender: 'male',
-    applicant_name: 'Tariq',
+    applicant_name: 'Tariq Al-Otaibi',
     email: 'tariq@example.com',
+    grade_or_year: '11th Grade',
+    institution: 'Leadership International School',
     phone: '+966501234567',
     emergency_phone: '+966507654321',
-    institution: 'LIS',
-    age: 17,
+    experience: 'None',
     answers: {
-      security_emergency: words(80),
-      security_teamwork: words(50),
-      security_motivation: words(50),
-      security_bullying: words(50),
+      security_why_join: 'Committed to maintaining calm protocol and venue safety.',
+      security_difference: 'Strong communication and punctual discipline.',
+      security_negligent_teammate: 'Speak privately first, cover post gaps, escalate if repeated.',
+      security_allergies_has: 'No',
+      security_additional_info_has: 'No',
     },
     privacy_policy_accepted: true,
     terms_accepted: true,
   });
-  assert.equal(valid.valid, true);
+  assert.equal(validNoDetails.valid, true);
+
+  // Selecting Yes with detail text passes and merges cleanly in formatApplicationAnswersForReview
+  const formatted = formatApplicationAnswersForReview(
+    makeApplication({
+      application_type: 'security',
+      answers: {
+        security_why_join: 'Protect delegates and manage access smoothly.',
+        security_difference: 'Calm under pressure.',
+        security_negligent_teammate: 'Cover post and escalate cleanly.',
+        security_allergies_has: 'Yes',
+        security_allergies_details: 'Peanut allergy',
+        security_additional_info_has: 'No',
+        security_emergency: 'Legacy record preserved',
+      },
+    }),
+    { includeMedical: true }
+  );
+  const q12 = formatted.find((x) => x.id === 'security_allergies_has');
+  assert.equal(q12?.numberLabel, 'Q12');
+  assert.equal(q12?.answerText, 'Yes — Peanut allergy');
+  assert.equal(formatted.some((x) => x.id === 'security_allergies_details'), false);
+  assert.equal(formatted.some((x) => x.id === 'security_emergency'), true);
 });
 
 test('Failed email deduplication excludes sent/manually-confirmed items & builds Gmail compose URL', () => {

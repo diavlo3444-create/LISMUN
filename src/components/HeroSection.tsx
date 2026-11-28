@@ -8,6 +8,7 @@ import {
   ScrollTrigger,
 } from '../utils/atlasAnimations';
 import { ThreeMonument } from './ThreeMonument';
+import { LaurelWreathAccent } from './LuxuryOrnaments';
 
 interface HeroSectionProps {
   introComplete: boolean;
@@ -75,11 +76,11 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
       ref={sectionRef}
       className="relative flex min-h-screen flex-col justify-center overflow-hidden bg-transparent pt-16 pb-14 lg:pt-24 lg:pb-20"
     >
-      {/* Subtle dark stage scrim that opens cleanly once the 3D shield locks in */}
+      {/* Subtle stage scrim + baby-blue/gold ambient backlight behind 3D monument */}
       <div
         className={`pointer-events-none absolute inset-0 transition-opacity duration-[950ms] ease-out ${
           introComplete
-            ? 'bg-[radial-gradient(circle_at_74%_48%,rgba(18,39,69,0.2),transparent_64%)] opacity-100'
+            ? 'bg-[radial-gradient(circle_at_76%_46%,rgba(131,181,237,0.12),rgba(18,39,69,0.22)_34%,transparent_68%)] opacity-100'
             : 'bg-[#030914]/78 opacity-100'
         }`}
         aria-hidden="true"
@@ -100,12 +101,13 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
                 : 'max-h-0 overflow-hidden opacity-0 pointer-events-none'
             }`}
           >
-            <p
+            <div
               data-hero-eyebrow
-              className="mb-5 font-mono text-[11px] tracking-[0.24em] text-[#D5BD8B] uppercase lg:mb-6"
+              className="mb-5 flex items-center gap-3 font-mono text-[11px] tracking-[0.24em] text-[#D5BD8B] uppercase lg:mb-6"
             >
-              LEADERSHIP INTERNATIONAL SCHOOL MUN · SESSION I
-            </p>
+              <span className="h-1.5 w-1.5 rotate-45 bg-[#9E2530] ring-1 ring-[#D5BD8B]/70" aria-hidden="true" />
+              <span>LEADERSHIP INTERNATIONAL SCHOOL MUN · SESSION I</span>
+            </div>
 
             <h1
               className="font-display text-4xl leading-[0.98] font-medium tracking-[0.02em] text-[#E8E1D2] sm:text-6xl lg:text-[5.15rem]"
@@ -155,12 +157,13 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
               </button>
             </div>
 
-            <p
+            <div
               data-hero-stagger
-              className="mt-5 font-mono text-[11px] tracking-[0.18em] text-[#B89A62]/70 uppercase lg:mt-6"
+              className="mt-5 flex items-center gap-3 font-mono text-[11px] tracking-[0.18em] text-[#83B5ED]/85 uppercase lg:mt-6"
             >
-              THE LIVING ATLAS · COMMITTEE ROSTER TBA FOR SESSION I
-            </p>
+              <LaurelWreathAccent size={36} />
+              <span>THE LIVING ATLAS · COMMITTEE ROSTER TBA FOR SESSION I</span>
+            </div>
           </div>
 
           {/* Interactive 3D Sculptural LISMUN Monument (Centered first on mobile intro, right column on desktop) */}

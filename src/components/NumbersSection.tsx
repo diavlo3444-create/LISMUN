@@ -5,6 +5,7 @@ import {
   gsap,
   prefersReducedMotion,
 } from '../utils/atlasAnimations';
+import { OrnamentalGoldDivider } from './LuxuryOrnaments';
 
 export const NumbersSection: React.FC = () => {
   const sectionRef = useRef<HTMLElement>(null);
@@ -106,11 +107,12 @@ export const NumbersSection: React.FC = () => {
     <section
       id="numbers"
       ref={sectionRef}
-      className="relative border-t border-[#263D59]/50 bg-[#040D1B]/32 py-28 md:py-36"
+      className="relative border-t border-[#B89A62]/25 bg-[radial-gradient(ellipse_65%_45%_at_18%_25%,rgba(131,181,237,0.055),transparent_70%)] bg-[#040D1B]/38 pt-12 pb-28 md:pt-16 md:pb-36"
     >
+      <OrnamentalGoldDivider label="Sovereign Ledger" className="mb-14 md:mb-20" />
       <div className="mx-auto max-w-[1440px] px-6 md:px-10">
         <div className="max-w-2xl pb-16">
-          <p className="font-mono text-xs tracking-[0.26em] text-[#B89A62] uppercase">
+          <p className="font-mono text-xs tracking-[0.26em] text-[#83B5ED] uppercase">
             05 · LISMUN in Numbers
           </p>
           <h2

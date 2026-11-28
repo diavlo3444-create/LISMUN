@@ -19,6 +19,11 @@ import {
 } from '../utils/cartography';
 import { apiRequest } from '../client/api';
 import { navigate } from '../client/router';
+import {
+  DiplomaticWaxSeal,
+  LaurelWreathAccent,
+  OrnamentalGoldDivider,
+} from './LuxuryOrnaments';
 
 interface RegistrationSectionProps {
   isModalOpen: boolean;
@@ -232,8 +237,9 @@ export const RegistrationSection: React.FC<RegistrationSectionProps> = ({
     <section
       id="registration"
       ref={sectionRef}
-      className="relative overflow-hidden border-t border-[#263D59]/50 bg-transparent py-28 md:py-36"
+      className="relative overflow-hidden border-t border-[#B89A62]/25 bg-[radial-gradient(ellipse_60%_50%_at_50%_42%,rgba(131,181,237,0.08),transparent_72%)] pt-12 pb-28 md:pt-16 md:pb-36"
     >
+      <OrnamentalGoldDivider label="Registration Charter" className="mb-14 md:mb-20" />
       <div className="relative z-10 mx-auto max-w-[1440px] px-6 md:px-10">
         {/* Scroll-Unfolding Open Book Golden SVG Canvas */}
         <div
@@ -314,12 +320,12 @@ export const RegistrationSection: React.FC<RegistrationSectionProps> = ({
 
         {/* Dramatic Destination Statement & Single Primary CTA */}
         <div className="mx-auto mt-6 max-w-3xl text-center md:mt-8">
-          <p
-            data-reg-stagger
-            className="font-mono text-xs tracking-[0.28em] text-[#B89A62] uppercase"
-          >
-            06 · The Final Destination
-          </p>
+          <div data-reg-stagger className="flex flex-col items-center gap-2">
+            <LaurelWreathAccent size={56} />
+            <p className="font-mono text-xs tracking-[0.28em] text-[#83B5ED] uppercase">
+              06 · The Final Destination
+            </p>
+          </div>
 
           <h2
             data-reg-stagger
@@ -411,18 +417,21 @@ export const RegistrationSection: React.FC<RegistrationSectionProps> = ({
 
             {receipt ? (
               <div className="mt-6 space-y-6">
-                <div className="flex items-center gap-3 border border-[#B89A62]/40 bg-[#030914] p-4">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center border border-[#D5BD8B] text-[#D5BD8B]">
-                    <Check className="h-4 w-4" />
+                <div className="flex items-center justify-between gap-4 border border-[#B89A62]/45 bg-[#030914] p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center border border-[#D5BD8B] text-[#D5BD8B]">
+                      <Check className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <p className="font-mono text-[11px] tracking-[0.18em] text-[#B89A62] uppercase">
+                        Archival Reference Code
+                      </p>
+                      <p className="font-mono text-base font-medium tabular-nums text-[#E8E1D2]">
+                        {receipt.dossierCode}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-mono text-[11px] tracking-[0.18em] text-[#B89A62] uppercase">
-                      Archival Reference Code
-                    </p>
-                    <p className="font-mono text-base font-medium tabular-nums text-[#E8E1D2]">
-                      {receipt.dossierCode}
-                    </p>
-                  </div>
+                  <DiplomaticWaxSeal size={52} label="SEALED" />
                 </div>
 
                 <dl className="grid gap-4 border-y border-[#263D59]/60 py-5 sm:grid-cols-2">

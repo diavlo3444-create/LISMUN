@@ -145,20 +145,20 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
       </div>
 
-      {/* Traveling Golden Cartographic Progress Route */}
+      {/* Traveling Golden & Baby-Blue Cartographic Progress Route */}
       <div
         ref={progressTrackRef}
         aria-hidden="true"
-        className="relative h-[2px] w-full bg-[#263D59]/35"
+        className="relative h-[2px] w-full bg-[#263D59]/40"
       >
         <div
           ref={progressBarRef}
-          className="h-full origin-left bg-gradient-to-r from-[#B89A62] to-[#D5BD8B]"
+          className="h-full origin-left bg-gradient-to-r from-[#B89A62] via-[#D5BD8B] to-[#83B5ED]"
           style={{ transform: 'scaleX(0.02)' }}
         />
         <div
           ref={progressMarkerRef}
-          className="absolute top-1/2 left-0 h-2 w-2 -ml-1 border border-[#D5BD8B] bg-[#030914]"
+          className="absolute top-1/2 left-0 h-2.5 w-2.5 -ml-1 border border-[#D5BD8B] bg-[#7F1D26]"
           style={{ transform: 'translate3d(8px, -50%, 0) rotate(45deg)' }}
         />
       </div>

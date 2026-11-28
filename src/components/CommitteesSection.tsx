@@ -6,6 +6,7 @@ import {
   observeAmbientVisibility,
 } from '../utils/atlasAnimations';
 import { BritusEmblem } from './BritusEmblem';
+import { LaurelWreathAccent, OrnamentalGoldDivider } from './LuxuryOrnaments';
 
 interface PublishedCommittee {
   id: string;
@@ -74,25 +75,29 @@ export const CommitteesSection: React.FC<CommitteesSectionProps> = ({
     <section
       id="committees"
       ref={sectionRef}
-      className="relative border-t border-[#263D59]/50 bg-[#071426]/38 py-28 md:py-36"
+      className="relative border-t border-[#B89A62]/25 bg-[radial-gradient(ellipse_70%_50%_at_50%_0%,rgba(131,181,237,0.065),transparent_70%)] bg-[#071426]/42 pt-12 pb-28 md:pt-16 md:pb-36"
     >
+      <OrnamentalGoldDivider label="Assembly Councils" className="mb-14 md:mb-20" />
       <div className="mx-auto max-w-[1440px] px-6 md:px-10">
         <div
           data-committees-stagger
-          className="flex flex-col justify-between gap-6 border-b border-[#263D59]/60 pb-10 lg:flex-row lg:items-end"
+          className="flex flex-col justify-between gap-6 border-b border-[#B89A62]/25 pb-10 lg:flex-row lg:items-end"
         >
           <div className="max-w-2xl">
-            <p className="font-mono text-xs tracking-[0.26em] text-[#B89A62] uppercase">
-              03 · Conference Committees · TBA
-            </p>
+            <div className="flex items-center gap-3">
+              <p className="font-mono text-xs tracking-[0.26em] text-[#83B5ED] uppercase">
+                03 · Conference Committees · TBA
+              </p>
+              <LaurelWreathAccent size={40} />
+            </div>
             <h2
-              className="mt-4 font-display text-4xl leading-tight font-medium text-[#E8E1D2] md:text-6xl"
+              className="mt-3 font-display text-4xl leading-tight font-medium text-[#E8E1D2] md:text-6xl"
               style={{ textWrap: 'balance' }}
             >
               Committees To Be Announced.
             </h2>
           </div>
-          <p className="max-w-md font-sans text-sm leading-relaxed text-[#E8E1D2]/72">
+          <p className="max-w-md font-sans text-sm leading-relaxed text-[#E8E1D2]/75">
             Official council selections, mandates, and study guides for Leadership
             International School MUN Session I will be published upon formal release.
           </p>
@@ -103,10 +108,10 @@ export const CommitteesSection: React.FC<CommitteesSectionProps> = ({
             {liveCommittees.map((c) => (
               <div
                 key={c.id}
-                className="flex flex-col justify-between border border-[#B89A62]/40 bg-[#030914]/95 p-7"
+                className="atlas-luxury-card flex flex-col justify-between p-7"
               >
                 <div>
-                  <p className="font-mono text-[10px] tracking-[0.2em] text-[#B89A62] uppercase">
+                  <p className="font-mono text-[10px] tracking-[0.2em] text-[#83B5ED] uppercase">
                     {c.abbreviation} · {c.chamber} · {c.difficulty}
                   </p>
                   <h3 className="mt-3 font-display text-2xl font-medium text-[#E8E1D2]">
@@ -116,14 +121,14 @@ export const CommitteesSection: React.FC<CommitteesSectionProps> = ({
                     {c.description}
                   </p>
                 </div>
-                <div className="mt-6 flex items-center justify-between border-t border-[#263D59]/60 pt-4">
+                <div className="mt-6 flex items-center justify-between border-t border-[#B89A62]/20 pt-4">
                   <span className="font-mono text-[10px] text-[#D5BD8B] uppercase">
                     Chair: {c.chair_name}
                   </span>
                   <button
                     type="button"
                     onClick={onRegisterInterest}
-                    className="font-mono text-[11px] text-[#D5BD8B] uppercase hover:underline"
+                    className="font-mono text-[11px] text-[#83B5ED] uppercase transition-colors hover:text-[#D5BD8B]"
                   >
                     Apply →
                   </button>
@@ -135,11 +140,11 @@ export const CommitteesSection: React.FC<CommitteesSectionProps> = ({
           /* Single Unified TBA Announcement Card */
           <div
             data-committees-stagger
-            className="mt-14 border border-[#B89A62]/35 bg-[#030914]/95 p-8 md:p-14"
+            className="atlas-luxury-card mt-14 p-8 md:p-14"
           >
             <div className="grid items-center gap-10 lg:grid-cols-12">
               <div className="flex justify-center lg:col-span-4">
-                <div className="relative flex items-center justify-center">
+                <div className="relative flex items-center justify-center rounded-full bg-[radial-gradient(circle,rgba(131,181,237,0.16),transparent_68%)] p-4">
                   <BritusEmblem size={172} variant="engraved" animated />
                 </div>
               </div>
@@ -158,7 +163,7 @@ export const CommitteesSection: React.FC<CommitteesSectionProps> = ({
                 </h3>
 
                 <p className="mt-4 max-w-2xl font-sans text-base leading-relaxed text-[#E8E1D2]/78">
-                  The Academic Directorate is finalizing the inaugural lineup of
+                  The Academic Directorate is finalizing the official lineup of
                   assemblies, specialized councils, and background dossiers. All
                   registered delegates and delegations will receive notice as soon as
                   the committee roster is announced.

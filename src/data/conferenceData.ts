@@ -160,7 +160,7 @@ export const COMMITTEE_NODES: CommitteeNode[] = [
     connectedTo: ['unhrc', 'icj', 'iaea'],
     mandate:
       'Charged under the UN Charter with the maintenance of international peace and security, crisis response, peacekeeping authorization, and binding Chapter VII directives.',
-    agendaStatus: 'Inaugural Session · Agenda Dossier Forthcoming',
+    agendaStatus: 'Session I · Agenda Dossier Forthcoming',
     sessionProtocol: 'P5 Veto Procedure · Crisis Directives',
     plateType: 'chamber',
   },
@@ -175,7 +175,7 @@ export const COMMITTEE_NODES: CommitteeNode[] = [
     connectedTo: ['unsc', 'icj', 'unesco'],
     mandate:
       'Responsible for strengthening the promotion and protection of human rights globally, conducting Universal Periodic Reviews, and addressing thematic emergencies.',
-    agendaStatus: 'Inaugural Session · Agenda Dossier Forthcoming',
+    agendaStatus: 'Session I · Agenda Dossier Forthcoming',
     sessionProtocol: 'Standard General Assembly Procedure',
     plateType: 'council',
   },
@@ -190,7 +190,7 @@ export const COMMITTEE_NODES: CommitteeNode[] = [
     connectedTo: ['unsc', 'unhrc', 'iaea'],
     mandate:
       'The principal judicial seat of the United Nations at the Peace Palace, adjudicating legal disputes submitted by states and issuing advisory opinions on international law.',
-    agendaStatus: 'Inaugural Session · Case Docket Forthcoming',
+    agendaStatus: 'Session I · Case Docket Forthcoming',
     sessionProtocol: 'Advocate Memorials & Oral Pleadings',
     plateType: 'court',
   },
@@ -205,7 +205,7 @@ export const COMMITTEE_NODES: CommitteeNode[] = [
     connectedTo: ['unsc', 'icj', 'unep'],
     mandate:
       'Advances peaceful nuclear science and technology while enforcing international safeguards against the proliferation of nuclear weapons.',
-    agendaStatus: 'Inaugural Session · Agenda Dossier Forthcoming',
+    agendaStatus: 'Session I · Agenda Dossier Forthcoming',
     sessionProtocol: 'Technical Board & Safeguards Protocol',
     plateType: 'treaty',
   },
@@ -220,7 +220,7 @@ export const COMMITTEE_NODES: CommitteeNode[] = [
     connectedTo: ['iaea', 'unesco', 'unhrc'],
     mandate:
       'Coordinates global environmental governance, climate adaptation treaties, biodiversity preservation, and sustainable development frameworks.',
-    agendaStatus: 'Inaugural Session · Agenda Dossier Forthcoming',
+    agendaStatus: 'Session I · Agenda Dossier Forthcoming',
     sessionProtocol: 'Standard Assembly & Drafting Committees',
     plateType: 'council',
   },
@@ -235,7 +235,7 @@ export const COMMITTEE_NODES: CommitteeNode[] = [
     connectedTo: ['unhrc', 'unep', 'unsc'],
     mandate:
       'Builds international peace through multilateral cooperation in education, cultural heritage preservation, scientific exchange, and press freedom.',
-    agendaStatus: 'Inaugural Session · Agenda Dossier Forthcoming',
+    agendaStatus: 'Session I · Agenda Dossier Forthcoming',
     sessionProtocol: 'Standard Assembly Procedure',
     plateType: 'treaty',
   },
@@ -353,7 +353,7 @@ export const ATLAS_LEDGER_METRICS: AtlasMetric[] = [
     value: 1,
     displayFallback: 'I',
     romanLabel: 'SESSION',
-    label: 'Inaugural Sovereign Assembly',
+    label: 'Session I Sovereign Assembly',
     detail: 'The founding edition of Leadership International School MUN, anchored by the Roman numeral I upon its crest.',
     verifiedNote: 'Verified from LISMUN Institutional Charter',
   },
