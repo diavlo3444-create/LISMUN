@@ -449,41 +449,41 @@ export function createChessPieceKit(
   const darkSquareMat = trackMat(
     isSoftwareGl
       ? new THREE.MeshStandardMaterial({
-          color: 0x09182e,
-          metalness: 0.14,
-          roughness: 0.42,
+          color: 0x25201b,
+          metalness: 0.02,
+          roughness: 0.72,
         })
       : new THREE.MeshPhysicalMaterial({
-          color: 0x09182e,
-          metalness: 0.14,
-          roughness: 0.42,
-          clearcoat: 0.35,
-          clearcoatRoughness: 0.25,
+          color: 0x25201b,
+          metalness: 0.02,
+          roughness: 0.72,
+          clearcoat: 0.08,
+          clearcoatRoughness: 0.55,
           bumpMap: stoneMap,
-          bumpScale: 0.006,
+          bumpScale: 0.002,
         })
   );
   const lightSquareMat = trackMat(
     new THREE.MeshStandardMaterial({
-      color: 0xbfa46e,
-      metalness: 0.54,
-      roughness: 0.38,
+      color: 0xe7dfca,
+      metalness: 0.0,
+      roughness: 0.78,
       roughnessMap: isSoftwareGl ? null : brushedMap,
     })
   );
   const frameWalnutNavyMat = trackMat(
     isSoftwareGl
       ? new THREE.MeshStandardMaterial({
-          color: 0x050e1d,
-          metalness: 0.16,
-          roughness: 0.4,
+          color: 0x24170f,
+          metalness: 0.0,
+          roughness: 0.62,
         })
       : new THREE.MeshPhysicalMaterial({
-          color: 0x050e1d,
-          metalness: 0.16,
-          roughness: 0.4,
-          clearcoat: 0.5,
-          clearcoatRoughness: 0.24,
+          color: 0x24170f,
+          metalness: 0.0,
+          roughness: 0.62,
+          clearcoat: 0.16,
+          clearcoatRoughness: 0.42,
         })
   );
   const frameBrassTrimMat = trackMat(
@@ -952,18 +952,7 @@ export function createChessPieceKit(
     goldBorder.receiveShadow = true;
     rootGroup.add(goldBorder);
 
-    // Subtle brass divider separating Rank 8 Apex (Secretariat) & Rank 3 Corridor
-    const apexDivider = new THREE.Mesh(meridianGeo, frameBrassTrimMat);
-    apexDivider.position.set(0, 0.004, -3.0);
-    rootGroup.add(apexDivider);
-
-    const corridorDivider = new THREE.Mesh(meridianGeo, frameBrassTrimMat);
-    corridorDivider.position.set(0, 0.004, 2.0);
-    rootGroup.add(corridorDivider);
-
-    // Subtle thin brass zone perimeter outlines + highlight overlays per department (no text inside squares)
-    const zoneBarThick = 0.018;
-    const zoneBarH = 0.006;
+    // Department selection remains a subtle translucent square overlay; the board itself stays a clean chessboard.
     for (const zone of DEPARTMENT_ZONES) {
       const spanW = (zone.colMax - zone.colMin + 1) * SQUARE_SIZE - 0.05;
       const spanD = (zone.rowMax - zone.rowMin + 1) * SQUARE_SIZE - 0.05;
@@ -971,26 +960,6 @@ export function createChessPieceKit(
       const centerRow = (zone.rowMin + zone.rowMax) / 2;
       const cx = (centerCol - (BOARD_COLS - 1) / 2) * SQUARE_SIZE;
       const cz = (centerRow - (BOARD_ROWS - 1) / 2) * SQUARE_SIZE;
-
-      const mat = zone.department === 'SECRETARIES' ? frameBrassTrimMat : goldAccentMat;
-      const hEdgeGeo = trackGeo(new THREE.BoxGeometry(spanW, zoneBarH, zoneBarThick));
-      const vEdgeGeo = trackGeo(new THREE.BoxGeometry(zoneBarThick, zoneBarH, spanD));
-
-      const topBar = new THREE.Mesh(hEdgeGeo, mat);
-      topBar.position.set(cx, 0.003, cz - spanD / 2);
-      rootGroup.add(topBar);
-
-      const botBar = new THREE.Mesh(hEdgeGeo, mat);
-      botBar.position.set(cx, 0.003, cz + spanD / 2);
-      rootGroup.add(botBar);
-
-      const leftBar = new THREE.Mesh(vEdgeGeo, mat);
-      leftBar.position.set(cx - spanW / 2, 0.003, cz);
-      rootGroup.add(leftBar);
-
-      const rightBar = new THREE.Mesh(vEdgeGeo, mat);
-      rightBar.position.set(cx + spanW / 2, 0.003, cz);
-      rootGroup.add(rightBar);
 
       // Subtle filter-highlight overlay for the whole department block (opacity 0 at rest)
       const hlGeo = trackGeo(new THREE.PlaneGeometry(spanW, spanD));
@@ -1018,40 +987,10 @@ export function createChessPieceKit(
     rankStrip.position.set(-BOARD_SIZE / 2 - 0.25, 0.002, 0);
     rootGroup.add(rankStrip);
 
-    const eastTier = new THREE.Mesh(eastTierGeo, eastTierMat);
-    eastTier.position.set(BOARD_SIZE / 2 + 0.27, 0.002, 0);
-    rootGroup.add(eastTier);
-
     const northCrownTex = trackTex(
       createBoardPlaqueTexture('Secretariat Apex · Rank 8', maxAnisotropy, '#83B5ED')
     );
-    const northCrownMat = trackMat(new THREE.MeshBasicMaterial({ map: northCrownTex }));
-    const northCrown = new THREE.Mesh(northCrownGeo, northCrownMat);
-    northCrown.position.set(0, 0.002, -BOARD_SIZE / 2 - 0.24);
-    rootGroup.add(northCrown);
-
-    const southPlaqueTex = trackTex(
-      createBoardPlaqueTexture(
-        'LISMUN Executive Board · One 8×8 Court · 46 Appointments',
-        maxAnisotropy
-      )
-    );
-    const southPlaqueMat = trackMat(new THREE.MeshBasicMaterial({ map: southPlaqueTex }));
-    const southPlaque = new THREE.Mesh(southPlaqueGeo, southPlaqueMat);
-    southPlaque.position.set(0, -0.25, BOARD_SIZE / 2 + 0.83);
-    rootGroup.add(southPlaque);
-
-    // Small crimson cardinal diamond on bottom-right brass corner
-    const redCompass = new THREE.Mesh(redCompassGeo, crimsonJewelMat);
-    redCompass.scale.set(1, 0.5, 1);
-    redCompass.position.set(
-      BOARD_SIZE / 2 + 0.28,
-      0.015,
-      BOARD_SIZE / 2 + 0.28
-    );
-    rootGroup.add(redCompass);
-
-    return { rootGroup, departmentHighlights };
+    const northCrownMat     return { rootGroup, departmentHighlights };
   }
 
   return {
