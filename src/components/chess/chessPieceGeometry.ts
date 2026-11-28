@@ -987,10 +987,7 @@ export function createChessPieceKit(
     rankStrip.position.set(-BOARD_SIZE / 2 - 0.25, 0.002, 0);
     rootGroup.add(rankStrip);
 
-    const northCrownTex = trackTex(
-      createBoardPlaqueTexture('Secretariat Apex · Rank 8', maxAnisotropy, '#83B5ED')
-    );
-    const northCrownMat     return { rootGroup, departmentHighlights };
+    return { rootGroup, departmentHighlights };
   }
 
   return {
